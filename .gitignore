@@ -1,0 +1,9 @@
+# Compiled binaries
+examples/browser/browser
+examples/ollama/ollama
+
+# Test cache
+*.test
+
+# macOS
+.DS_Store
