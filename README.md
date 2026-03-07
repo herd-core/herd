@@ -29,9 +29,13 @@ go get github.com/hackstrix/herd
 
 ---
 
-## 🛠️ Quick Start
+## 🛠️ Quick Start: Ollama Multi-Agent Gateway
 
-Here is a simple example of turning `ollama serve` into a multi-tenant LLM gateway where each user gets their own dedicated Ollama process.
+Here is an example of turning `ollama serve` into a multi-tenant LLM gateway where each agent (or user) gets their own dedicated Ollama process. This is specifically useful for isolating context windows or KV caches per agent without downloading models multiple times.
+
+You can find the full, runnable code for this example in [`examples/ollama/main.go`](examples/ollama/main.go).
+
+### 1. The Code
 
 ```go
 package main
@@ -47,12 +51,12 @@ import (
 )
 
 func main() {
-	// 1. Define how to spawn a worker
+	// 1. Define how to spawn an Ollama worker on a dynamic port
 	factory := herd.NewProcessFactory("ollama", "serve").
 		WithEnv("OLLAMA_HOST=127.0.0.1:{{.Port}}").
 		WithHealthPath("/")
 
-	// 2. Create the pool
+	// 2. Create the pool with auto-scaling and TTL eviction
 	pool, _ := herd.New(factory,
 		herd.WithAutoScale(1, 10),
 		herd.WithTTL(10 * time.Minute),
@@ -61,11 +65,33 @@ func main() {
 	// 3. Setup a session-aware reverse proxy
 	mux := http.NewServeMux()
 	mux.Handle("/api/", proxy.NewReverseProxy(pool, func(r *http.Request) string {
-		return r.Header.Get("X-Session-ID") // Pin worker by X-Session-ID
+		return r.Header.Get("X-Agent-ID") // Pin worker by X-Agent-ID header
 	}))
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
+```
+
+### 2. Running It
+
+Start the gateway (assuming you are in the `examples/ollama` directory):
+
+```bash
+go run . --port 8080 --min 1 --max 5
+```
+
+### 3. Usage
+
+Send requests with an `X-Agent-ID` header. Herd guarantees that all requests with the same ID will hit the exact same underlying `ollama serve` instance!
+
+```bash
+curl -X POST http://localhost:8080/api/chat \
+  -H "X-Agent-ID: agent-42" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3",
+    "messages": [{"role": "user", "content": "Hello! I am agent 42."}]
+  }'
 ```
 
 ---
