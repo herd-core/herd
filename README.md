@@ -1,0 +1,101 @@
+# Herd 🐄
+
+**Herd** is a session-affine process pool for Go. It manages a fleet of OS subprocess "workers" and routes incoming requests to the correct worker based on an arbitrary session ID.
+
+### The Core Invariant
+**1 Session ID → 1 Worker**, for the lifetime of the session.
+
+This invariant transforms stateful binaries (like Browsers, LLMs, or REPLs) into multi-tenant services. Because a session always hits the same process, you can maintain in-memory state, KV caches, or local file systems without a complex coordination layer.
+
+---
+
+## 🚀 Key Features
+
+- **Session Affinity**: Guaranteed routing of a session ID to its unique pinned worker.
+- **Auto-Scaling**: Dynamically scale workers between `min` and `max` bounds based on demand.
+- **Idle Eviction (TTL)**: Automatically reclaim workers that haven't been accessed within a configurable TTL.
+- **Health Monitoring**: Continuous liveness checks on every worker process; dead workers are automatically replaced.
+- **Singleflight Acquisition**: Protects against "thundering herd" issues where multiple concurrent requests for a new session ID try to spawn workers simultaneously.
+- **Generic Clients**: Fully generic `Pool[C]` supports any client type (HTTP, gRPC, custom structs).
+- **Reverse Proxy Helper**: Built-in HTTP reverse proxy that handles the full session lifecycle (Acquire → Proxy → Release).
+
+---
+
+## 📦 Installation
+
+```bash
+go get github.com/hackstrix/herd
+```
+
+---
+
+## 🛠️ Quick Start
+
+Here is a simple example of turning `ollama serve` into a multi-tenant LLM gateway where each user gets their own dedicated Ollama process.
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/hackstrix/herd"
+	"github.com/hackstrix/herd/proxy"
+)
+
+func main() {
+	// 1. Define how to spawn a worker
+	factory := herd.NewProcessFactory("ollama", "serve").
+		WithEnv("OLLAMA_HOST=127.0.0.1:{{.Port}}").
+		WithHealthPath("/")
+
+	// 2. Create the pool
+	pool, _ := herd.New(factory,
+		herd.WithAutoScale(1, 10),
+		herd.WithTTL(10 * time.Minute),
+	)
+
+	// 3. Setup a session-aware reverse proxy
+	mux := http.NewServeMux()
+	mux.Handle("/api/", proxy.NewReverseProxy(pool, func(r *http.Request) string {
+		return r.Header.Get("X-Session-ID") // Pin worker by X-Session-ID
+	}))
+
+	log.Fatal(http.ListenAndServe(":8080", mux))
+}
+```
+
+---
+
+## 🏗️ Architecture
+
+Herd is built around three core interfaces:
+
+- **`Worker[C]`**: Represents a single running subprocess. It provides the typed client `C` used to communicate with the process.
+- **`WorkerFactory[C]`**: Responsible for spawning new `Worker` instances. The default `ProcessFactory` handles local OS binaries.
+- **`Pool[C]`**: The central router. It maps session IDs to workers, manages the horizontal scaling, and handles session lifecycle.
+
+### Session Lifecycle
+1. **`Acquire(ctx, sessionID)`**: Retrieves the worker pinned to the ID. If none exists, a free worker is popped from the pool (or a new one is spawned).
+2. **`Session.Worker.Client()`**: Use the returned worker to perform your logic.
+3. **`Session.Release()`**: Returns the worker to the pool. The bond to the session ID is preserved until the TTL expires or the worker crashes.
+
+---
+
+## ⚙️ Configuration Options
+
+| Option | Description | Default |
+| :--- | :--- | :--- |
+| `WithAutoScale(min, max)` | Sets the floor and ceiling for the process fleet. | `min:1, max:1` |
+| `WithTTL(time.Duration)` | Max idle time for a session before it is evicted. | `0` (Disabled) |
+| `WithHealthInterval(d)` | How often to poll workers for liveness. | `10s` |
+| `WithCrashHandler(func)` | Callback triggered when a worker exits unexpectedly. | `nil` |
+
+---
+
+## 📄 License
+
+MIT License. See `LICENSE` for details.
