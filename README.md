@@ -78,7 +78,10 @@ func main() {
 Start the gateway (assuming you are in the `examples/playwright` directory):
 
 ```bash
-go run .
+sudo snap install node
+npx playwright install --with-deps
+# Running without sudo will disable cgroup isolation.
+sudo go run .
 ```
 
 ### 3. Usage
@@ -159,9 +162,9 @@ func main() {
 Start the gateway (assuming you are in the `examples/ollama` directory):
 
 ```bash
-sudo snap install node
-npx playwright install --with-deps
-go run .
+sudo snap isntall ollama
+# Running without sudo will disable cgroup isolation.
+sudo go run .
 ```
 
 ### 3. Usage
