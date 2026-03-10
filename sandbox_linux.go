@@ -18,6 +18,11 @@ const (
 	cpuPeriodMicros = 100_000
 )
 
+// activeCgroupRoot is the base directory used for all cgroup operations.
+// It defaults to herdCgroupRoot but can be overridden in tests to redirect
+// cgroup file writes to a temp dir without needing real cgroup privileges.
+var activeCgroupRoot = herdCgroupRoot
+
 type cgroupHandle struct {
 	path string
 	fd   *os.File
@@ -51,17 +56,17 @@ func applySandboxFlags(cmd *exec.Cmd, workerID string, cfg sandboxConfig) (sandb
 		cfg.pidsMax = 100
 	}
 
-	if err := os.MkdirAll(herdCgroupRoot, 0o755); err != nil {
+	if err := os.MkdirAll(activeCgroupRoot, 0o755); err != nil {
 		log.Printf("[sandbox:%s] WARNING: cgroup root mkdir failed: %v; continuing without cgroup constraints", workerID, err)
 		return nil, nil
 	}
 
-	if err := writeCgroupFile(herdCgroupRoot, "cgroup.subtree_control", "+memory +cpu +pids"); err != nil {
+	if err := writeCgroupFile(activeCgroupRoot, "cgroup.subtree_control", "+memory +cpu +pids"); err != nil {
 		log.Printf("[sandbox:%s] WARNING: cgroup controller enable failed: %v; continuing without cgroup constraints", workerID, err)
 		return nil, nil
 	}
 
-	cgroupPath := filepath.Join(herdCgroupRoot, workerID)
+	cgroupPath := filepath.Join(activeCgroupRoot, workerID)
 	if err := os.Mkdir(cgroupPath, 0o755); err != nil {
 		if !errors.Is(err, os.ErrExist) {
 			log.Printf("[sandbox:%s] WARNING: cgroup leaf mkdir failed: %v; continuing without cgroup constraints", workerID, err)
