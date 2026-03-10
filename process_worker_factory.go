@@ -60,6 +60,8 @@ type processWorker struct {
 	healthPath string // e.g. "/health" or "/"
 	client     *http.Client
 
+	cgroupHandle sandboxHandle
+
 	mu        sync.Mutex
 	cmd       *exec.Cmd
 	sessionID string // guarded by mu
@@ -134,6 +136,9 @@ func (w *processWorker) monitor() {
 
 	// broadcast to all the listeners that the worker is dead.
 	close(w.dead)
+	if w.cgroupHandle != nil {
+		w.cgroupHandle.Cleanup()
+	}
 
 	w.mu.Lock()
 	prevSession := w.sessionID
@@ -167,6 +172,9 @@ type ProcessFactory struct {
 	startTimeout          time.Duration // maximum time to wait for the first successful health check
 	startHealthCheckDelay time.Duration // delay the health check for the first time.
 	enableSandbox         bool          // true by default for isolation
+	cgroupMemory          int64         // bytes; 0 means unlimited
+	cgroupCPU             int64         // quota in micros per 100ms period; 0 means unlimited
+	cgroupPIDs            int64         // max pids; -1 means unlimited
 	counter               atomic.Int64
 }
 
@@ -185,6 +193,7 @@ func NewProcessFactory(binary string, args ...string) *ProcessFactory {
 		startTimeout:          30 * time.Second,
 		startHealthCheckDelay: 1 * time.Second,
 		enableSandbox:         true,
+		cgroupPIDs:            100,
 	}
 }
 
@@ -228,6 +237,40 @@ func (f *ProcessFactory) WithStartTimeout(d time.Duration) *ProcessFactory {
 // let the process start and breath before hammering with health checks
 func (f *ProcessFactory) WithStartHealthCheckDelay(d time.Duration) *ProcessFactory {
 	f.startHealthCheckDelay = d
+	return f
+}
+
+// WithMemoryLimit sets the cgroup memory limit, in bytes, for each spawned worker.
+// A value of 0 disables the memory limit.
+func (f *ProcessFactory) WithMemoryLimit(bytes int64) *ProcessFactory {
+	if bytes < 0 {
+		panic("herd: WithMemoryLimit bytes must be >= 0")
+	}
+	f.cgroupMemory = bytes
+	return f
+}
+
+// WithCPULimit sets the cgroup CPU quota in cores for each spawned worker.
+// For example, 0.5 means half a CPU and 2 means two CPUs. A value of 0 disables the limit.
+func (f *ProcessFactory) WithCPULimit(cores float64) *ProcessFactory {
+	if cores < 0 {
+		panic("herd: WithCPULimit cores must be >= 0")
+	}
+	if cores == 0 {
+		f.cgroupCPU = 0
+		return f
+	}
+	f.cgroupCPU = int64(cores * 100_000)
+	return f
+}
+
+// WithPIDsLimit sets the cgroup PID limit for each spawned worker.
+// Pass -1 for unlimited. Values of 0 or less than -1 are invalid.
+func (f *ProcessFactory) WithPIDsLimit(n int64) *ProcessFactory {
+	if n == 0 || n < -1 {
+		panic("herd: WithPIDsLimit n must be > 0 or -1 for unlimited")
+	}
+	f.cgroupPIDs = n
 	return f
 }
 
@@ -281,11 +324,18 @@ func (f *ProcessFactory) Spawn(ctx context.Context) (Worker[*http.Client], error
 	// During program exits, this should be cleaned up by the Shutdown method
 	cmd := exec.Command(f.binary, resolvedArgs...)
 	cmd.Env = append(os.Environ(), append([]string{"PORT=" + portStr}, resolvedEnv...)...)
+	var cgroupHandle sandboxHandle
 
 	if f.enableSandbox {
-		if err := applySandboxFlags(cmd); err != nil {
+		h, err := applySandboxFlags(cmd, id, sandboxConfig{
+			memoryMaxBytes: f.cgroupMemory,
+			cpuMaxMicros:   f.cgroupCPU,
+			pidsMax:        f.cgroupPIDs,
+		})
+		if err != nil {
 			return nil, fmt.Errorf("herd: ProcessFactory: failed to apply sandbox: %w", err)
 		}
+		cgroupHandle = h
 	} else {
 		log.Printf("[%s] WARNING: running UN-SANDBOXED. Not recommended for production.", id)
 	}
@@ -302,6 +352,9 @@ func (f *ProcessFactory) Spawn(ctx context.Context) (Worker[*http.Client], error
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("herd: ProcessFactory: start %s: %w", f.binary, err)
 	}
+	if cgroupHandle != nil {
+		cgroupHandle.PostStart()
+	}
 	log.Printf("[%s] started pid=%d addr=%s", id, cmd.Process.Pid, address)
 
 	// Stream logs in background
@@ -309,13 +362,14 @@ func (f *ProcessFactory) Spawn(ctx context.Context) (Worker[*http.Client], error
 	go streamLogs(id, stderr, true)
 
 	w := &processWorker{
-		id:         id,
-		port:       port,
-		address:    address,
-		healthPath: f.healthPath,
-		client:     &http.Client{Timeout: 3 * time.Second},
-		cmd:        cmd,
-		dead:       make(chan struct{}),
+		id:           id,
+		port:         port,
+		address:      address,
+		healthPath:   f.healthPath,
+		client:       &http.Client{Timeout: 3 * time.Second},
+		cgroupHandle: cgroupHandle,
+		cmd:          cmd,
+		dead:         make(chan struct{}),
 	}
 
 	// Monitor the process in background — fires onCrash if it exits unexpectedly
