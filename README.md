@@ -159,6 +159,8 @@ func main() {
 Start the gateway (assuming you are in the `examples/ollama` directory):
 
 ```bash
+sudo snap install node
+npx playwright install --with-deps
 go run .
 ```
 
