@@ -7,6 +7,8 @@ type sandboxConfig struct {
 	cpuMaxMicros   int64
 	pidsMax        int64
 	cloneFlags     uintptr
+	noNewPrivs     bool          // prevent privilege escalation via setuid binaries
+	seccompPolicy  SeccompPolicy // syscall filter enforcement mode
 }
 
 // sandboxHandle owns post-start and cleanup hooks for sandbox resources.

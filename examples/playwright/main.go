@@ -40,6 +40,12 @@ func main() {
 	//
 	// We use the CLI directly inside ProcessFactory:
 	// npx playwright run-server --port {{.Port}} --host 127.0.0.1
+	//
+	// Seccomp note: Playwright is an opaque Node.js binary — it cannot call
+	// herd.EnterSandbox() to install its own syscall filter. We opt out of
+	// seccomp here. Namespace + cgroup isolation still applies.
+	// For Go worker binaries you control, call herd.EnterSandbox() at the top
+	// of main() and remove WithSeccompPolicy to use the default (errno) policy.
 	factory := herd.NewProcessFactory(
 		"npx", "playwright", "run-server",
 		"--port", "{{.Port}}",
@@ -47,7 +53,8 @@ func main() {
 	).
 		WithHealthPath("/").
 		WithStartTimeout(1 * time.Minute).
-		WithStartHealthCheckDelay(500 * time.Millisecond)
+		WithStartHealthCheckDelay(500 * time.Millisecond).
+		WithSeccompPolicy(herd.SeccompPolicyOff) // opaque binary — cannot call EnterSandbox()
 
 	// ── Pool ───────────────────────────────────────────────────────────────
 	// To make a bulletproof multi-tenant tool and avoid shared fate, state leaks,

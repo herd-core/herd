@@ -176,6 +176,7 @@ type ProcessFactory struct {
 	cgroupMemory          int64         // bytes; 0 means unlimited
 	cgroupCPU             int64         // quota in micros per 100ms period; 0 means unlimited
 	cgroupPIDs            int64         // max pids; -1 means unlimited
+	seccompPolicy         SeccompPolicy // syscall filter enforcement mode; default SeccompPolicyErrno
 	counter               atomic.Int64
 }
 
@@ -196,6 +197,7 @@ func NewProcessFactory(binary string, args ...string) *ProcessFactory {
 		enableSandbox:         true,
 		namespaceCloneFlags:   defaultNamespaceCloneFlags(),
 		cgroupPIDs:            100,
+		seccompPolicy:         SeccompPolicyErrno,
 	}
 }
 
@@ -284,6 +286,21 @@ func (f *ProcessFactory) WithInsecureSandbox() *ProcessFactory {
 	return f
 }
 
+// WithSeccompPolicy sets the seccomp syscall-filter enforcement mode for
+// workers spawned by this factory.
+//
+// The filter is installed by the worker binary itself at startup via
+// [EnterSandbox]. The factory injects HERD_SECCOMP_PROFILE into the worker
+// environment to communicate the chosen policy.
+//
+// Defaults to [SeccompPolicyErrno] (unauthorized syscalls return EPERM).
+// Use [SeccompPolicyOff] to disable seccomp (e.g. when the worker binary
+// does not call EnterSandbox).
+func (f *ProcessFactory) WithSeccompPolicy(p SeccompPolicy) *ProcessFactory {
+	f.seccompPolicy = p
+	return f
+}
+
 func streamLogs(workerID string, pipe io.ReadCloser, isError bool) {
 	// bufio.Scanner guarantees we read line-by-line, preventing torn logs.
 	scanner := bufio.NewScanner(pipe)
@@ -325,7 +342,14 @@ func (f *ProcessFactory) Spawn(ctx context.Context) (Worker[*http.Client], error
 
 	// During program exits, this should be cleaned up by the Shutdown method
 	cmd := exec.Command(f.binary, resolvedArgs...)
-	cmd.Env = append(os.Environ(), append([]string{"PORT=" + portStr}, resolvedEnv...)...)
+
+	// Base environment: inherit parent + port + user extras + seccomp profile
+	baseEnv := []string{"PORT=" + portStr}
+	if f.enableSandbox && f.seccompPolicy != SeccompPolicyOff {
+		baseEnv = append(baseEnv, "HERD_SECCOMP_PROFILE="+f.seccompPolicy.envValue())
+	}
+	cmd.Env = append(os.Environ(), append(baseEnv, resolvedEnv...)...)
+
 	var cgroupHandle sandboxHandle
 
 	if f.enableSandbox {
@@ -334,6 +358,8 @@ func (f *ProcessFactory) Spawn(ctx context.Context) (Worker[*http.Client], error
 			cpuMaxMicros:   f.cgroupCPU,
 			pidsMax:        f.cgroupPIDs,
 			cloneFlags:     f.namespaceCloneFlags,
+			noNewPrivs:     true,
+			seccompPolicy:  f.seccompPolicy,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("herd: ProcessFactory: failed to apply sandbox: %w", err)

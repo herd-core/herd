@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -118,6 +120,15 @@ func applySandboxFlags(cmd *exec.Cmd, workerID string, cfg sandboxConfig) (sandb
 	sys.CgroupFD = int(dir.Fd())
 	sys.UseCgroupFD = true
 	cmd.SysProcAttr = sys
+
+	if cfg.noNewPrivs {
+		// Set no_new_privs on the calling OS thread. The bit is inherited
+		// by all children of this thread (including the forked worker).
+		// This prevents workers from gaining privileges via setuid binaries.
+		if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
+			log.Printf("[sandbox:%s] WARNING: prctl PR_SET_NO_NEW_PRIVS failed: %v; continuing without no_new_privs", workerID, err)
+		}
+	}
 
 	return &cgroupHandle{path: cgroupPath, fd: dir}, nil
 }

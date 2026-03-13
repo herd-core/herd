@@ -264,7 +264,43 @@ func TestCgroupHandle_Cleanup_Idempotent(t *testing.T) {
 	h.Cleanup() // dir already gone — should not panic or log error as warning
 }
 
-func TestCgroupHandle_Cleanup_NilSafe(t *testing.T) {
+func TestApplySandboxFlags_NilSafe(t *testing.T) {
 	var h *cgroupHandle
 	h.Cleanup() // must not panic
+}
+
+// ---------------------------------------------------------------------------
+// No-New-Privs tests
+// ---------------------------------------------------------------------------
+
+func TestApplySandboxFlags_NoNewPrivs(t *testing.T) {
+	withTempCgroupRoot(t)
+	cmd := newFakeCmd()
+
+	_, err := applySandboxFlags(cmd, "worker-nnp", sandboxConfig{noNewPrivs: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cmd.SysProcAttr == nil {
+		t.Fatal("SysProcAttr should be set")
+	}
+	if !cmd.SysProcAttr.NoNewPrivs {
+		t.Error("NoNewPrivs should be true when noNewPrivs=true")
+	}
+}
+
+func TestApplySandboxFlags_NoNewPrivsOff(t *testing.T) {
+	withTempCgroupRoot(t)
+	cmd := newFakeCmd()
+
+	_, err := applySandboxFlags(cmd, "worker-nnp-off", sandboxConfig{noNewPrivs: false})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cmd.SysProcAttr == nil {
+		t.Fatal("SysProcAttr should be set")
+	}
+	if cmd.SysProcAttr.NoNewPrivs {
+		t.Error("NoNewPrivs should be false when noNewPrivs=false")
+	}
 }

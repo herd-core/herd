@@ -58,12 +58,19 @@ func main() {
 	//              you only ever pull a model once.
 	// CUDA_VISIBLE_DEVICES is intentionally left empty here; set it if you
 	//              want to pin different workers to different GPUs.
+	//
+	// Seccomp note: Ollama is an opaque binary — it cannot call
+	// herd.EnterSandbox() to install its own syscall filter. We opt out of
+	// seccomp here. Namespace + cgroup isolation still applies.
+	// For Go worker binaries you control, call herd.EnterSandbox() at the top
+	// of main() and remove WithSeccompPolicy to use the default (errno) policy.
 	factory := herd.NewProcessFactory("ollama", "serve").
 		WithEnv("OLLAMA_HOST=127.0.0.1:{{.Port}}").
 		WithEnv("OLLAMA_MODELS=" + *modelsDir).
 		WithHealthPath("/"). // ollama: GET / → 200 "Ollama is running"
 		WithStartTimeout(2 * time.Minute).
-		WithStartHealthCheckDelay(1 * time.Second)
+		WithStartHealthCheckDelay(1 * time.Second).
+		WithSeccompPolicy(herd.SeccompPolicyOff) // opaque binary — cannot call EnterSandbox()
 
 	// ── Pool ───────────────────────────────────────────────────────────────
 	pool, err := herd.New(factory,
