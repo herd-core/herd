@@ -13,7 +13,6 @@
 
 This invariant transforms stateful binaries (like Browsers, LLMs, or REPLs) into multi-tenant services. Because a session always hits the same process, you can maintain in-memory state, KV caches, or local file systems without a complex coordination layer.
 
----
 
 ## 🚀 Key Features
 
@@ -26,6 +25,28 @@ This invariant transforms stateful binaries (like Browsers, LLMs, or REPLs) into
 - **Reverse Proxy Helper**: Built-in HTTP reverse proxy that handles the full session lifecycle (Acquire → Proxy → Release).
 
 ---
+
+### Feature Comparison
+| Feature | `herd` | Kubernetes | PM2 |
+|---|---|---|---|
+| Startup latency | <100ms | 2s – 10s | 500ms+ |
+| Session affinity | ✅ Native (Session ID) | ⚠️ Complex (Sticky Sessions) | ❌ None |
+| Footprint | Single binary, zero deps | Massive control plane | Node.js runtime required |
+| Programming model | Go-native library | YAML / REST API | CLI / JS config |
+| Crash + cleanup | ✅ per-session callback | ⚠️ pod restart only | ⚠️ restart only |
+| Built-in HTTP proxy | ✅ `NewReverseProxy` | ❌ separate Ingress concern | ❌ |
+
+
+### Existing OSS Landscape
+| Project | Multi-process pool | Named session routing | Crash + cleanup | License | Language |
+|---|---|---|---|---|---|
+| Browserless | ✅ | ❌ WebSocket-sticky | ✅ | SSPL | TypeScript |
+| puppeteer-cluster | ✅ | ❌ stateless tasks | ✅ | MIT | TypeScript |
+| PM2 / Supervisord | ✅ | ❌ none | ⚠️ | MIT/BSD | Python/JS |
+| Selenium Grid | ✅ | ✅ WebDriver-specific | ✅ | Apache 2.0 | Java |
+| E2B infra | ✅ (VMs) | ✅ | ✅ | Apache 2.0 | Go (cloud-only) |
+| **herd** | ✅ | ✅ explicit ID routing | ✅ | **MIT** | **Go** |
+
 
 ## 📦 Installation
 
