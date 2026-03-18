@@ -1,6 +1,12 @@
 # Herd - Go Library
 
+> "Kubernetes is too slow to spawn sessions. Redis-only maps are too complex to maintain."
+
 **Herd** is a session-affine process pool for Go. It manages a fleet of OS subprocess "workers" and routes incoming requests to the correct worker based on an arbitrary session ID.
+
+> Build features, not infrastructure
+
+
 
 ### The Core Invariant
 **1 Session ID → 1 Worker**, for the lifetime of the session.
