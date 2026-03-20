@@ -26,7 +26,7 @@
 // A background goroutine calls cmd.Wait(). On exit, if the worker still
 // holds a sessionID the pool's onCrash callback is invoked so the session
 // affinity map is cleaned up.
-package core
+package herd
 
 import (
 	"bufio"
@@ -42,17 +42,17 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"github.com/hackstrix/herd"
+	"github.com/hackstrix/herd/internal/core"
 	"time"
 )
 
 var ErrWorkerDead = errors.New("worker process has died")
 
 // ---------------------------------------------------------------------------
-// processWorker — concrete herd.Worker[*http.Client] backed by exec.Cmd
+// processWorker — concrete Worker[*http.Client] backed by exec.Cmd
 // ---------------------------------------------------------------------------
 
-// processWorker implements herd.Worker[*http.Client].
+// processWorker implements Worker[*http.Client].
 // It is the value returned by ProcessFactory.Spawn.
 type ProcessWorker struct {
 	id         string
@@ -61,7 +61,7 @@ type ProcessWorker struct {
 	healthPath string // e.g. "/health" or "/"
 	client     *http.Client
 
-	cgroupHandle sandboxHandle
+	cgroupHandle core.SandboxHandle
 
 	mu        sync.Mutex
 	cmd       *exec.Cmd
@@ -202,7 +202,7 @@ func NewProcessFactory(binary string, args ...string) *ProcessFactory {
 		startTimeout:          30 * time.Second,
 		startHealthCheckDelay: 1 * time.Second,
 		enableSandbox:         true,
-		namespaceCloneFlags:   defaultNamespaceCloneFlags(),
+		namespaceCloneFlags:   core.DefaultNamespaceCloneFlags(),
 		cgroupPIDs:            100,
 	}
 }
@@ -309,7 +309,7 @@ func streamLogs(workerID string, pipe io.ReadCloser, isError bool) {
 // Spawn implements WorkerFactory[*http.Client].
 // It allocates a free port, starts the binary, and blocks until the worker
 // passes a /health check or ctx is cancelled.
-func (f *ProcessFactory) Spawn(ctx context.Context) (herd.Worker[*http.Client], error) {
+func (f *ProcessFactory) Spawn(ctx context.Context) (Worker[*http.Client], error) {
 	port, err := findFreePort()
 	if err != nil {
 		return nil, fmt.Errorf("herd: ProcessFactory: find free port: %w", err)
@@ -334,14 +334,14 @@ func (f *ProcessFactory) Spawn(ctx context.Context) (herd.Worker[*http.Client], 
 	// During program exits, this should be cleaned up by the Shutdown method
 	cmd := exec.Command(f.binary, resolvedArgs...)
 	cmd.Env = append(os.Environ(), append([]string{"PORT=" + portStr}, resolvedEnv...)...)
-	var cgroupHandle sandboxHandle
+	var cgroupHandle core.SandboxHandle
 
 	if f.enableSandbox {
-		h, err := applySandboxFlags(cmd, id, sandboxConfig{
-			memoryMaxBytes: f.cgroupMemory,
-			cpuMaxMicros:   f.cgroupCPU,
-			pidsMax:        f.cgroupPIDs,
-			cloneFlags:     f.namespaceCloneFlags,
+		h, err := core.ApplySandboxFlags(cmd, id, core.SandboxConfig{
+			MemoryMaxBytes: f.cgroupMemory,
+			CpuMaxMicros:   f.cgroupCPU,
+			PidsMax:        f.cgroupPIDs,
+			CloneFlags:     f.namespaceCloneFlags,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("herd: ProcessFactory: failed to apply sandbox: %w", err)
@@ -407,7 +407,7 @@ func (f *ProcessFactory) Spawn(ctx context.Context) (herd.Worker[*http.Client], 
 
 // waitForHealthy polls w.Healthy every 200ms until it returns nil or ctx
 // is cancelled.
-func waitForHealthy(ctx context.Context, w herd.Worker[*http.Client]) error {
+func waitForHealthy(ctx context.Context, w Worker[*http.Client]) error {
 	const pollInterval = 200 * time.Millisecond
 
 	for {

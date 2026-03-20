@@ -2,10 +2,12 @@
 //
 // No build tag: runs on all platforms (macOS, Linux, Windows).
 // No processes are spawned; only field values and option validation are tested.
-package core
+package herd
 
 import (
 	"testing"
+
+	"github.com/hackstrix/herd/internal/core"
 )
 
 func TestNewProcessFactory_DefaultCgroupPIDs(t *testing.T) {
@@ -27,8 +29,8 @@ func TestNewProcessFactory_DefaultMemoryCPUUnlimited(t *testing.T) {
 
 func TestNewProcessFactory_DefaultNamespaceFlags(t *testing.T) {
 	f := NewProcessFactory("./fake-binary")
-	if f.namespaceCloneFlags != defaultNamespaceCloneFlags() {
-		t.Errorf("expected default namespaceCloneFlags=%d, got %d", defaultNamespaceCloneFlags(), f.namespaceCloneFlags)
+	if f.namespaceCloneFlags != core.DefaultNamespaceCloneFlags() {
+		t.Errorf("expected default namespaceCloneFlags=%d, got %d", core.DefaultNamespaceCloneFlags(), f.namespaceCloneFlags)
 	}
 }
 

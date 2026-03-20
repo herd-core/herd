@@ -1,6 +1,6 @@
 //go:build linux
 
-// sandbox_linux_test.go — Unit tests for applySandboxFlags and cgroupHandle.
+// sandbox_linux_test.go — Unit tests for ApplySandboxFlags and cgroupHandle.
 //
 // These tests redirect activeCgroupRoot to t.TempDir() so they work
 // without real cgroup privileges — all file writes go to a temp directory.
@@ -54,7 +54,7 @@ func TestApplySandboxFlags_DefaultPIDs(t *testing.T) {
 	root := withTempCgroupRoot(t)
 	cmd := newFakeCmd()
 
-	h, err := applySandboxFlags(cmd, "worker-1", sandboxConfig{})
+	h, err := ApplySandboxFlags(cmd, "worker-1", SandboxConfig{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestApplySandboxFlags_MemoryLimit(t *testing.T) {
 	cmd := newFakeCmd()
 	const limit int64 = 64 * 1024 * 1024 // 64 MB
 
-	h, err := applySandboxFlags(cmd, "worker-mem", sandboxConfig{memoryMaxBytes: limit})
+	h, err := ApplySandboxFlags(cmd, "worker-mem", SandboxConfig{MemoryMaxBytes: limit})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestApplySandboxFlags_CPULimit(t *testing.T) {
 	root := withTempCgroupRoot(t)
 	cmd := newFakeCmd()
 
-	h, err := applySandboxFlags(cmd, "worker-cpu", sandboxConfig{cpuMaxMicros: 50_000})
+	h, err := ApplySandboxFlags(cmd, "worker-cpu", SandboxConfig{CpuMaxMicros: 50_000})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestApplySandboxFlags_UnlimitedPIDs(t *testing.T) {
 	root := withTempCgroupRoot(t)
 	cmd := newFakeCmd()
 
-	h, err := applySandboxFlags(cmd, "worker-nopid", sandboxConfig{pidsMax: -1})
+	h, err := ApplySandboxFlags(cmd, "worker-nopid", SandboxConfig{PidsMax: -1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -131,14 +131,14 @@ func TestApplySandboxFlags_NoCPULimitFileWhenZero(t *testing.T) {
 	root := withTempCgroupRoot(t)
 	cmd := newFakeCmd()
 
-	_, err := applySandboxFlags(cmd, "worker-nocpu", sandboxConfig{cpuMaxMicros: 0})
+	_, err := ApplySandboxFlags(cmd, "worker-nocpu", SandboxConfig{CpuMaxMicros: 0})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	cgroupPath := filepath.Join(root, "worker-nocpu")
 	if _, err := os.Stat(filepath.Join(cgroupPath, "cpu.max")); err == nil {
-		t.Error("cpu.max should not be written when cpuMaxMicros=0")
+		t.Error("cpu.max should not be written when CpuMaxMicros=0")
 	}
 }
 
@@ -146,7 +146,7 @@ func TestApplySandboxFlags_SysProcAttrWired(t *testing.T) {
 	withTempCgroupRoot(t)
 	cmd := newFakeCmd()
 
-	h, err := applySandboxFlags(cmd, "worker-attr", sandboxConfig{})
+	h, err := ApplySandboxFlags(cmd, "worker-attr", SandboxConfig{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestApplySandboxFlags_SysProcAttrWired(t *testing.T) {
 		t.Fatal("expected non-nil handle")
 	}
 	if cmd.SysProcAttr == nil {
-		t.Fatal("SysProcAttr should be set after applySandboxFlags")
+		t.Fatal("SysProcAttr should be set after ApplySandboxFlags")
 	}
 	if !cmd.SysProcAttr.UseCgroupFD {
 		t.Error("UseCgroupFD should be true")
@@ -169,7 +169,7 @@ func TestApplySandboxFlags_CloneFlagsMergedWithCgroup(t *testing.T) {
 	cmd := newFakeCmd()
 
 	flags := uintptr(syscall.CLONE_NEWPID | syscall.CLONE_NEWNS | syscall.CLONE_NEWIPC)
-	h, err := applySandboxFlags(cmd, "worker-ns", sandboxConfig{cloneFlags: flags})
+	h, err := ApplySandboxFlags(cmd, "worker-ns", SandboxConfig{CloneFlags: flags})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestApplySandboxFlags_CloneFlagsMergedWithCgroup(t *testing.T) {
 		t.Fatal("expected non-nil handle")
 	}
 	if cmd.SysProcAttr == nil {
-		t.Fatal("SysProcAttr should be set after applySandboxFlags")
+		t.Fatal("SysProcAttr should be set after ApplySandboxFlags")
 	}
 	if cmd.SysProcAttr.Cloneflags&flags != flags {
 		t.Errorf("expected Cloneflags to include %#x, got %#x", flags, cmd.SysProcAttr.Cloneflags)
@@ -197,7 +197,7 @@ func TestApplySandboxFlags_SoftFailOnBadRoot(t *testing.T) {
 	defer func() { activeCgroupRoot = old }()
 
 	cmd := newFakeCmd()
-	h, err := applySandboxFlags(cmd, "worker-fail", sandboxConfig{})
+	h, err := ApplySandboxFlags(cmd, "worker-fail", SandboxConfig{})
 	if err != nil {
 		t.Fatalf("expected soft fail (nil, nil) but got error: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestApplySandboxFlags_ExistingCgroupDirIsReused(t *testing.T) {
 	}
 	cmd := newFakeCmd()
 
-	h, err := applySandboxFlags(cmd, "worker-exist", sandboxConfig{})
+	h, err := ApplySandboxFlags(cmd, "worker-exist", SandboxConfig{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
