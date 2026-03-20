@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - ci/building_and_hosting_on_gh_pages  # Allow testing inside your active branch
+      
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
