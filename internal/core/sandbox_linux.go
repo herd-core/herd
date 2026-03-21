@@ -1,6 +1,6 @@
 //go:build linux
 
-package herd
+package core
 
 import (
 	"errors"
@@ -47,13 +47,13 @@ func (h *cgroupHandle) Cleanup() {
 	}
 }
 
-// applySandboxFlags applies Linux cgroup v2 constraints to the command.
+// ApplySandboxFlags applies Linux cgroup v2 constraints to the command.
 // If cgroup provisioning is unavailable (for example due to permissions), it
 // soft-fails and allows the worker to start without constraints.
-func applySandboxFlags(cmd *exec.Cmd, workerID string, cfg sandboxConfig) (sandboxHandle, error) {
+func ApplySandboxFlags(cmd *exec.Cmd, workerID string, cfg SandboxConfig) (SandboxHandle, error) {
 
-	if cfg.pidsMax == 0 {
-		cfg.pidsMax = 100
+	if cfg.PidsMax == 0 {
+		cfg.PidsMax = 100
 	}
 
 	if err := os.MkdirAll(activeCgroupRoot, 0o755); err != nil {
@@ -74,8 +74,8 @@ func applySandboxFlags(cmd *exec.Cmd, workerID string, cfg sandboxConfig) (sandb
 		}
 	}
 
-	if cfg.memoryMaxBytes > 0 {
-		if err := writeCgroupFile(cgroupPath, "memory.max", strconv.FormatInt(cfg.memoryMaxBytes, 10)); err != nil {
+	if cfg.MemoryMaxBytes > 0 {
+		if err := writeCgroupFile(cgroupPath, "memory.max", strconv.FormatInt(cfg.MemoryMaxBytes, 10)); err != nil {
 			log.Printf("[sandbox:%s] WARNING: memory.max write failed: %v; continuing without cgroup constraints", workerID, err)
 			return nil, nil
 		}
@@ -85,8 +85,8 @@ func applySandboxFlags(cmd *exec.Cmd, workerID string, cfg sandboxConfig) (sandb
 		}
 	}
 
-	if cfg.cpuMaxMicros > 0 {
-		cpuMax := fmt.Sprintf("%d %d", cfg.cpuMaxMicros, cpuPeriodMicros)
+	if cfg.CpuMaxMicros > 0 {
+		cpuMax := fmt.Sprintf("%d %d", cfg.CpuMaxMicros, cpuPeriodMicros)
 		if err := writeCgroupFile(cgroupPath, "cpu.max", cpuMax); err != nil {
 			log.Printf("[sandbox:%s] WARNING: cpu.max write failed: %v; continuing without cgroup constraints", workerID, err)
 			return nil, nil
@@ -94,8 +94,8 @@ func applySandboxFlags(cmd *exec.Cmd, workerID string, cfg sandboxConfig) (sandb
 	}
 
 	pidsValue := "max"
-	if cfg.pidsMax > 0 {
-		pidsValue = strconv.FormatInt(cfg.pidsMax, 10)
+	if cfg.PidsMax > 0 {
+		pidsValue = strconv.FormatInt(cfg.PidsMax, 10)
 	}
 	if err := writeCgroupFile(cgroupPath, "pids.max", pidsValue); err != nil {
 		log.Printf("[sandbox:%s] WARNING: pids.max write failed: %v; continuing without cgroup constraints", workerID, err)
@@ -112,8 +112,8 @@ func applySandboxFlags(cmd *exec.Cmd, workerID string, cfg sandboxConfig) (sandb
 	if sys == nil {
 		sys = &syscall.SysProcAttr{}
 	}
-	if cfg.cloneFlags != 0 {
-		sys.Cloneflags |= cfg.cloneFlags
+	if cfg.CloneFlags != 0 {
+		sys.Cloneflags |= cfg.CloneFlags
 	}
 	sys.CgroupFD = int(dir.Fd())
 	sys.UseCgroupFD = true
@@ -122,7 +122,7 @@ func applySandboxFlags(cmd *exec.Cmd, workerID string, cfg sandboxConfig) (sandb
 	return &cgroupHandle{path: cgroupPath, fd: dir}, nil
 }
 
-func defaultNamespaceCloneFlags() uintptr {
+func DefaultNamespaceCloneFlags() uintptr {
 	return uintptr(syscall.CLONE_NEWPID | syscall.CLONE_NEWNS | syscall.CLONE_NEWIPC)
 }
 

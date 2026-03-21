@@ -73,10 +73,10 @@ func TestSandbox_BornInCgroup(t *testing.T) {
 	}
 	defer worker.Close()
 
-	// Extract the OS-level pid from the processWorker.
-	pw, ok := worker.(*processWorker)
+	// Extract the OS-level pid from the ProcessWorker.
+	pw, ok := worker.(*ProcessWorker)
 	if !ok {
-		t.Fatal("expected *processWorker from Spawn")
+		t.Fatal("expected *ProcessWorker from Spawn")
 	}
 	pw.mu.Lock()
 	pid := pw.cmd.Process.Pid
@@ -129,7 +129,7 @@ func TestSandbox_CgroupDirLifecycle(t *testing.T) {
 	}
 
 	// Close the worker and wait for monitor() to run Cleanup().
-	pw := worker.(*processWorker)
+	pw := worker.(*ProcessWorker)
 	_ = worker.Close()
 	select {
 	case <-pw.dead:
@@ -261,9 +261,9 @@ func TestNamespace_PIDIsolation(t *testing.T) {
 	}
 	defer worker.Close()
 
-	pw, ok := worker.(*processWorker)
+	pw, ok := worker.(*ProcessWorker)
 	if !ok {
-		t.Fatal("expected *processWorker from Spawn")
+		t.Fatal("expected *ProcessWorker from Spawn")
 	}
 	pw.mu.Lock()
 	hostPID := pw.cmd.Process.Pid

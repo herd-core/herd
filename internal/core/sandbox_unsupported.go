@@ -1,6 +1,6 @@
 //go:build !linux
 
-package herd
+package core
 
 import (
 	"errors"
@@ -21,13 +21,13 @@ var ErrSandboxUnsupported = errors.New(
 		"###############################################################################################",
 )
 
-// applySandboxFlags applies Linux-specific sandbox isolation.
+// ApplySandboxFlags applies Linux-specific sandbox isolation.
 // On non-Linux systems, this returns an error if sandbox mode is enabled,
 // forcing a loud failure instead of a false sense of security.
-func applySandboxFlags(cmd *exec.Cmd, workerID string, cfg sandboxConfig) (sandboxHandle, error) {
+func ApplySandboxFlags(cmd *exec.Cmd, workerID string, cfg SandboxConfig) (SandboxHandle, error) {
 	return nil, ErrSandboxUnsupported
 }
 
-func defaultNamespaceCloneFlags() uintptr {
+func DefaultNamespaceCloneFlags() uintptr {
 	return 0
 }

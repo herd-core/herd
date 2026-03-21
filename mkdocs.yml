@@ -34,7 +34,11 @@ theme:
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -51,18 +55,18 @@ nav:
   - Architecture:
     - Dual-Mode Design: architecture/dual-mode.md
     - Singleflight & Locks: architecture/singleflight.md
-    - Connection Tracking: architecture/tracking.md
+    # - Connection Tracking: architecture/tracking.md
   - Native Go Library:
-    - Installation: go/install.md
-    - The Pool Engine: go/pool.md
+    # - Installation: go/install.md
+    # - The Pool Engine: go/pool.md
     - Worker Interfaces: go/workers.md
-  - gRPC Daemon:
-    - Installation: daemon/install.md
-    - CLI Reference: daemon/cli.md
-    - Unix Domain Sockets: daemon/uds.md
-  - Language SDKs:
-    - Python: sdks/python.md
-    - Elixir: sdks/elixir.md
-  - Deployment:
-    - Kubernetes Sidecar: deployment/kubernetes.md
-    - Host OS Execution: deployment/bare-metal.md
+#  - gRPC Daemon:
+#    - Installation: daemon/install.md
+#    - CLI Reference: daemon/cli.md
+#    - Unix Domain Sockets: daemon/uds.md
+#  - Language SDKs:
+#    - Python: sdks/python.md
+#    - Elixir: sdks/elixir.md
+#  - Deployment:
+#    - Kubernetes Sidecar: deployment/kubernetes.md
+#    - Host OS Execution: deployment/bare-metal.md

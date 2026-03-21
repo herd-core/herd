@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package herd.v1;
+
+option go_package = "github.com/hackstrix/herd/proto/herd/v1";
+
+import "google/protobuf/empty.proto";
+
+// HerdService manages connection-backed process allocation over gRPC.
+service HerdService {
+    // Acquire a worker slot. Holds the bidirectional stream open to maintain the lock.
+    // If the stream breaks (EOF), the daemon triggers an auto-release of the worker.
+    rpc Acquire(stream AcquireRequest) returns (stream AcquireResponse);
+    
+    // Status checks daemon and pool health (Active vs Free workers).
+    rpc Status(google.protobuf.Empty) returns (StatusResponse);
+}
+
+message AcquireRequest {
+    // Optional tags to route to specific worker pools (e.g., "python", "image-inference")
+    string worker_type = 1;
+    
+    // Timeout in seconds before giving up on acquiring
+    int32 timeout_seconds = 2;
+}
+
+message AcquireResponse {
+    // The Unique Session ID allocated
+    string session_id = 1;
+    
+    // The Local HTTP Address of the reverse proxy representing that worker
+    string proxy_address = 2;
+    
+    // The local Worker Pid (optional for debugging/inspecting)
+    int32 worker_pid = 3;
+}
+
+message StatusResponse {
+    int32 active_workers = 1;
+    int32 idle_workers = 2;
+    int32 max_workers = 3;
+}

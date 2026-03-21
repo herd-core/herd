@@ -42,6 +42,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"github.com/hackstrix/herd/internal/core"
 	"time"
 )
 
@@ -53,14 +54,14 @@ var ErrWorkerDead = errors.New("worker process has died")
 
 // processWorker implements Worker[*http.Client].
 // It is the value returned by ProcessFactory.Spawn.
-type processWorker struct {
+type ProcessWorker struct {
 	id         string
 	port       int
 	address    string // "http://127.0.0.1:<port>"
 	healthPath string // e.g. "/health" or "/"
 	client     *http.Client
 
-	cgroupHandle sandboxHandle
+	cgroupHandle core.SandboxHandle
 
 	mu        sync.Mutex
 	cmd       *exec.Cmd
@@ -80,13 +81,20 @@ type processWorker struct {
 	dead chan struct{}
 }
 
-func (w *processWorker) ID() string           { return w.id }
-func (w *processWorker) Address() string      { return w.address }
-func (w *processWorker) Client() *http.Client { return w.client }
+func (w *ProcessWorker) ID() string           { return w.id }
+func (w *ProcessWorker) Address() string      { return w.address }
+func (w *ProcessWorker) Client() *http.Client { return w.client }
+
+// OnCrash sets a callback invoked when the worker process exits unexpectedly.
+func (w *ProcessWorker) OnCrash(fn func(string)) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.onCrash = fn
+}
 
 // Healthy performs a GET <address><healthPath> and returns nil on 200 OK.
 // ctx controls the timeout of this single request.
-func (w *processWorker) Healthy(ctx context.Context) error {
+func (w *ProcessWorker) Healthy(ctx context.Context) error {
 
 	select {
 	case <-w.dead:
@@ -113,7 +121,7 @@ func (w *processWorker) Healthy(ctx context.Context) error {
 
 // Close drains and kills the subprocess.
 // After Close returns, the process is guaranteed to be gone.
-func (w *processWorker) Close() error {
+func (w *ProcessWorker) Close() error {
 	w.draining.Store(1)
 	w.mu.Lock()
 	cmd := w.cmd
@@ -127,7 +135,7 @@ func (w *processWorker) Close() error {
 // monitor waits for the subprocess to exit and fires onCrash if the worker
 // still had an active session. It does NOT restart the process — restart
 // is the pool's responsibility (via the pool's available channel + factory).
-func (w *processWorker) monitor() {
+func (w *ProcessWorker) monitor() {
 	w.mu.Lock()
 	cmd := w.cmd
 	w.mu.Unlock()
@@ -194,7 +202,7 @@ func NewProcessFactory(binary string, args ...string) *ProcessFactory {
 		startTimeout:          30 * time.Second,
 		startHealthCheckDelay: 1 * time.Second,
 		enableSandbox:         true,
-		namespaceCloneFlags:   defaultNamespaceCloneFlags(),
+		namespaceCloneFlags:   core.DefaultNamespaceCloneFlags(),
 		cgroupPIDs:            100,
 	}
 }
@@ -326,14 +334,14 @@ func (f *ProcessFactory) Spawn(ctx context.Context) (Worker[*http.Client], error
 	// During program exits, this should be cleaned up by the Shutdown method
 	cmd := exec.Command(f.binary, resolvedArgs...)
 	cmd.Env = append(os.Environ(), append([]string{"PORT=" + portStr}, resolvedEnv...)...)
-	var cgroupHandle sandboxHandle
+	var cgroupHandle core.SandboxHandle
 
 	if f.enableSandbox {
-		h, err := applySandboxFlags(cmd, id, sandboxConfig{
-			memoryMaxBytes: f.cgroupMemory,
-			cpuMaxMicros:   f.cgroupCPU,
-			pidsMax:        f.cgroupPIDs,
-			cloneFlags:     f.namespaceCloneFlags,
+		h, err := core.ApplySandboxFlags(cmd, id, core.SandboxConfig{
+			MemoryMaxBytes: f.cgroupMemory,
+			CpuMaxMicros:   f.cgroupCPU,
+			PidsMax:        f.cgroupPIDs,
+			CloneFlags:     f.namespaceCloneFlags,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("herd: ProcessFactory: failed to apply sandbox: %w", err)
@@ -364,7 +372,7 @@ func (f *ProcessFactory) Spawn(ctx context.Context) (Worker[*http.Client], error
 	go streamLogs(id, stdout, false)
 	go streamLogs(id, stderr, true)
 
-	w := &processWorker{
+	w := &ProcessWorker{
 		id:           id,
 		port:         port,
 		address:      address,
