@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - sn/building_docs
       
     paths:
       - 'docs/**'
