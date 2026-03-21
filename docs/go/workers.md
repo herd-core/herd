@@ -1,6 +1,6 @@
 # Worker Interfaces & Factories
 
-Herd is built around two core interfaces defined in `worker.go` that manage the lifecycle and communication with stateful subprocesses.
+Herd is built around two core interfaces defined in [`worker.go`](https://github.com/herd-core/herd/blob/main/worker.go) that manage the lifecycle and communication with stateful subprocesses.
 
 ---
 

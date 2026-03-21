@@ -60,16 +60,16 @@ sequenceDiagram
 ## 🧩 B. Component Breakdown
 
 ### `WorkerFactory[C]` — The Engine
-Defined in `worker.go`. This is the **only component that touches the OS**.  
-`ProcessFactory` (the default implementation in `process_worker_factory.go`) calls `exec.Cmd`, allocates a free port, and polls `GET /health` until the process is ready.
+Defined in [`worker.go`](https://github.com/herd-core/herd/blob/main/worker.go). This is the **only component that touches the OS**.  
+`ProcessFactory` (the default implementation in [`process_worker_factory.go`](https://github.com/herd-core/herd/blob/main/process_worker_factory.go)) calls `exec.Cmd`, allocates a free port, and polls `GET /health` until the process is ready.
 
 ### `Pool[C]` & `Session[C]` — The Brain
-Defined in `pool.go`. Enforces the core invariant: **1 sessionID → 1 Worker, for the lifetime of the session**.
+Defined in [`pool.go`](https://github.com/herd-core/herd/blob/main/pool.go). Enforces the core invariant: **1 sessionID → 1 Worker, for the lifetime of the session**.
 
 The singleflight lock exists to handle a specific race: if two requests for the same session ID arrive at exactly the same time, without the lock they could both pop workers and pin *different* workers to the same session—breaking affinity.
 
 ### `ReverseProxy[C]` — The Front door
-Defined in `proxy/proxy.go`. Intercepts HTTP requests, calls your `extractSessionID` function to determine which session this request belongs to, pauses to acquire the correct worker via `Pool.Acquire`, reverse-proxies the traffic, and releases the worker after the response is written.
+Defined in [`proxy/proxy.go`](https://github.com/herd-core/herd/blob/main/proxy/proxy.go). Intercepts HTTP requests, calls your `extractSessionID` function to determine which session this request belongs to, pauses to acquire the correct worker via `Pool.Acquire`, reverse-proxies the traffic, and releases the worker after the response is written.
 
 ---
 

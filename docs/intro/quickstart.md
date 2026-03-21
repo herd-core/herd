@@ -8,7 +8,7 @@ Herd allows turning stateful local binaries into session-affine services quickly
 
 Herd is perfect for creating multi-tenant browser automation gateways. In this example, each session ID gets its own dedicated Chrome instance. Because browsers maintain complex state (cookies, local storage, open pages), we configure Herd to never reuse a worker once its TTL expires, avoiding cross-tenant state leaks.
 
-You can find the full, runnable code for this example in [`examples/playwright/main.go`](../../examples/playwright/main.go).
+You can find the full, runnable code for this example in [`examples/playwright/main.go`](https://github.com/herd-core/herd/blob/main/examples/playwright/main.go).
 
 ### 1. The Code
 
@@ -90,7 +90,7 @@ asyncio.run(main())
 
 Here is an example of turning `ollama serve` into a multi-tenant LLM gateway where each agent (or user) gets their own dedicated Ollama process. This is specifically useful for isolating context windows or KV caches per agent without downloading models multiple times.
 
-You can find the full, runnable code for this example in [`examples/ollama/main.go`](../../examples/ollama/main.go).
+You can find the full, runnable code for this example in [`examples/ollama/main.go`](https://github.com/herd-core/herd/blob/main/examples/ollama/main.go).
 
 ### 1. The Code
 
