@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/hackstrix/herd"
+	"github.com/herd-core/herd"
 	"github.com/spf13/cobra"
 )
 
