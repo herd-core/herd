@@ -17,7 +17,7 @@ if [ -d "internal/observer" ]; then
 fi
 
 # Revert pool.go import back to original for observer
-sed -i '' 's|"github.com/hackstrix/herd/internal/observer"|"github.com/hackstrix/herd/observer"|g' pool.go
+sed -i '' 's|"github.com/herd-core/herd/internal/observer"|"github.com/herd-core/herd/observer"|g' pool.go
 
 # Create internal/core
 mkdir -p internal/core

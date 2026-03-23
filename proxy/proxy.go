@@ -50,7 +50,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	"github.com/hackstrix/herd"
+	"github.com/herd-core/herd"
 )
 
 // ---------------------------------------------------------------------------

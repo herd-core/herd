@@ -29,9 +29,9 @@ sed -i '' 's/defaultNamespaceCloneFlags/DefaultNamespaceCloneFlags/g' internal/c
 
 # Update process_worker_factory.go to use core. prefixed Sandbox methods
 # Add import
-sed -i '' 's|"sync/atomic"|"sync/atomic"\n\t"github.com/hackstrix/herd/internal/core"|g' process_worker_factory.go
-# Wait, previous fix added "github.com/hackstrix/herd" to process_worker_factory.go, remove it or replace it!
-sed -i '' 's|"github.com/hackstrix/herd"|"github.com/hackstrix/herd/internal/core"|g' process_worker_factory.go
+sed -i '' 's|"sync/atomic"|"sync/atomic"\n\t"github.com/herd-core/herd/internal/core"|g' process_worker_factory.go
+# Wait, previous fix added "github.com/herd-core/herd" to process_worker_factory.go, remove it or replace it!
+sed -i '' 's|"github.com/herd-core/herd"|"github.com/herd-core/herd/internal/core"|g' process_worker_factory.go
 
 echo "✅ Pivot completed. Checking build..."
 go build ./...

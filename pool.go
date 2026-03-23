@@ -56,7 +56,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hackstrix/herd/observer"
+	"github.com/herd-core/herd/observer"
 )
 
 // ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@ import (
 	"io"
 	"log"
 
-	pb "github.com/hackstrix/herd/proto/herd/v1"
+	pb "github.com/herd-core/herd/proto/herd/v1"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

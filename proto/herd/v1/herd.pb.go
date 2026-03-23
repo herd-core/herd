@@ -221,7 +221,7 @@ const file_proto_herd_v1_herd_proto_rawDesc = "" +
 	"maxWorkers2\x8a\x01\n" +
 	"\vHerdService\x12@\n" +
 	"\aAcquire\x12\x17.herd.v1.AcquireRequest\x1a\x18.herd.v1.AcquireResponse(\x010\x01\x129\n" +
-	"\x06Status\x12\x16.google.protobuf.Empty\x1a\x17.herd.v1.StatusResponseB)Z'github.com/hackstrix/herd/proto/herd/v1b\x06proto3"
+	"\x06Status\x12\x16.google.protobuf.Empty\x1a\x17.herd.v1.StatusResponseB)Z'github.com/herd-core/herd/proto/herd/v1b\x06proto3"
 
 var (
 	file_proto_herd_v1_herd_proto_rawDescOnce sync.Once

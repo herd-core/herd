@@ -1,4 +1,4 @@
-module github.com/hackstrix/herd
+module github.com/herd-core/herd
 
 go 1.24.0
 

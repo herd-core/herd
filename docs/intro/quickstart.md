@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hackstrix/herd"
-	"github.com/hackstrix/herd/proxy"
+	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/proxy"
 )
 
 func main() {
@@ -103,8 +103,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hackstrix/herd"
-	"github.com/hackstrix/herd/proxy"
+	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/proxy"
 )
 
 func main() {

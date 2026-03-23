@@ -35,8 +35,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hackstrix/herd"
-	"github.com/hackstrix/herd/proxy"
+	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/proxy"
 )
 
 func main() {
