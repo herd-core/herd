@@ -7,7 +7,7 @@ package herd
 import (
 	"testing"
 
-	"github.com/hackstrix/herd/internal/core"
+	"github.com/herd-core/herd/internal/core"
 )
 
 func TestNewProcessFactory_DefaultCgroupPIDs(t *testing.T) {

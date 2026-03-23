@@ -1,7 +1,7 @@
-module github.com/hackstrix/herd/examples/ollama
+module github.com/herd-core/herd/examples/ollama
 
 go 1.24
 
-require github.com/hackstrix/herd v0.1.2
+require github.com/herd-core/herd v0.1.2
 
-replace github.com/hackstrix/herd => ../..
+replace github.com/herd-core/herd => ../..

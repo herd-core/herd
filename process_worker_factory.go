@@ -42,8 +42,9 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"github.com/hackstrix/herd/internal/core"
 	"time"
+
+	"github.com/herd-core/herd/internal/core"
 )
 
 var ErrWorkerDead = errors.New("worker process has died")

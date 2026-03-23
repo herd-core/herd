@@ -6,7 +6,7 @@ import (
 	"net"
 	"testing"
 
-	pb "github.com/hackstrix/herd/proto/herd/v1"
+	pb "github.com/herd-core/herd/proto/herd/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"

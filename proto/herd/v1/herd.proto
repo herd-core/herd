@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package herd.v1;
 
-option go_package = "github.com/hackstrix/herd/proto/herd/v1";
+option go_package = "github.com/herd-core/herd/proto/herd/v1";
 
 import "google/protobuf/empty.proto";
 

@@ -51,7 +51,7 @@ This invariant transforms stateful binaries (like Browsers, LLMs, or REPLs) into
 ## 📦 Installation
 
 ```bash
-go get github.com/hackstrix/herd
+go get github.com/herd-core/herd
 ```
 
 ---
@@ -72,8 +72,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hackstrix/herd"
-	"github.com/hackstrix/herd/proxy"
+	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/proxy"
 )
 
 func main() {
@@ -155,8 +155,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hackstrix/herd"
-	"github.com/hackstrix/herd/proxy"
+	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/proxy"
 )
 
 func main() {
@@ -247,7 +247,7 @@ Herd is built around three core interfaces:
 ```go
 import (
     "fmt"
-    "github.com/hackstrix/herd"
+    "github.com/herd-core/herd"
 )
 
 stats := pool.Stats()
