@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#cli-reference" class="md-skip">
+        <a href="#cli-configuration-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -839,6 +839,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configuration-options-herdyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Options (herd.yaml)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Options (herd.yaml)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#startup-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -964,6 +992,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configuration-options-herdyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Options (herd.yaml)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Options (herd.yaml)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#startup-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1016,7 +1072,7 @@
   
 
 
-<h1 id="cli-reference">CLI Reference</h1>
+<h1 id="cli-configuration-reference">CLI &amp; Configuration Reference</h1>
 <h2 id="command">Command</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>herd<span class="w"> </span>start<span class="w"> </span>--config<span class="w"> </span>/etc/herd/config.yaml
 </span></code></pre></div>
@@ -1025,6 +1081,98 @@
 <li><code>--config</code>: path to daemon YAML config (default: <code>/etc/herd/config.yaml</code>).</li>
 </ul>
 <p>The daemon is strict config-first. Unknown YAML keys and invalid values fail startup.</p>
+<h2 id="configuration-options-herdyaml">Configuration Options (<code>herd.yaml</code>)</h2>
+<p>Your <code>herd.yaml</code> file tells Herd how to spawn workers and expose them securely.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">network</span><span class="p">:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">control_socket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/tmp/herd.sock</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">data_bind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">127.0.0.1:4000</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nt">worker</span><span class="p">:</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;python3&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;worker.py&quot;</span><span class="p p-Indicator">]</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">env</span><span class="p">:</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PYTHONUNBUFFERED=1</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="nt">health_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/health</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="nt">start_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">  </span><span class="nt">start_health_check_delay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1s</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="nt">resources</span><span class="p">:</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="nt">min_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">  </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span><span class="nt">memory_limit_mb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">  </span><span class="nt">cpu_limit_cores</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">  </span><span class="nt">pids_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">  </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10m</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">  </span><span class="nt">health_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5s</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">  </span><span class="nt">worker_reuse</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">  </span><span class="nt">insecure_sandbox</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="nt">telemetry</span><span class="p">:</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">  </span><span class="nt">log_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">json</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">  </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/metrics</span>
+</span></code></pre></div>
+<h3 id="reference">Reference</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Option</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>network.control_socket</code></td>
+<td style="text-align: left;">UDS socket path for the Control Plane (e.g., <code>/tmp/herd.sock</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>network.data_bind</code></td>
+<td style="text-align: left;">IP:Port for the Data Plane HTTP proxy (e.g., <code>127.0.0.1:8080</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>worker.command</code></td>
+<td style="text-align: left;">The subprocess command and args to spawn (e.g., <code>["npx", "playwright", "run-server"]</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>worker.env</code></td>
+<td style="text-align: left;">Environment variables to inject (<code>FOO=bar</code>). Supports templating like <code>{{.Port}}</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>worker.health_path</code></td>
+<td style="text-align: left;">HTTP path polled for liveness.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>worker.start_timeout</code></td>
+<td style="text-align: left;">Time allowed for worker to become healthy.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>resources.min_workers</code> / <code>max_workers</code></td>
+<td style="text-align: left;">Sets the auto-scaling floor and ceiling for the process fleet.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>resources.ttl</code></td>
+<td style="text-align: left;">Max idle time for a session before the worker is automatically evicted (e.g. <code>15m</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>resources.worker_reuse</code></td>
+<td style="text-align: left;">Whether to recycle workers for new sessions or kill them when TTL expires.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>resources.health_interval</code></td>
+<td style="text-align: left;">How often to poll worker health endpoints.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>resources.memory_limit_mb</code></td>
+<td style="text-align: left;">(Linux) cgroups-based hard memory limit per worker.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>resources.cpu_limit_cores</code></td>
+<td style="text-align: left;">(Linux) cgroups-based CPU slicing per worker.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>resources.pids_limit</code></td>
+<td style="text-align: left;">(Linux) cgroups-based PID limits.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="startup-contract">Startup Contract</h2>
 <p>On successful start, <code>herd start</code>:</p>
 <ol>
@@ -1038,7 +1186,7 @@
 <h2 id="controldata-split">Control/Data Split</h2>
 <ul>
 <li>Control plane: gRPC on <code>network.control_socket</code> (Unix Domain Socket).</li>
-<li>Data plane: HTTP on <code>network.data_bind</code>.</li>
+<li>Data plane: HTTP on <code>network.data_bind</code> (Reverse proxy to active workers).</li>
 </ul>
 <h2 id="session-lifecycle-in-daemon-mode">Session Lifecycle in Daemon Mode</h2>
 <ul>

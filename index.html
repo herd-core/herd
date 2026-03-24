@@ -481,6 +481,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#daemon-mode-primary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧱 Daemon Mode (Primary)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧱 Daemon Mode (Primary)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-its-safe-the-dead-mans-switch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why It's Safe: The Dead-Man's Switch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#key-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -946,6 +974,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#daemon-mode-primary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧱 Daemon Mode (Primary)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧱 Daemon Mode (Primary)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-its-safe-the-dead-mans-switch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why It's Safe: The Dead-Man's Switch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#key-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1008,13 +1064,20 @@
 <blockquote>
 <p>"Kubernetes is too slow to spawn sessions. Redis-only maps are too complex to maintain."</p>
 </blockquote>
-<p><strong>Herd</strong> is a session-affine process pool for Go. It manages a fleet of OS subprocess "workers" and routes incoming requests to the correct worker based on an arbitrary session ID.</p>
+<p><strong>Herd</strong> is a daemon and process manager that pins incoming requests to specific background workers using session IDs.</p>
 <blockquote>
 <p>Build features, not infrastructure</p>
 </blockquote>
 <h3 id="the-core-invariant">The Core Invariant</h3>
 <p><strong>1 Session ID → 1 Worker</strong>, for the lifetime of the session.</p>
 <p>This invariant transforms stateful binaries (like Browsers, LLMs, or REPLs) into multi-tenant services. Because a session always hits the same process, you can maintain in-memory state, KV caches, or local file systems without a complex coordination layer.</p>
+<h2 id="daemon-mode-primary">🧱 Daemon Mode (Primary)</h2>
+<p>Herd is built to run as a standalone daemon, providing process isolation outside of your application's memory and crash domains. By running Herd as a daemon, it handles the lifetime of stateful binaries, handling lifecycle, process limits, routing, and reverse-proxying.</p>
+<p>Daemon transport split:
+- <strong>Control Plane</strong> (<code>network.control_socket</code>): Uses persistent UDS sockets as a dead-man's switch to guarantee workers are killed if your app crashes.
+- <strong>Data Plane</strong> (<code>network.data_bind</code>): Reverse-proxies heavy HTTP/WebSocket traffic with zero overhead.</p>
+<h3 id="why-its-safe-the-dead-mans-switch">Why It's Safe: The Dead-Man's Switch</h3>
+<p>On Linux, Herd leverages <code>Pdeathsig</code> to ensure that even if the Herd daemon itself is <code>kill -9</code>'d, the Linux kernel will instantly reap every child worker process. You never have to worry about orphaned browsers or lingering processes eating up host memory.</p>
 <h2 id="key-features">🚀 Key Features</h2>
 <ul>
 <li><strong>Session Affinity</strong>: Guaranteed routing of a session ID to its unique pinned worker.</li>
@@ -1022,8 +1085,6 @@
 <li><strong>Idle Eviction (TTL)</strong>: Automatically reclaim workers that haven't been accessed within a configurable TTL.</li>
 <li><strong>Health Monitoring</strong>: Continuous liveness checks on every worker process; dead workers are automatically replaced.</li>
 <li><strong>Singleflight Acquisition</strong>: Protects against "thundering herd" issues where multiple concurrent requests for a new session ID try to spawn workers simultaneously.</li>
-<li><strong>Generic Clients</strong>: Fully generic <code>Pool[C]</code> supports any client type (HTTP, gRPC, custom structs).</li>
-<li><strong>Reverse Proxy Helper</strong>: Built-in HTTP reverse proxy that handles the full session lifecycle (Acquire → Proxy → Release).</li>
 </ul>
 <hr />
 <h3 id="feature-comparison">Feature Comparison</h3>
@@ -1057,19 +1118,19 @@
 </tr>
 <tr>
 <td>Programming model</td>
-<td>Go-native library</td>
+<td>YAML config driven</td>
 <td>YAML / REST API</td>
 <td>CLI / JS config</td>
 </tr>
 <tr>
 <td>Crash + cleanup</td>
-<td>✅ per-session callback</td>
+<td>✅ OS-level guarantee</td>
 <td>⚠️ pod restart only</td>
 <td>⚠️ restart only</td>
 </tr>
 <tr>
 <td>Built-in HTTP proxy</td>
-<td>✅ <code>NewReverseProxy</code></td>
+<td>✅ Native</td>
 <td>❌ separate Ingress concern</td>
 <td>❌</td>
 </tr>
