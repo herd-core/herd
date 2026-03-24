@@ -45,9 +45,9 @@ type stubWorker struct {
 
 type stubClient struct{}
 
-func (w *stubWorker) ID() string          { return w.id }
-func (w *stubWorker) Address() string     { return "http://127.0.0.1:9999" }
-func (w *stubWorker) Client() *stubClient { return &stubClient{} }
+func (w *stubWorker) ID() string              { return w.id }
+func (w *stubWorker) Address() string         { return "http://127.0.0.1:9999" }
+func (w *stubWorker) Client() *stubClient     { return &stubClient{} }
 func (w *stubWorker) OnCrash(fn func(string)) {}
 func (w *stubWorker) Healthy(_ context.Context) error {
 	w.mu.Lock()
@@ -185,6 +185,35 @@ func TestSameSessionSingleflight(t *testing.T) {
 	// Verify one session is pinned
 	if n := pool.registry.Len(); n != 1 {
 		t.Errorf("expected 1 session pinned, got %d", n)
+	}
+}
+
+func TestKillSession_ForceTerminatesWorker(t *testing.T) {
+	w1 := &stubWorker{id: "worker-1"}
+	pool := newTestPool(t, w1)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	sess, err := pool.Acquire(ctx, "session-kill")
+	if err != nil {
+		t.Fatalf("Acquire returned unexpected error: %v", err)
+	}
+
+	if err := pool.KillSession(sess.ID); err != nil {
+		t.Fatalf("KillSession returned error: %v", err)
+	}
+
+	w1.mu.Lock()
+	closed := w1.closed
+	w1.mu.Unlock()
+	if !closed {
+		t.Fatal("expected worker to be closed after KillSession")
+	}
+
+	stats := pool.Stats()
+	if stats.ActiveSessions != 0 {
+		t.Fatalf("expected 0 active sessions after KillSession, got %d", stats.ActiveSessions)
 	}
 }
 

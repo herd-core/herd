@@ -397,6 +397,40 @@ func (p *Pool[C]) releaseConn(sessionID string) {
 	p.mu.Unlock()
 }
 
+// KillSession forcefully tears down the worker pinned to sessionID.
+// This is used by daemon control-plane EOF cleanup to prevent orphaned
+// stateful workers when a client disconnects unexpectedly.
+// If the session does not exist, KillSession returns nil.
+func (p *Pool[C]) KillSession(sessionID string) error {
+	p.mu.Lock()
+	w, err := p.registry.Get(context.Background(), sessionID)
+	if err != nil {
+		p.mu.Unlock()
+		return fmt.Errorf("herd: KillSession(%q): registry lookup failed: %w", sessionID, err)
+	}
+	if w == nil {
+		delete(p.activeConns, sessionID)
+		delete(p.lastAccessed, sessionID)
+		p.mu.Unlock()
+		return nil
+	}
+
+	_ = p.registry.Delete(context.Background(), sessionID)
+	delete(p.activeConns, sessionID)
+	delete(p.lastAccessed, sessionID)
+	p.mu.Unlock()
+
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("herd: KillSession(%q): close worker %s: %w", sessionID, w.ID(), err)
+	}
+
+	p.removeWorker(w)
+	p.maybeScaleUp()
+
+	log.Printf("[pool] KillSession(%q): worker %s force-terminated", sessionID, w.ID())
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // onCrash — called by processWorker.monitor on unexpected exit
 // ---------------------------------------------------------------------------
@@ -578,6 +612,7 @@ func (p *Pool[C]) Shutdown(ctx context.Context) error {
 	for _, w := range workers {
 		if err := w.Close(); err != nil {
 			log.Printf("[pool] Shutdown: error closing worker %s: %v", w.ID(), err)
+			return err
 		}
 	}
 	log.Println("[pool] shutdown complete")

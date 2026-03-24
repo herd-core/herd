@@ -9,3 +9,5 @@ examples/ollama/ollama
 .DS_Store
 
 venv
+
+herd
