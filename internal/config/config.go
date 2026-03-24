@@ -3,7 +3,11 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -12,9 +16,10 @@ import (
 // Config is the strict daemon bootstrap contract.
 // The daemon fails fast if any required field is missing or malformed.
 type Config struct {
-	Network   NetworkConfig  `yaml:"network"`
-	Worker    WorkerConfig   `yaml:"worker"`
-	Resources ResourceConfig `yaml:"resources"`
+	Network   NetworkConfig   `yaml:"network"`
+	Worker    WorkerConfig    `yaml:"worker"`
+	Resources ResourceConfig  `yaml:"resources"`
+	Telemetry TelemetryConfig `yaml:"telemetry"`
 }
 
 type NetworkConfig struct {
@@ -53,6 +58,11 @@ type ResourceConfig struct {
 	// InsecureSandbox enables reduced sandboxing for local development.
 	// This should not be enabled in production.
 	InsecureSandbox bool `yaml:"insecure_sandbox"`
+}
+
+type TelemetryConfig struct {
+	LogFormat   string `yaml:"log_format"`
+	MetricsPath string `yaml:"metrics_path"`
 }
 
 func (r ResourceConfig) TTLDuration() time.Duration {
@@ -106,17 +116,49 @@ func (c *Config) applyDefaults() {
 	if c.Resources.TTL == "" {
 		c.Resources.TTL = "5m"
 	}
+	if c.Telemetry.LogFormat == "" {
+		c.Telemetry.LogFormat = "json"
+	}
+	if c.Telemetry.MetricsPath == "" {
+		c.Telemetry.MetricsPath = "/metrics"
+	}
 }
 
 func (c *Config) Validate() error {
 	if c.Network.ControlSocket == "" {
 		return fmt.Errorf("network.control_socket is required")
 	}
+	if !filepath.IsAbs(c.Network.ControlSocket) {
+		return fmt.Errorf("network.control_socket must be an absolute path")
+	}
+	if len(c.Network.ControlSocket) > 103 {
+		return fmt.Errorf("network.control_socket path is too long (>103 bytes for unix domain sockets)")
+	}
 	if c.Network.DataBind == "" {
 		return fmt.Errorf("network.data_bind is required")
 	}
+	if err := validateDataBind(c.Network.DataBind); err != nil {
+		return fmt.Errorf("network.data_bind invalid: %w", err)
+	}
 	if len(c.Worker.Command) == 0 || c.Worker.Command[0] == "" {
 		return fmt.Errorf("worker.command must include at least one entry (binary)")
+	}
+	for i, arg := range c.Worker.Command {
+		if strings.TrimSpace(arg) == "" {
+			return fmt.Errorf("worker.command[%d] must not be empty", i)
+		}
+	}
+	if !strings.HasPrefix(c.Worker.HealthPath, "/") {
+		return fmt.Errorf("worker.health_path must start with '/'")
+	}
+	for i, envKV := range c.Worker.Env {
+		if strings.TrimSpace(envKV) == "" {
+			return fmt.Errorf("worker.env[%d] must not be empty", i)
+		}
+		eq := strings.Index(envKV, "=")
+		if eq <= 0 {
+			return fmt.Errorf("worker.env[%d] must be in KEY=VALUE format", i)
+		}
 	}
 	if c.Resources.MinWorkers < 1 {
 		return fmt.Errorf("resources.min_workers must be >= 1")
@@ -133,17 +175,53 @@ func (c *Config) Validate() error {
 	if c.Resources.PIDsLimit == 0 || c.Resources.PIDsLimit < -1 {
 		return fmt.Errorf("resources.pids_limit must be > 0 or -1")
 	}
-	if _, err := time.ParseDuration(c.Worker.StartTimeout); err != nil {
+	if d, err := time.ParseDuration(c.Worker.StartTimeout); err != nil {
 		return fmt.Errorf("worker.start_timeout invalid duration: %w", err)
+	} else if d <= 0 {
+		return fmt.Errorf("worker.start_timeout must be > 0")
 	}
-	if _, err := time.ParseDuration(c.Worker.StartHealthCheckDelay); err != nil {
+	if d, err := time.ParseDuration(c.Worker.StartHealthCheckDelay); err != nil {
 		return fmt.Errorf("worker.start_health_check_delay invalid duration: %w", err)
+	} else if d < 0 {
+		return fmt.Errorf("worker.start_health_check_delay must be >= 0")
 	}
-	if _, err := time.ParseDuration(c.Resources.TTL); err != nil {
+	if d, err := time.ParseDuration(c.Resources.TTL); err != nil {
 		return fmt.Errorf("resources.ttl invalid duration: %w", err)
+	} else if d <= 0 {
+		return fmt.Errorf("resources.ttl must be > 0")
 	}
-	if _, err := time.ParseDuration(c.Resources.HealthInterval); err != nil {
+	if d, err := time.ParseDuration(c.Resources.HealthInterval); err != nil {
 		return fmt.Errorf("resources.health_interval invalid duration: %w", err)
+	} else if d <= 0 {
+		return fmt.Errorf("resources.health_interval must be > 0")
 	}
+	if c.Telemetry.LogFormat != "json" && c.Telemetry.LogFormat != "text" {
+		return fmt.Errorf("telemetry.log_format must be one of: json, text")
+	}
+	if !strings.HasPrefix(c.Telemetry.MetricsPath, "/") {
+		return fmt.Errorf("telemetry.metrics_path must start with '/'")
+	}
+	return nil
+}
+
+func validateDataBind(bind string) error {
+	host, portStr, err := net.SplitHostPort(bind)
+	if err != nil {
+		return fmt.Errorf("must be host:port: %w", err)
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil || port < 1 || port > 65535 {
+		return fmt.Errorf("port must be between 1 and 65535")
+	}
+
+	if host == "localhost" {
+		return nil
+	}
+	ip := net.ParseIP(host)
+	if ip == nil || !ip.IsLoopback() {
+		return fmt.Errorf("host must be loopback (localhost, 127.0.0.1, or ::1)")
+	}
+
 	return nil
 }
