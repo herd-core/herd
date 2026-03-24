@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -23,10 +22,11 @@ type Server struct {
 	proxyAddress string
 	maxWorkers   int
 	seq          atomic.Uint64
+	logger       *EventLogger
 }
 
-func NewServer(pool *herd.Pool[*http.Client], proxyAddress string, maxWorkers int) *Server {
-	return &Server{pool: pool, proxyAddress: proxyAddress, maxWorkers: maxWorkers}
+func NewServer(pool *herd.Pool[*http.Client], proxyAddress string, maxWorkers int, logger *EventLogger) *Server {
+	return &Server{pool: pool, proxyAddress: proxyAddress, maxWorkers: maxWorkers, logger: logger}
 }
 
 // Acquire handles bidirectional streaming allocation.
@@ -42,20 +42,26 @@ func (s *Server) Acquire(stream pb.HerdService_AcquireServer) error {
 			return
 		}
 		if err := s.pool.KillSession(session.ID); err != nil {
-			log.Printf("[daemon] Acquire stream cleanup failed for session %s: %v", session.ID, err)
+			s.eventLogger().Error("session_kill_failed", map[string]any{"session_id": session.ID, "error": err})
+			return
 		}
+		RecordSessionKilled()
+		s.eventLogger().Info("session_killed", map[string]any{"session_id": session.ID})
 	}()
 
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
+			s.eventLogger().Info("acquire_stream_closed", map[string]any{})
 			return nil // Client closed gracefully
 		}
 		if err != nil {
+			s.eventLogger().Warn("acquire_stream_broken", map[string]any{"error": err})
 			return err // Stream broken
 		}
+		RecordAcquireRequest()
 
-		log.Printf("Received Acquire Request for worker_type: %s", req.GetWorkerType())
+		s.eventLogger().Info("acquire_request_received", map[string]any{"worker_type": req.GetWorkerType()})
 		if session == nil {
 			sessionID := fmt.Sprintf("sess-%d", s.seq.Add(1))
 			acquireCtx := stream.Context()
@@ -68,8 +74,12 @@ func (s *Server) Acquire(stream pb.HerdService_AcquireServer) error {
 				session, err = s.pool.Acquire(acquireCtx, sessionID)
 			}
 			if err != nil {
+				RecordAcquireFailure()
+				s.eventLogger().Error("session_acquire_failed", map[string]any{"session_id": sessionID, "error": err})
 				return status.Errorf(codes.ResourceExhausted, "acquire session failed: %v", err)
 			}
+			RecordSessionStarted()
+			s.eventLogger().Info("session_acquired", map[string]any{"session_id": session.ID})
 		}
 
 		resp := &pb.AcquireResponse{
@@ -79,6 +89,7 @@ func (s *Server) Acquire(stream pb.HerdService_AcquireServer) error {
 		}
 
 		if err := stream.Send(resp); err != nil {
+			s.eventLogger().Warn("acquire_response_send_failed", map[string]any{"session_id": session.ID, "error": err})
 			return err
 		}
 	}
@@ -100,4 +111,11 @@ func (s *Server) Status(ctx context.Context, _ *emptypb.Empty) (*pb.StatusRespon
 		IdleWorkers:   int32(stats.AvailableWorkers),
 		MaxWorkers:    int32(s.maxWorkers),
 	}, nil
+}
+
+func (s *Server) eventLogger() *EventLogger {
+	if s.logger == nil {
+		s.logger = NewEventLogger("text", nil)
+	}
+	return s.logger
 }

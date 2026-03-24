@@ -66,6 +66,7 @@ func NewDataPlaneHandler(pool *herd.Pool[*http.Client], metricsPath string) http
 func MetricsHandler(pool *herd.Pool[*http.Client]) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		stats := pool.Stats()
+		life := SnapshotLifecycleCounters()
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 
 		_, _ = fmt.Fprintf(w,
@@ -80,11 +81,27 @@ func MetricsHandler(pool *herd.Pool[*http.Client]) http.Handler {
 				"herd_active_sessions %d\n"+
 				"# HELP herd_inflight_acquires Acquire operations in progress.\n"+
 				"# TYPE herd_inflight_acquires gauge\n"+
-				"herd_inflight_acquires %d\n",
+				"herd_inflight_acquires %d\n"+
+				"# HELP herd_acquire_requests_total Total control-plane acquire requests received.\n"+
+				"# TYPE herd_acquire_requests_total counter\n"+
+				"herd_acquire_requests_total %d\n"+
+				"# HELP herd_acquire_failures_total Total acquire requests that failed.\n"+
+				"# TYPE herd_acquire_failures_total counter\n"+
+				"herd_acquire_failures_total %d\n"+
+				"# HELP herd_sessions_started_total Total sessions successfully started by control-plane streams.\n"+
+				"# TYPE herd_sessions_started_total counter\n"+
+				"herd_sessions_started_total %d\n"+
+				"# HELP herd_sessions_killed_total Total sessions force-killed during stream cleanup.\n"+
+				"# TYPE herd_sessions_killed_total counter\n"+
+				"herd_sessions_killed_total %d\n",
 			stats.TotalWorkers,
 			stats.AvailableWorkers,
 			stats.ActiveSessions,
 			stats.InflightAcquires,
+			life.AcquireRequests,
+			life.AcquireFailures,
+			life.SessionsStarted,
+			life.SessionsKilled,
 		)
 	})
 }

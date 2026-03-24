@@ -53,6 +53,14 @@ func runDaemon() {
 	if err != nil {
 		log.Fatalf("failed to load config %q: %v", configPath, err)
 	}
+	eventLogger := daemon.NewEventLogger(cfg.Telemetry.LogFormat, log.Default())
+	eventLogger.Info("daemon_starting", map[string]any{
+		"config_path":      configPath,
+		"control_socket":   cfg.Network.ControlSocket,
+		"data_bind":        cfg.Network.DataBind,
+		"metrics_path":     cfg.Telemetry.MetricsPath,
+		"telemetry_format": cfg.Telemetry.LogFormat,
+	})
 
 	pool, err := buildPool(cfg)
 	if err != nil {
@@ -60,7 +68,7 @@ func runDaemon() {
 	}
 	defer func() {
 		if err := pool.Shutdown(context.Background()); err != nil {
-			log.Printf("Error shutting down pool: %v", err)
+			eventLogger.Error("pool_shutdown_failed", map[string]any{"error": err})
 		}
 	}()
 
@@ -70,15 +78,15 @@ func runDaemon() {
 	}
 	defer func() {
 		if err := controlLis.Close(); err != nil {
-			log.Printf("Error closing control listener: %v", err)
+			eventLogger.Error("control_listener_close_failed", map[string]any{"error": err})
 		}
 		if err := daemon.RemoveUnixSocket(cfg.Network.ControlSocket); err != nil {
-			log.Printf("Error cleaning up control socket: %v", err)
+			eventLogger.Error("control_socket_cleanup_failed", map[string]any{"error": err})
 		}
 	}()
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterHerdServiceServer(grpcServer, daemon.NewServer(pool, "http://"+cfg.Network.DataBind, cfg.Resources.MaxWorkers))
+	pb.RegisterHerdServiceServer(grpcServer, daemon.NewServer(pool, "http://"+cfg.Network.DataBind, cfg.Resources.MaxWorkers, eventLogger))
 
 	httpServer := &http.Server{
 		Addr:    cfg.Network.DataBind,
@@ -88,36 +96,33 @@ func runDaemon() {
 	errCh := make(chan error, 2)
 
 	go func() {
-		log.Printf("gRPC control plane listening on unix://%s", cfg.Network.ControlSocket)
+		eventLogger.Info("control_plane_listening", map[string]any{"address": "unix://" + cfg.Network.ControlSocket})
 		if err := grpcServer.Serve(controlLis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			errCh <- err
 		}
 	}()
 
 	go func() {
-		log.Printf("HTTP data plane listening on http://%s", cfg.Network.DataBind)
+		eventLogger.Info("data_plane_listening", map[string]any{"address": "http://" + cfg.Network.DataBind})
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
 	}()
 
-	log.Printf("HTTP proxy will listen on %s", cfg.Network.DataBind)
-	log.Printf("gRPC socket path will be: %s", cfg.Network.ControlSocket)
-
-	log.Println("Daemon is running. Press CTRL+C to stop.")
+	eventLogger.Info("daemon_running", map[string]any{})
 
 	select {
 	case <-ctx.Done():
-		log.Println("Received shutdown signal. Gracefully stopping...")
+		eventLogger.Info("daemon_shutdown_signal_received", map[string]any{})
 	case err := <-errCh:
-		log.Printf("Daemon listener failed: %v", err)
+		eventLogger.Error("daemon_listener_failed", map[string]any{"error": err})
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		log.Printf("HTTP shutdown error: %v", err)
+		eventLogger.Error("data_plane_shutdown_failed", map[string]any{"error": err})
 	}
 
 	var once sync.Once
@@ -130,10 +135,11 @@ func runDaemon() {
 	select {
 	case <-done:
 	case <-shutdownCtx.Done():
+		eventLogger.Warn("control_plane_graceful_shutdown_timeout", map[string]any{})
 		grpcServer.Stop()
 	}
 
-	log.Println("Daemon gracefully stopped.")
+	eventLogger.Info("daemon_stopped", map[string]any{})
 }
 
 func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
