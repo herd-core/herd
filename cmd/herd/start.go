@@ -3,17 +3,20 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/internal/config"
+	"github.com/herd-core/herd/internal/daemon"
 	"github.com/spf13/cobra"
 )
 
 var (
-	httpPort   int
-	socketPath string
+	configPath string
 )
 
 var startCmd = &cobra.Command{
@@ -27,8 +30,7 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	startCmd.Flags().IntVarP(&httpPort, "http-port", "p", 8080, "Port for the HTTP Data Plane proxy")
-	startCmd.Flags().StringVarP(&socketPath, "socket-path", "s", "/tmp/herd.sock", "Path to the Unix socket for the gRPC Control Plane")
+	startCmd.Flags().StringVar(&configPath, "config", "/etc/herd/config.yaml", "Path to daemon configuration file")
 }
 
 func runDaemon() {
@@ -38,14 +40,16 @@ func runDaemon() {
 
 	log.Println("Starting herd daemon...")
 
-	// 2. Initialize the Pool
-	// Note: We use a placeholder factory setup for now. This will be replaced by actual configuration in future phases.
-	factory := herd.NewProcessFactory("echo", "placeholder") 
-	
-	// Ensure we don't error out on unsupported configurations
-	factory.WithStartTimeout(0) 
+	if err := daemon.EnforceRuntimePolicy(runtime.GOOS, log.Default()); err != nil {
+		log.Fatal(err)
+	}
 
-	pool, err := herd.New(factory)
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("failed to load config %q: %v", configPath, err)
+	}
+
+	pool, err := buildPool(cfg)
 	if err != nil {
 		log.Fatalf("failed to initialize pool: %v", err)
 	}
@@ -53,7 +57,7 @@ func runDaemon() {
 	defer func() {
 		log.Println("Shutting down pool...")
 		// Will assume Shutdown(context.Background()) exists, we'll verify this during compilation check.
-		// If Pool does not have Shutdown, we'll update this. 
+		// If Pool does not have Shutdown, we'll update this.
 		err := pool.Shutdown(context.Background())
 		if err != nil {
 			log.Println("Error shutting down pool:", err)
@@ -61,12 +65,43 @@ func runDaemon() {
 		log.Println("Daemon gracefully stopped.")
 	}()
 
-	log.Printf("HTTP proxy will listen on :%d", httpPort)
-	log.Printf("gRPC socket path will be: %s", socketPath)
+	log.Printf("HTTP proxy will listen on %s", cfg.Network.DataBind)
+	log.Printf("gRPC socket path will be: %s", cfg.Network.ControlSocket)
 
 	log.Println("Daemon is running. Press CTRL+C to stop.")
 
 	// Block until signal is received
 	<-ctx.Done()
 	log.Println("Received shutdown signal. Gracefully stopping...")
+}
+
+func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
+	factory := herd.NewProcessFactory(cfg.Worker.Command[0], cfg.Worker.Command[1:]...).
+		WithHealthPath(cfg.Worker.HealthPath).
+		WithStartTimeout(cfg.Worker.StartTimeoutDuration()).
+		WithStartHealthCheckDelay(cfg.Worker.StartHealthCheckDelayDuration())
+
+	for _, envKV := range cfg.Worker.Env {
+		factory.WithEnv(envKV)
+	}
+
+	if cfg.Resources.MemoryLimitBytes() > 0 {
+		factory.WithMemoryLimit(cfg.Resources.MemoryLimitBytes())
+	}
+	if cfg.Resources.CPULimitCores > 0 {
+		factory.WithCPULimit(cfg.Resources.CPULimitCores)
+	}
+	if cfg.Resources.PIDsLimit != 0 {
+		factory.WithPIDsLimit(cfg.Resources.PIDsLimit)
+	}
+	if cfg.Resources.InsecureSandbox {
+		factory.WithInsecureSandbox()
+	}
+
+	return herd.New(factory,
+		herd.WithAutoScale(cfg.Resources.MinWorkers, cfg.Resources.MaxWorkers),
+		herd.WithTTL(cfg.Resources.TTLDuration()),
+		herd.WithHealthInterval(cfg.Resources.HealthIntervalDuration()),
+		herd.WithWorkerReuse(cfg.Resources.WorkerReuse),
+	)
 }
