@@ -31,6 +31,27 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements-docs.txt ]; then pip install -r requirements-docs.txt; else pip install mkdocs mkdocs-material; fi
 
+      - name: Preserve Pages custom domain (CNAME)
+        run: |
+          set -euo pipefail
+
+          mkdir -p docs
+
+          # First priority: keep whatever domain is already configured on gh-pages.
+          if git fetch --quiet origin gh-pages && git show origin/gh-pages:CNAME > docs/CNAME 2>/dev/null; then
+            echo "Restored CNAME from gh-pages branch"
+            exit 0
+          fi
+
+          # Fallback: allow explicit repository variable configuration.
+          if [ -n "${{ vars.DOCS_CNAME || '' }}" ]; then
+            echo "${{ vars.DOCS_CNAME }}" > docs/CNAME
+            echo "Wrote CNAME from repository variable DOCS_CNAME"
+            exit 0
+          fi
+
+          echo "No existing CNAME found and DOCS_CNAME is unset; deployment will proceed without CNAME."
+
       - name: Deploy to GitHub Pages
         run: |
           mkdocs gh-deploy --force
