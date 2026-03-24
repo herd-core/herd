@@ -19,7 +19,7 @@ var lis *bufconn.Listener
 func initGRPCServer() {
 	lis = bufconn.Listen(bufSize)
 	s := grpc.NewServer()
-	pb.RegisterHerdServiceServer(s, NewServer())
+	pb.RegisterHerdServiceServer(s, NewServer(nil, "http://127.0.0.1:4000", 10))
 	go func() {
 		if err := s.Serve(lis); err != nil {
 			panic(err)
@@ -56,8 +56,11 @@ func TestAcquireStream(t *testing.T) {
 		t.Fatalf("Failed to receive response: %v", err)
 	}
 
-	if resp.GetSessionId() != "stub-session-123" {
-		t.Errorf("Expected session_id stub-session-123, got %s", resp.GetSessionId())
+	if resp.GetSessionId() == "" {
+		t.Error("Expected non-empty session_id")
+	}
+	if got := resp.GetProxyAddress(); got != "http://127.0.0.1:4000" {
+		t.Errorf("Expected proxy_address http://127.0.0.1:4000, got %s", got)
 	}
 
 	// Close stream
