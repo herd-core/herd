@@ -60,10 +60,10 @@ nav:
     # - Installation: go/install.md
     # - The Pool Engine: go/pool.md
     - Worker Interfaces: go/workers.md
-#  - gRPC Daemon:
-#    - Installation: daemon/install.md
-#    - CLI Reference: daemon/cli.md
-#    - Unix Domain Sockets: daemon/uds.md
+  - gRPC Daemon:
+    - Installation: daemon/install.md
+    - CLI Reference: daemon/cli.md
+    - Unix Domain Sockets: daemon/uds.md
 #  - Language SDKs:
 #    - Python: sdks/python.md
 #    - Elixir: sdks/elixir.md

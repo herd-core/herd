@@ -54,6 +54,51 @@ This invariant transforms stateful binaries (like Browsers, LLMs, or REPLs) into
 go get github.com/herd-core/herd
 ```
 
+## 🧱 Daemon Mode (Single-Node)
+
+Herd now supports a standalone daemon runtime for process isolation outside host app memory/crash domains.
+
+Build the daemon:
+
+```bash
+go build -o herd ./cmd/herd
+```
+
+Run with strict config:
+
+```bash
+./herd start --config /etc/herd/config.yaml
+```
+
+Daemon transport split:
+
+- Control plane: gRPC over Unix Domain Socket (`network.control_socket`).
+- Data plane: HTTP proxy over local TCP (`network.data_bind`).
+
+Platform behavior:
+
+- Linux: full guarantee mode.
+- macOS: reduced-guarantee mode with explicit warnings.
+
+For daemon docs see:
+
+- `docs/daemon/install.md`
+- `docs/daemon/cli.md`
+- `docs/daemon/uds.md`
+
+## 🔁 Migration: Embedded Library to Daemon
+
+If you previously embedded Herd in your app (`herd.New(...)` + in-process proxy), migrate to:
+
+1. Run Herd daemon as a separate process.
+2. Acquire/hold session via control stream over UDS.
+3. Send workload HTTP traffic to the daemon data plane with session header (`X-Session-ID`).
+
+Important semantic shift:
+
+- In daemon mode, control stream liveness owns session lifetime.
+- When the control stream closes/errors, the daemon force-kills that session's worker.
+
 ---
 
 ## 🌐 Quick Start: Playwright Browser Isolation
