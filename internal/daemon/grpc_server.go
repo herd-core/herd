@@ -67,8 +67,9 @@ func (s *Server) tryReconnect(sessionID string) (*SessionInfo, error) {
 	case SessionActive:
 		return nil, status.Errorf(codes.FailedPrecondition, "session %q is already active", sessionID)
 	case SessionDraining:
-		info.cancel()           // cancel the drain timer
+		info.cancel()            // cancel the drain timer
 		info.state = SessionActive
+		RecordSessionResumed()
 		return info, nil
 	default:
 		return nil, status.Errorf(codes.Internal, "session %q is in unknown state", sessionID)
@@ -91,6 +92,7 @@ func (s *Server) markDraining(info *SessionInfo) {
 	}
 	info.state = SessionDraining
 	sessionID := info.session.ID
+	RecordSessionDraining()
 
 	ctx, cancel := context.WithTimeout(context.Background(), DrainingTimeout)
 	info.cancel = cancel

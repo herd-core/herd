@@ -79,6 +79,9 @@ func MetricsHandler(pool *herd.Pool[*http.Client]) http.Handler {
 				"# HELP herd_active_sessions Active sticky sessions.\n"+
 				"# TYPE herd_active_sessions gauge\n"+
 				"herd_active_sessions %d\n"+
+				"# HELP herd_sessions_draining Sessions in grace period awaiting reconnect.\n"+
+				"# TYPE herd_sessions_draining gauge\n"+
+				"herd_sessions_draining %d\n"+
 				"# HELP herd_inflight_acquires Acquire operations in progress.\n"+
 				"# TYPE herd_inflight_acquires gauge\n"+
 				"herd_inflight_acquires %d\n"+
@@ -97,6 +100,7 @@ func MetricsHandler(pool *herd.Pool[*http.Client]) http.Handler {
 			stats.TotalWorkers,
 			stats.AvailableWorkers,
 			stats.ActiveSessions,
+			life.SessionsDraining,
 			stats.InflightAcquires,
 			life.AcquireRequests,
 			life.AcquireFailures,
