@@ -28,8 +28,10 @@ type AcquireRequest struct {
 	WorkerType string `protobuf:"bytes,1,opt,name=worker_type,json=workerType,proto3" json:"worker_type,omitempty"`
 	// Timeout in seconds before giving up on acquiring
 	TimeoutSeconds int32 `protobuf:"varint,2,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Optional sessions id which would be used during accidental sessions drops
+	SessionId     *string `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3,oneof" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AcquireRequest) Reset() {
@@ -74,6 +76,13 @@ func (x *AcquireRequest) GetTimeoutSeconds() int32 {
 		return x.TimeoutSeconds
 	}
 	return 0
+}
+
+func (x *AcquireRequest) GetSessionId() string {
+	if x != nil && x.SessionId != nil {
+		return *x.SessionId
+	}
+	return ""
 }
 
 type AcquireResponse struct {
@@ -203,11 +212,14 @@ var File_proto_herd_v1_herd_proto protoreflect.FileDescriptor
 
 const file_proto_herd_v1_herd_proto_rawDesc = "" +
 	"\n" +
-	"\x18proto/herd/v1/herd.proto\x12\aherd.v1\x1a\x1bgoogle/protobuf/empty.proto\"Z\n" +
+	"\x18proto/herd/v1/herd.proto\x12\aherd.v1\x1a\x1bgoogle/protobuf/empty.proto\"\x8d\x01\n" +
 	"\x0eAcquireRequest\x12\x1f\n" +
 	"\vworker_type\x18\x01 \x01(\tR\n" +
 	"workerType\x12'\n" +
-	"\x0ftimeout_seconds\x18\x02 \x01(\x05R\x0etimeoutSeconds\"t\n" +
+	"\x0ftimeout_seconds\x18\x02 \x01(\x05R\x0etimeoutSeconds\x12\"\n" +
+	"\n" +
+	"session_id\x18\x03 \x01(\tH\x00R\tsessionId\x88\x01\x01B\r\n" +
+	"\v_session_id\"t\n" +
 	"\x0fAcquireResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12#\n" +
@@ -259,6 +271,7 @@ func file_proto_herd_v1_herd_proto_init() {
 	if File_proto_herd_v1_herd_proto != nil {
 		return
 	}
+	file_proto_herd_v1_herd_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

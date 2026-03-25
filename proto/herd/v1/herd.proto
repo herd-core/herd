@@ -22,6 +22,9 @@ message AcquireRequest {
     
     // Timeout in seconds before giving up on acquiring
     int32 timeout_seconds = 2;
+
+    // Optional sessions id which would be used during accidental sessions drops
+    optional string session_id = 3;
 }
 
 message AcquireResponse {
