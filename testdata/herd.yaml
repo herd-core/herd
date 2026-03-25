@@ -12,6 +12,9 @@ resources:
   cpu_limit_cores: 1
   pids_limit: 100
   ttl: 10m
+  absolute_ttl: 1h
+  heartbeat_grace: 30s
+  data_timeout: 5m
   health_interval: 5s
   worker_reuse: true
   insecure_sandbox: true

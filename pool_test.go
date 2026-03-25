@@ -112,8 +112,6 @@ func newTestPool(t *testing.T, workers ...*stubWorker) *Pool[*stubClient] {
 		cfg:          cfg,
 		registry:     NewLocalRegistry[*stubClient](),
 		inflight:     make(map[string]chan struct{}),
-		lastAccessed: make(map[string]time.Time),
-		activeConns:  make(map[string]int32), // initialize activeConns map
 		workers:      make([]Worker[*stubClient], 0, cfg.max),
 		available:    make(chan Worker[*stubClient], cfg.max),
 		done:         make(chan struct{}),
@@ -200,8 +198,8 @@ func TestKillSession_ForceTerminatesWorker(t *testing.T) {
 		t.Fatalf("Acquire returned unexpected error: %v", err)
 	}
 
-	if err := pool.KillSession(sess.ID); err != nil {
-		t.Fatalf("KillSession returned error: %v", err)
+	if err := pool.KillWorker(sess.ID, "test-force-kill"); err != nil {
+		t.Fatalf("KillWorker returned error: %v", err)
 	}
 
 	w1.mu.Lock()
@@ -348,44 +346,4 @@ func TestReleaseReturnsWorkerToPool(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Test 5 — TTL sweep: idle session is evicted and worker returned to pool
-// ---------------------------------------------------------------------------
 
-func TestTTLSweepExpiresSessions(t *testing.T) {
-	w := &stubWorker{id: "worker-1"}
-	pool := newTestPool(t, w)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	sess, err := pool.Acquire(ctx, "session-ttl")
-	if err != nil {
-		t.Fatalf("Acquire: %v", err)
-	}
-	// Don't call Release — simulate the TTL sweeper doing it.
-	_ = sess // intentionally held open
-
-	// Release connection so activeConns becomes 0.
-	// This will reset lastAccessed to time.Now().
-	sess.ConnRelease()
-
-	// Backdate lastAccessed so the session looks stale (1 hour ago).
-	pool.mu.Lock()
-	pool.lastAccessed["session-ttl"] = time.Now().Add(-1 * time.Hour)
-	pool.mu.Unlock()
-
-	// Manually trigger the sweep (avoids waiting for the real ticker).
-	pool.sweepExpired()
-
-	// Session should be gone from the affinity map.
-	w_evicted, _ := pool.registry.Get(context.Background(), "session-ttl")
-	if w_evicted != nil {
-		t.Error("session-ttl should have been evicted by TTL sweeper")
-	}
-
-	// Worker should be back in the available channel.
-	if got := pool.Stats().AvailableWorkers; got != 1 {
-		t.Errorf("expected 1 available worker after TTL eviction, got %d", got)
-	}
-}

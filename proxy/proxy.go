@@ -44,13 +44,16 @@
 package proxy
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/internal/lifecycle"
 )
 
 // ---------------------------------------------------------------------------
@@ -64,6 +67,7 @@ import (
 // ReverseProxy does not use C directly; it proxies via the worker's Address().
 type ReverseProxy[C any] struct {
 	pool             *herd.Pool[C]
+	lifecycleManager *lifecycle.Manager
 	extractSessionID func(*http.Request) string
 	LookupOnly       bool // If true, only routing to existing sessions; won't Acquire/Scale
 }
@@ -92,6 +96,12 @@ func NewReverseProxy[C any](
 	}
 }
 
+// WithLifecycleManager injects a lifecycle manager into the proxy.
+func (rp *ReverseProxy[C]) WithLifecycleManager(lm *lifecycle.Manager) *ReverseProxy[C] {
+	rp.lifecycleManager = lm
+	return rp
+}
+
 // WithLookupOnly configures the proxy to only route to existing sessions.
 // It will not trigger worker allocation or singleflight slow paths.
 // Useful for stateless Data Plane proxies (Daemon Mode).
@@ -113,6 +123,21 @@ func (rp *ReverseProxy[C]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if sessionID == "" {
 		http.Error(w, "herd: missing session ID", http.StatusBadRequest)
 		return
+	}
+
+	if rp.lifecycleManager != nil {
+		rp.lifecycleManager.BeginRequest(sessionID)
+		isWebSocket := strings.ToLower(r.Header.Get("Upgrade")) == "websocket"
+		if !isWebSocket && rp.lifecycleManager.Config.DataTimeout > 0 {
+			var cancel context.CancelFunc
+			var ctx context.Context
+			ctx, cancel = context.WithTimeout(r.Context(), rp.lifecycleManager.Config.DataTimeout)
+			defer cancel()
+			r = r.WithContext(ctx)
+		}
+		defer func() {
+			rp.lifecycleManager.EndRequest(sessionID, r.Context().Err())
+		}()
 	}
 
 	var sess *herd.Session[C]
@@ -138,11 +163,7 @@ func (rp *ReverseProxy[C]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// no session release here
-	// We should not be releasing the session here. session should only be release at
-	// ttl or if the health checks fails and we are cleaning up
-	// this will be different
-	defer sess.ConnRelease()
+	// session release is handled by LifecycleManager
 
 	target, err := url.Parse(sess.Worker.Address())
 	if err != nil {

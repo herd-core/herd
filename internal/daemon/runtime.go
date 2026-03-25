@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/internal/lifecycle"
 	"github.com/herd-core/herd/proxy"
 )
 
@@ -45,7 +46,7 @@ func RemoveUnixSocket(path string) error {
 // - Proxy traffic is routed by X-Session-ID to session-affine workers.
 // - /healthz reports daemon liveness.
 // - telemetry metrics are exposed at metricsPath.
-func NewDataPlaneHandler(pool *herd.Pool[*http.Client], metricsPath string) http.Handler {
+func NewDataPlaneHandler(pool *herd.Pool[*http.Client], lm *lifecycle.Manager, metricsPath string) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -57,7 +58,7 @@ func NewDataPlaneHandler(pool *herd.Pool[*http.Client], metricsPath string) http
 
 	mux.Handle("/", proxy.NewReverseProxy(pool, func(r *http.Request) string {
 		return r.Header.Get(SessionHeader)
-	}).WithLookupOnly())
+	}).WithLifecycleManager(lm).WithLookupOnly())
 
 	return mux
 }
