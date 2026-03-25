@@ -1,10 +1,7 @@
 # Herd
 
-> "Kubernetes is too slow to spawn sessions. Redis-only maps are too complex to maintain."
-
 **Herd** is a daemon and process manager that pins incoming requests to specific background workers using session IDs.
 
-> Build features, not infrastructure
 
 ## 🧱 Daemon Mode (Primary)
 
