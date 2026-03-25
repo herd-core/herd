@@ -57,7 +57,7 @@ func NewDataPlaneHandler(pool *herd.Pool[*http.Client], metricsPath string) http
 
 	mux.Handle("/", proxy.NewReverseProxy(pool, func(r *http.Request) string {
 		return r.Header.Get(SessionHeader)
-	}))
+	}).WithLookupOnly())
 
 	return mux
 }

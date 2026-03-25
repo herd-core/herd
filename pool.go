@@ -343,6 +343,31 @@ func (p *Pool[C]) Acquire(ctx context.Context, sessionID string) (*Session[C], e
 	}
 }
 
+// GetSession returns the Session pinned to sessionID if it exists.
+//
+// Unlike Acquire, this does NOT allocate a new worker from available or
+// singleflight slow paths. It is purely a lookup. It updates last-accessed
+// time and active connection counts just like Acquire's fast path.
+//
+// Returns (nil, nil) if no session exists for this ID.
+func (p *Pool[C]) GetSession(ctx context.Context, sessionID string) (*Session[C], error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	w, err := p.registry.Get(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("herd: GetSession(%q): directory lookup failed: %w", sessionID, err)
+	}
+	if w == nil {
+		return nil, nil // Not found
+	}
+
+	p.touchSession(sessionID)
+	p.activeConns[sessionID]++
+
+	return &Session[C]{ID: sessionID, Worker: w, pool: p}, nil
+}
+
 // ---------------------------------------------------------------------------
 // release — called by Session.Release
 // ---------------------------------------------------------------------------

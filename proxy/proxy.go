@@ -65,6 +65,7 @@ import (
 type ReverseProxy[C any] struct {
 	pool             *herd.Pool[C]
 	extractSessionID func(*http.Request) string
+	LookupOnly       bool // If true, only routing to existing sessions; won't Acquire/Scale
 }
 
 // NewReverseProxy returns an http.Handler that:
@@ -91,11 +92,19 @@ func NewReverseProxy[C any](
 	}
 }
 
+// WithLookupOnly configures the proxy to only route to existing sessions.
+// It will not trigger worker allocation or singleflight slow paths.
+// Useful for stateless Data Plane proxies (Daemon Mode).
+func (rp *ReverseProxy[C]) WithLookupOnly() *ReverseProxy[C] {
+	rp.LookupOnly = true
+	return rp
+}
+
 // ServeHTTP implements http.Handler.
 //
 // Steps:
 //  1. Extract sessionID — return 400 if empty.
-//  2. Acquire session — return 503 if pool is exhausted or ctx cancelled.
+//  2. Acquire/Lookup session — return 404/503 if unavailable.
 //  3. Parse worker address into *url.URL.
 //  4. Build a per-request httputil.ReverseProxy targeting that URL.
 //  5. Forward request; on response write, release the session.
@@ -106,11 +115,27 @@ func (rp *ReverseProxy[C]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess, err := rp.pool.Acquire(r.Context(), sessionID)
-	if err != nil {
-		log.Printf("[proxy] Acquire(%q) failed: %v", sessionID, err)
-		http.Error(w, fmt.Sprintf("herd: could not acquire worker: %v", err), http.StatusServiceUnavailable)
-		return
+	var sess *herd.Session[C]
+	var err error
+
+	if rp.LookupOnly {
+		sess, err = rp.pool.GetSession(r.Context(), sessionID)
+		if err != nil {
+			log.Printf("[proxy] GetSession(%q) failed: %v", sessionID, err)
+			http.Error(w, fmt.Sprintf("herd: could not lookup worker: %v", err), http.StatusInternalServerError)
+			return
+		}
+		if sess == nil {
+			http.Error(w, "herd: session not found", http.StatusNotFound)
+			return
+		}
+	} else {
+		sess, err = rp.pool.Acquire(r.Context(), sessionID)
+		if err != nil {
+			log.Printf("[proxy] Acquire(%q) failed: %v", sessionID, err)
+			http.Error(w, fmt.Sprintf("herd: could not acquire worker: %v", err), http.StatusServiceUnavailable)
+			return
+		}
 	}
 
 	// no session release here
