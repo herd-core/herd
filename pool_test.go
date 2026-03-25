@@ -108,13 +108,13 @@ func newTestPool(t *testing.T, workers ...*stubWorker) *Pool[*stubClient] {
 	}
 
 	p := &Pool[*stubClient]{
-		factory:      factory,
-		cfg:          cfg,
-		registry:     NewLocalRegistry[*stubClient](),
-		inflight:     make(map[string]chan struct{}),
-		workers:      make([]Worker[*stubClient], 0, cfg.max),
-		available:    make(chan Worker[*stubClient], cfg.max),
-		done:         make(chan struct{}),
+		factory:   factory,
+		cfg:       cfg,
+		registry:  NewLocalRegistry[*stubClient](),
+		inflight:  make(map[string]chan struct{}),
+		workers:   make([]Worker[*stubClient], 0, cfg.max),
+		available: make(chan Worker[*stubClient], cfg.max),
+		done:      make(chan struct{}),
 	}
 	p.ctx = ctx
 	p.cancel = cancel
@@ -345,5 +345,3 @@ func TestReleaseReturnsWorkerToPool(t *testing.T) {
 		t.Error("session-z should not exist in session map after Release")
 	}
 }
-
-

@@ -131,10 +131,10 @@ type Pool[C any] struct {
 	factory WorkerFactory[C]
 	cfg     config
 
-	mu           sync.Mutex
-	pendingAdds  int
-	registry     SessionRegistry[C]       // sessionID → pinned worker
-	inflight     map[string]chan struct{} // sessionID → broadcast channel
+	mu          sync.Mutex
+	pendingAdds int
+	registry    SessionRegistry[C]       // sessionID → pinned worker
+	inflight    map[string]chan struct{} // sessionID → broadcast channel
 
 	workers   []Worker[C]    // all known workers (for Stats / Shutdown)
 	available chan Worker[C] // free workers
@@ -160,15 +160,15 @@ func New[C any](factory WorkerFactory[C], opts ...Option) (*Pool[C], error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	p := &Pool[C]{
-		factory:      factory,
-		cfg:          cfg,
-		registry:     NewLocalRegistry[C](),
-		inflight:     make(map[string]chan struct{}),
-		workers:      make([]Worker[C], 0, cfg.max),
-		available:    make(chan Worker[C], cfg.max),
-		done:         make(chan struct{}),
-		ctx:          ctx,
-		cancel:       cancel,
+		factory:   factory,
+		cfg:       cfg,
+		registry:  NewLocalRegistry[C](),
+		inflight:  make(map[string]chan struct{}),
+		workers:   make([]Worker[C], 0, cfg.max),
+		available: make(chan Worker[C], cfg.max),
+		done:      make(chan struct{}),
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 
 	// Start the minimum number of workers synchronously.
@@ -508,42 +508,42 @@ func (p *Pool[C]) removeWorker(w Worker[C]) {
 // Background loops
 // ---------------------------------------------------------------------------
 
-// healthCheckLoop periodically calls w.Healthy on every worker and kills
-// unhealthy ones. The pool's monitor goroutine (via wireWorker) handles restart.
-func (p *Pool[C]) healthCheckLoop() {
-	if p.cfg.healthInterval == 0 {
-		return
-	}
-	ticker := time.NewTicker(p.cfg.healthInterval)
-	defer ticker.Stop()
+// // healthCheckLoop periodically calls w.Healthy on every worker and kills
+// // unhealthy ones. The pool's monitor goroutine (via wireWorker) handles restart.
+// func (p *Pool[C]) healthCheckLoop() {
+// 	if p.cfg.healthInterval == 0 {
+// 		return
+// 	}
+// 	ticker := time.NewTicker(p.cfg.healthInterval)
+// 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			p.mu.Lock()
-			workersSnapshot := make([]Worker[C], len(p.workers))
-			copy(workersSnapshot, p.workers)
-			p.mu.Unlock()
+// 	for {
+// 		select {
+// 		case <-ticker.C:
+// 			p.mu.Lock()
+// 			workersSnapshot := make([]Worker[C], len(p.workers))
+// 			copy(workersSnapshot, p.workers)
+// 			p.mu.Unlock()
 
-			for _, w := range workersSnapshot {
-				hCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-				err := w.Healthy(hCtx)
-				cancel()
-				if err != nil {
-					log.Printf("[pool] health-check: worker %s unhealthy (%v) — closing", w.ID(), err)
-					_ = w.Close()
-					p.removeWorker(w)
-					// If this worker was pinned to any session, it should be removed
-					// but our List doesn't map worker -> session easily.
-					// The next Acquire will fail health check and clean it up.
-					p.maybeScaleUp()
-				}
-			}
-		case <-p.done:
-			return
-		}
-	}
-}
+// 			for _, w := range workersSnapshot {
+// 				hCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+// 				err := w.Healthy(hCtx)
+// 				cancel()
+// 				if err != nil {
+// 					log.Printf("[pool] health-check: worker %s unhealthy (%v) — closing", w.ID(), err)
+// 					_ = w.Close()
+// 					p.removeWorker(w)
+// 					// If this worker was pinned to any session, it should be removed
+// 					// but our List doesn't map worker -> session easily.
+// 					// The next Acquire will fail health check and clean it up.
+// 					p.maybeScaleUp()
+// 				}
+// 			}
+// 		case <-p.done:
+// 			return
+// 		}
+// 	}
+// }
 
 // ---------------------------------------------------------------------------
 // Stats & Shutdown

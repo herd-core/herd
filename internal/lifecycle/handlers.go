@@ -46,7 +46,7 @@ func (m *Manager) EndRequest(sessionID string, proxyErr error) {
 	state.mu.Lock()
 	state.ActiveConns--
 	if state.ActiveConns < 0 {
-		state.ActiveConns = 0     // Safety net
+		state.ActiveConns = 0 // Safety net
 	}
 	state.LastDataActivity = time.Now()
 	state.mu.Unlock()

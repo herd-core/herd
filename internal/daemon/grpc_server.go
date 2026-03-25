@@ -91,7 +91,10 @@ func (s *Server) Acquire(stream pb.HerdService_AcquireServer) error {
 	s.lifecycleManager.Register(sessionID)
 	// Clean up on exit: ensures worker is killed if client disconnects.
 	defer func() {
-		s.lifecycleManager.UnregisterAndKill(sessionID, "client_disconnected")
+		err := s.lifecycleManager.UnregisterAndKill(sessionID, "client_disconnected")
+		if err != nil {
+			s.eventLogger().Error("session_cleanup_failed", map[string]any{"session_id": sessionID, "error": err})
+		}
 		RecordSessionKilled()
 		s.eventLogger().Info("session_killed", map[string]any{"session_id": sessionID})
 	}()

@@ -57,7 +57,6 @@ func (m *Manager) Register(sessionID string) {
 	m.registry[sessionID] = s
 }
 
-
 // Remove cleans up the registry after a kill.
 func (m *Manager) Remove(sessionID string) {
 	m.mu.Lock()
