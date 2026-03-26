@@ -30,6 +30,12 @@ func main() {
 		fmt.Fprintln(w, "ok")
 	})
 
+	// Add malicious endpoint to simulate a deadlock/infinite hold 
+	mux.HandleFunc("/deadlock", func(w http.ResponseWriter, r *http.Request) {
+		// Block indefinitely - triggers the context timeout in the proxy
+		<-make(chan struct{})
+	})
+
 	ln, err := net.Listen("tcp", "127.0.0.1:"+port)
 	if err != nil {
 		log.Fatalf("listen: %v", err)
