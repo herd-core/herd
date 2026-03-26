@@ -78,6 +78,7 @@ resources:
   pids_limit: 1024
   insecure_sandbox: true
   data_timeout: "5s"  # smaller timeout to avoid waiting 30 seconds during dev/CI
+  heartbeat_grace: "5s" # aggressively short heartbeat grace for testing 
 ''')
     
     # Run daemon process
