@@ -16,12 +16,24 @@ service HerdService {
     rpc Status(google.protobuf.Empty) returns (StatusResponse);
 }
 
+enum RequestType {
+    REQUEST_TYPE_UNSPECIFIED = 0;
+    REQUEST_TYPE_ACQUIRE = 1;
+    REQUEST_TYPE_PING = 2;
+}
+
 message AcquireRequest {
     // Optional tags to route to specific worker pools (e.g., "python", "image-inference")
     string worker_type = 1;
     
     // Timeout in seconds before giving up on acquiring
     int32 timeout_seconds = 2;
+
+    // Optional sessions id which would be used during accidental sessions drops
+    optional string session_id = 3;
+
+    // The type of request (ACQUIRE for initial lease, PING for heartbeats)
+    RequestType type = 4;
 }
 
 message AcquireResponse {

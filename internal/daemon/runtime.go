@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/internal/lifecycle"
 	"github.com/herd-core/herd/proxy"
 )
 
@@ -45,7 +46,7 @@ func RemoveUnixSocket(path string) error {
 // - Proxy traffic is routed by X-Session-ID to session-affine workers.
 // - /healthz reports daemon liveness.
 // - telemetry metrics are exposed at metricsPath.
-func NewDataPlaneHandler(pool *herd.Pool[*http.Client], metricsPath string) http.Handler {
+func NewDataPlaneHandler(pool *herd.Pool[*http.Client], lm *lifecycle.Manager, metricsPath string) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -57,7 +58,7 @@ func NewDataPlaneHandler(pool *herd.Pool[*http.Client], metricsPath string) http
 
 	mux.Handle("/", proxy.NewReverseProxy(pool, func(r *http.Request) string {
 		return r.Header.Get(SessionHeader)
-	}).WithLookupOnly())
+	}).WithLifecycleManager(lm).WithLookupOnly())
 
 	return mux
 }
@@ -79,6 +80,9 @@ func MetricsHandler(pool *herd.Pool[*http.Client]) http.Handler {
 				"# HELP herd_active_sessions Active sticky sessions.\n"+
 				"# TYPE herd_active_sessions gauge\n"+
 				"herd_active_sessions %d\n"+
+				"# HELP herd_sessions_draining Sessions in grace period awaiting reconnect.\n"+
+				"# TYPE herd_sessions_draining gauge\n"+
+				"herd_sessions_draining %d\n"+
 				"# HELP herd_inflight_acquires Acquire operations in progress.\n"+
 				"# TYPE herd_inflight_acquires gauge\n"+
 				"herd_inflight_acquires %d\n"+
@@ -97,6 +101,7 @@ func MetricsHandler(pool *herd.Pool[*http.Client]) http.Handler {
 			stats.TotalWorkers,
 			stats.AvailableWorkers,
 			stats.ActiveSessions,
+			life.SessionsDraining,
 			stats.InflightAcquires,
 			life.AcquireRequests,
 			life.AcquireFailures,

@@ -51,7 +51,10 @@ type ResourceConfig struct {
 	MemoryLimitMB  int64   `yaml:"memory_limit_mb"`
 	CPULimitCores  float64 `yaml:"cpu_limit_cores"`
 	PIDsLimit      int64   `yaml:"pids_limit"`
-	TTL            string  `yaml:"ttl"`
+	TTL            string  `yaml:"ttl"`             // Maps to IdleTTL
+	AbsoluteTTL    string  `yaml:"absolute_ttl"`    // Max session duration
+	HeartbeatGrace string  `yaml:"heartbeat_grace"` // Max time without ping
+	DataTimeout    string  `yaml:"data_timeout"`    // Max time for HTTP request
 	HealthInterval string  `yaml:"health_interval"`
 	WorkerReuse    bool    `yaml:"worker_reuse"`
 
@@ -65,8 +68,23 @@ type TelemetryConfig struct {
 	MetricsPath string `yaml:"metrics_path"`
 }
 
-func (r ResourceConfig) TTLDuration() time.Duration {
+func (r ResourceConfig) IdleTTLDuration() time.Duration {
 	d, _ := time.ParseDuration(r.TTL)
+	return d
+}
+
+func (r ResourceConfig) AbsoluteTTLDuration() time.Duration {
+	d, _ := time.ParseDuration(r.AbsoluteTTL)
+	return d
+}
+
+func (r ResourceConfig) HeartbeatGraceDuration() time.Duration {
+	d, _ := time.ParseDuration(r.HeartbeatGrace)
+	return d
+}
+
+func (r ResourceConfig) DataTimeoutDuration() time.Duration {
+	d, _ := time.ParseDuration(r.DataTimeout)
 	return d
 }
 

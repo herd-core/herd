@@ -15,6 +15,7 @@ import (
 	"github.com/herd-core/herd"
 	"github.com/herd-core/herd/internal/config"
 	"github.com/herd-core/herd/internal/daemon"
+	"github.com/herd-core/herd/internal/lifecycle"
 	pb "github.com/herd-core/herd/proto/herd/v1"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -85,12 +86,22 @@ func runDaemon() {
 		}
 	}()
 
+	// Initialize Lifecycle Manager
+	lcConfig := lifecycle.Config{
+		AbsoluteTTL:    cfg.Resources.AbsoluteTTLDuration(),
+		IdleTTL:        cfg.Resources.IdleTTLDuration(),
+		HeartbeatGrace: cfg.Resources.HeartbeatGraceDuration(),
+		DataTimeout:    cfg.Resources.DataTimeoutDuration(),
+	}
+	lm := lifecycle.NewManager(lcConfig, pool)
+	go lm.StartReaper(ctx) // Run reaper in background
+
 	grpcServer := grpc.NewServer()
-	pb.RegisterHerdServiceServer(grpcServer, daemon.NewServer(pool, "http://"+cfg.Network.DataBind, cfg.Resources.MaxWorkers, eventLogger))
+	pb.RegisterHerdServiceServer(grpcServer, daemon.NewServer(pool, lm, "http://"+cfg.Network.DataBind, cfg.Resources.MaxWorkers, eventLogger))
 
 	httpServer := &http.Server{
 		Addr:    cfg.Network.DataBind,
-		Handler: daemon.NewDataPlaneHandler(pool, cfg.Telemetry.MetricsPath),
+		Handler: daemon.NewDataPlaneHandler(pool, lm, cfg.Telemetry.MetricsPath),
 	}
 
 	errCh := make(chan error, 2)
@@ -167,7 +178,7 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 
 	return herd.New(factory,
 		herd.WithAutoScale(cfg.Resources.MinWorkers, cfg.Resources.MaxWorkers),
-		herd.WithTTL(cfg.Resources.TTLDuration()),
+		herd.WithTTL(cfg.Resources.IdleTTLDuration()),
 		herd.WithHealthInterval(cfg.Resources.HealthIntervalDuration()),
 		herd.WithWorkerReuse(cfg.Resources.WorkerReuse),
 	)

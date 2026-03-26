@@ -22,14 +22,67 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type RequestType int32
+
+const (
+	RequestType_REQUEST_TYPE_UNSPECIFIED RequestType = 0
+	RequestType_REQUEST_TYPE_ACQUIRE     RequestType = 1
+	RequestType_REQUEST_TYPE_PING        RequestType = 2
+)
+
+// Enum value maps for RequestType.
+var (
+	RequestType_name = map[int32]string{
+		0: "REQUEST_TYPE_UNSPECIFIED",
+		1: "REQUEST_TYPE_ACQUIRE",
+		2: "REQUEST_TYPE_PING",
+	}
+	RequestType_value = map[string]int32{
+		"REQUEST_TYPE_UNSPECIFIED": 0,
+		"REQUEST_TYPE_ACQUIRE":     1,
+		"REQUEST_TYPE_PING":        2,
+	}
+)
+
+func (x RequestType) Enum() *RequestType {
+	p := new(RequestType)
+	*p = x
+	return p
+}
+
+func (x RequestType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RequestType) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_herd_v1_herd_proto_enumTypes[0].Descriptor()
+}
+
+func (RequestType) Type() protoreflect.EnumType {
+	return &file_proto_herd_v1_herd_proto_enumTypes[0]
+}
+
+func (x RequestType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RequestType.Descriptor instead.
+func (RequestType) EnumDescriptor() ([]byte, []int) {
+	return file_proto_herd_v1_herd_proto_rawDescGZIP(), []int{0}
+}
+
 type AcquireRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Optional tags to route to specific worker pools (e.g., "python", "image-inference")
 	WorkerType string `protobuf:"bytes,1,opt,name=worker_type,json=workerType,proto3" json:"worker_type,omitempty"`
 	// Timeout in seconds before giving up on acquiring
 	TimeoutSeconds int32 `protobuf:"varint,2,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Optional sessions id which would be used during accidental sessions drops
+	SessionId *string `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3,oneof" json:"session_id,omitempty"`
+	// The type of request (ACQUIRE for initial lease, PING for heartbeats)
+	Type          RequestType `protobuf:"varint,4,opt,name=type,proto3,enum=herd.v1.RequestType" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AcquireRequest) Reset() {
@@ -74,6 +127,20 @@ func (x *AcquireRequest) GetTimeoutSeconds() int32 {
 		return x.TimeoutSeconds
 	}
 	return 0
+}
+
+func (x *AcquireRequest) GetSessionId() string {
+	if x != nil && x.SessionId != nil {
+		return *x.SessionId
+	}
+	return ""
+}
+
+func (x *AcquireRequest) GetType() RequestType {
+	if x != nil {
+		return x.Type
+	}
+	return RequestType_REQUEST_TYPE_UNSPECIFIED
 }
 
 type AcquireResponse struct {
@@ -203,11 +270,15 @@ var File_proto_herd_v1_herd_proto protoreflect.FileDescriptor
 
 const file_proto_herd_v1_herd_proto_rawDesc = "" +
 	"\n" +
-	"\x18proto/herd/v1/herd.proto\x12\aherd.v1\x1a\x1bgoogle/protobuf/empty.proto\"Z\n" +
+	"\x18proto/herd/v1/herd.proto\x12\aherd.v1\x1a\x1bgoogle/protobuf/empty.proto\"\xb7\x01\n" +
 	"\x0eAcquireRequest\x12\x1f\n" +
 	"\vworker_type\x18\x01 \x01(\tR\n" +
 	"workerType\x12'\n" +
-	"\x0ftimeout_seconds\x18\x02 \x01(\x05R\x0etimeoutSeconds\"t\n" +
+	"\x0ftimeout_seconds\x18\x02 \x01(\x05R\x0etimeoutSeconds\x12\"\n" +
+	"\n" +
+	"session_id\x18\x03 \x01(\tH\x00R\tsessionId\x88\x01\x01\x12(\n" +
+	"\x04type\x18\x04 \x01(\x0e2\x14.herd.v1.RequestTypeR\x04typeB\r\n" +
+	"\v_session_id\"t\n" +
 	"\x0fAcquireResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12#\n" +
@@ -218,7 +289,11 @@ const file_proto_herd_v1_herd_proto_rawDesc = "" +
 	"\x0eactive_workers\x18\x01 \x01(\x05R\ractiveWorkers\x12!\n" +
 	"\fidle_workers\x18\x02 \x01(\x05R\vidleWorkers\x12\x1f\n" +
 	"\vmax_workers\x18\x03 \x01(\x05R\n" +
-	"maxWorkers2\x8a\x01\n" +
+	"maxWorkers*\\\n" +
+	"\vRequestType\x12\x1c\n" +
+	"\x18REQUEST_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14REQUEST_TYPE_ACQUIRE\x10\x01\x12\x15\n" +
+	"\x11REQUEST_TYPE_PING\x10\x022\x8a\x01\n" +
 	"\vHerdService\x12@\n" +
 	"\aAcquire\x12\x17.herd.v1.AcquireRequest\x1a\x18.herd.v1.AcquireResponse(\x010\x01\x129\n" +
 	"\x06Status\x12\x16.google.protobuf.Empty\x1a\x17.herd.v1.StatusResponseB)Z'github.com/herd-core/herd/proto/herd/v1b\x06proto3"
@@ -235,23 +310,26 @@ func file_proto_herd_v1_herd_proto_rawDescGZIP() []byte {
 	return file_proto_herd_v1_herd_proto_rawDescData
 }
 
+var file_proto_herd_v1_herd_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_herd_v1_herd_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_proto_herd_v1_herd_proto_goTypes = []any{
-	(*AcquireRequest)(nil),  // 0: herd.v1.AcquireRequest
-	(*AcquireResponse)(nil), // 1: herd.v1.AcquireResponse
-	(*StatusResponse)(nil),  // 2: herd.v1.StatusResponse
-	(*emptypb.Empty)(nil),   // 3: google.protobuf.Empty
+	(RequestType)(0),        // 0: herd.v1.RequestType
+	(*AcquireRequest)(nil),  // 1: herd.v1.AcquireRequest
+	(*AcquireResponse)(nil), // 2: herd.v1.AcquireResponse
+	(*StatusResponse)(nil),  // 3: herd.v1.StatusResponse
+	(*emptypb.Empty)(nil),   // 4: google.protobuf.Empty
 }
 var file_proto_herd_v1_herd_proto_depIdxs = []int32{
-	0, // 0: herd.v1.HerdService.Acquire:input_type -> herd.v1.AcquireRequest
-	3, // 1: herd.v1.HerdService.Status:input_type -> google.protobuf.Empty
-	1, // 2: herd.v1.HerdService.Acquire:output_type -> herd.v1.AcquireResponse
-	2, // 3: herd.v1.HerdService.Status:output_type -> herd.v1.StatusResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: herd.v1.AcquireRequest.type:type_name -> herd.v1.RequestType
+	1, // 1: herd.v1.HerdService.Acquire:input_type -> herd.v1.AcquireRequest
+	4, // 2: herd.v1.HerdService.Status:input_type -> google.protobuf.Empty
+	2, // 3: herd.v1.HerdService.Acquire:output_type -> herd.v1.AcquireResponse
+	3, // 4: herd.v1.HerdService.Status:output_type -> herd.v1.StatusResponse
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_herd_v1_herd_proto_init() }
@@ -259,18 +337,20 @@ func file_proto_herd_v1_herd_proto_init() {
 	if File_proto_herd_v1_herd_proto != nil {
 		return
 	}
+	file_proto_herd_v1_herd_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_herd_v1_herd_proto_rawDesc), len(file_proto_herd_v1_herd_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_proto_herd_v1_herd_proto_goTypes,
 		DependencyIndexes: file_proto_herd_v1_herd_proto_depIdxs,
+		EnumInfos:         file_proto_herd_v1_herd_proto_enumTypes,
 		MessageInfos:      file_proto_herd_v1_herd_proto_msgTypes,
 	}.Build()
 	File_proto_herd_v1_herd_proto = out.File

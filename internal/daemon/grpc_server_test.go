@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/internal/lifecycle"
 	pb "github.com/herd-core/herd/proto/herd/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -53,7 +54,10 @@ func TestAcquireStream(t *testing.T) {
 		_ = pool.Shutdown(context.Background())
 	})
 
-	initGRPCServer(t, NewServer(pool, "http://127.0.0.1:4000", 1, NewEventLogger("text", nil)))
+	lm := lifecycle.NewManager(lifecycle.Config{}, pool)
+	go lm.StartReaper(context.Background())
+
+	initGRPCServer(t, NewServer(pool, lm, "http://127.0.0.1:4000", 1, NewEventLogger("text", nil)))
 
 	ctx := context.Background()
 	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -102,7 +106,7 @@ func TestAcquireStream(t *testing.T) {
 }
 
 func TestAcquireStream_WithoutPool(t *testing.T) {
-	initGRPCServer(t, NewServer(nil, "http://127.0.0.1:4000", 1, NewEventLogger("text", nil)))
+	initGRPCServer(t, NewServer(nil, nil, "http://127.0.0.1:4000", 1, NewEventLogger("text", nil)))
 
 	ctx := context.Background()
 	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))

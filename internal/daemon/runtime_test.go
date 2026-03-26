@@ -44,7 +44,7 @@ func TestListenUnixSocket_RemovesStaleFile(t *testing.T) {
 func TestNewDataPlaneHandler_Healthz(t *testing.T) {
 	t.Parallel()
 
-	h := NewDataPlaneHandler(nil, "/metrics")
+	h := NewDataPlaneHandler(nil, nil, "/metrics")
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 

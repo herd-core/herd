@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/internal/lifecycle"
 	pb "github.com/herd-core/herd/proto/herd/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,79 +19,111 @@ import (
 // Server implements the HerdService gRPC server.
 type Server struct {
 	pb.UnimplementedHerdServiceServer
-	pool         *herd.Pool[*http.Client]
-	proxyAddress string
-	maxWorkers   int
-	seq          atomic.Uint64
-	logger       *EventLogger
+	pool             *herd.Pool[*http.Client]
+	lifecycleManager *lifecycle.Manager
+	proxyAddress     string
+	maxWorkers       int
+	seq              atomic.Uint64
+	logger           *EventLogger
 }
 
-func NewServer(pool *herd.Pool[*http.Client], proxyAddress string, maxWorkers int, logger *EventLogger) *Server {
-	return &Server{pool: pool, proxyAddress: proxyAddress, maxWorkers: maxWorkers, logger: logger}
+func NewServer(
+	pool *herd.Pool[*http.Client],
+	lifecycleManager *lifecycle.Manager,
+	proxyAddress string,
+	maxWorkers int,
+	logger *EventLogger,
+) *Server {
+	return &Server{
+		pool:             pool,
+		lifecycleManager: lifecycleManager,
+		proxyAddress:     proxyAddress,
+		maxWorkers:       maxWorkers,
+		logger:           logger,
+	}
 }
 
 // Acquire handles bidirectional streaming allocation.
+//
+// New Flow:
+// 1. Handshake & ID Generation/Re-use.
+// 2. Pool Acquisition.
+// 3. Lifecycle Registration.
+// 4. Heartbeat Loop.
+// 5. Cleanup on Exit.
 func (s *Server) Acquire(stream pb.HerdService_AcquireServer) error {
 	if s.pool == nil {
 		return status.Error(codes.FailedPrecondition, "daemon server is not configured with a pool")
 	}
 
-	var session *herd.Session[*http.Client]
+	// 1. Handshake
+	req, err := stream.Recv()
+	if err == io.EOF {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	RecordAcquireRequest()
 
+	sessionID := req.GetSessionId()
+	if sessionID == "" {
+		sessionID = fmt.Sprintf("sess-%d", s.seq.Add(1))
+	}
+	s.eventLogger().Info("acquire_request_received", map[string]any{"worker_type": req.GetWorkerType(), "session_id": sessionID})
+
+	acquireCtx := stream.Context()
+	if req.GetTimeoutSeconds() > 0 {
+		var cancelAcquire context.CancelFunc
+		acquireCtx, cancelAcquire = context.WithTimeout(stream.Context(), time.Duration(req.GetTimeoutSeconds())*time.Second)
+		defer cancelAcquire()
+	}
+
+	// 2. Pool Acquisition
+	session, acquireErr := s.pool.Acquire(acquireCtx, sessionID)
+	if acquireErr != nil {
+		RecordAcquireFailure()
+		s.eventLogger().Error("session_acquire_failed", map[string]any{"session_id": sessionID, "error": acquireErr})
+		return status.Errorf(codes.ResourceExhausted, "acquire session failed: %v", acquireErr)
+	}
+
+	// 3. Lifecycle Registration
+	s.lifecycleManager.Register(sessionID)
+	// Clean up on exit: ensures worker is killed if client disconnects.
 	defer func() {
-		if session == nil {
-			return
-		}
-		if err := s.pool.KillSession(session.ID); err != nil {
-			s.eventLogger().Error("session_kill_failed", map[string]any{"session_id": session.ID, "error": err})
-			return
+		err := s.lifecycleManager.UnregisterAndKill(sessionID, "client_disconnected")
+		if err != nil {
+			s.eventLogger().Error("session_cleanup_failed", map[string]any{"session_id": sessionID, "error": err})
 		}
 		RecordSessionKilled()
-		s.eventLogger().Info("session_killed", map[string]any{"session_id": session.ID})
+		s.eventLogger().Info("session_killed", map[string]any{"session_id": sessionID})
 	}()
 
+	RecordSessionStarted()
+	s.eventLogger().Info("session_acquired", map[string]any{"session_id": sessionID})
+
+	// 4. Send Response & Loop
+	resp := &pb.AcquireResponse{
+		SessionId:    session.ID,
+		ProxyAddress: s.proxyAddress,
+	}
+	if err := stream.Send(resp); err != nil {
+		s.eventLogger().Warn("acquire_response_send_failed", map[string]any{"session_id": sessionID, "error": err})
+		return err
+	}
+
 	for {
-		req, err := stream.Recv()
+		in, err := stream.Recv()
 		if err == io.EOF {
-			s.eventLogger().Info("acquire_stream_closed", map[string]any{})
-			return nil // Client closed gracefully
+			return nil
 		}
 		if err != nil {
-			s.eventLogger().Warn("acquire_stream_broken", map[string]any{"error": err})
-			return err // Stream broken
-		}
-		RecordAcquireRequest()
-
-		s.eventLogger().Info("acquire_request_received", map[string]any{"worker_type": req.GetWorkerType()})
-		if session == nil {
-			sessionID := fmt.Sprintf("sess-%d", s.seq.Add(1))
-			acquireCtx := stream.Context()
-			if req.GetTimeoutSeconds() > 0 {
-				var cancel context.CancelFunc
-				acquireCtx, cancel = context.WithTimeout(stream.Context(), time.Duration(req.GetTimeoutSeconds())*time.Second)
-				session, err = s.pool.Acquire(acquireCtx, sessionID)
-				cancel()
-			} else {
-				session, err = s.pool.Acquire(acquireCtx, sessionID)
-			}
-			if err != nil {
-				RecordAcquireFailure()
-				s.eventLogger().Error("session_acquire_failed", map[string]any{"session_id": sessionID, "error": err})
-				return status.Errorf(codes.ResourceExhausted, "acquire session failed: %v", err)
-			}
-			RecordSessionStarted()
-			s.eventLogger().Info("session_acquired", map[string]any{"session_id": session.ID})
-		}
-
-		resp := &pb.AcquireResponse{
-			SessionId:    session.ID,
-			ProxyAddress: s.proxyAddress,
-			WorkerPid:    0,
-		}
-
-		if err := stream.Send(resp); err != nil {
-			s.eventLogger().Warn("acquire_response_send_failed", map[string]any{"session_id": session.ID, "error": err})
+			s.eventLogger().Warn("acquire_stream_broken", map[string]any{"session_id": sessionID, "error": err})
 			return err
+		}
+
+		if in.GetType() == pb.RequestType_REQUEST_TYPE_PING {
+			s.lifecycleManager.UpdateHeartbeat(sessionID)
 		}
 	}
 }

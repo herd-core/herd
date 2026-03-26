@@ -72,31 +72,36 @@ func (l *EventLogger) emit(level, event string, fields map[string]any) {
 }
 
 type lifecycleCounters struct {
-	acquireRequests atomic.Uint64
-	acquireFailures atomic.Uint64
-	sessionsStarted atomic.Uint64
-	sessionsKilled  atomic.Uint64
+	acquireRequests  atomic.Uint64
+	acquireFailures  atomic.Uint64
+	sessionsStarted  atomic.Uint64
+	sessionsKilled   atomic.Uint64
+	sessionsDraining atomic.Int64 // gauge: current sessions in grace period
 }
 
 var counters lifecycleCounters
 
-func RecordAcquireRequest() { counters.acquireRequests.Add(1) }
-func RecordAcquireFailure() { counters.acquireFailures.Add(1) }
-func RecordSessionStarted() { counters.sessionsStarted.Add(1) }
-func RecordSessionKilled()  { counters.sessionsKilled.Add(1) }
+func RecordAcquireRequest()  { counters.acquireRequests.Add(1) }
+func RecordAcquireFailure()  { counters.acquireFailures.Add(1) }
+func RecordSessionStarted()  { counters.sessionsStarted.Add(1) }
+func RecordSessionKilled()   { counters.sessionsKilled.Add(1) }
+func RecordSessionDraining() { counters.sessionsDraining.Add(1) }  // session entered grace period
+func RecordSessionResumed()  { counters.sessionsDraining.Add(-1) } // session reclaimed before timeout
 
 type LifecycleSnapshot struct {
-	AcquireRequests uint64
-	AcquireFailures uint64
-	SessionsStarted uint64
-	SessionsKilled  uint64
+	AcquireRequests  uint64
+	AcquireFailures  uint64
+	SessionsStarted  uint64
+	SessionsKilled   uint64
+	SessionsDraining int64 // current sessions in grace period (gauge)
 }
 
 func SnapshotLifecycleCounters() LifecycleSnapshot {
 	return LifecycleSnapshot{
-		AcquireRequests: counters.acquireRequests.Load(),
-		AcquireFailures: counters.acquireFailures.Load(),
-		SessionsStarted: counters.sessionsStarted.Load(),
-		SessionsKilled:  counters.sessionsKilled.Load(),
+		AcquireRequests:  counters.acquireRequests.Load(),
+		AcquireFailures:  counters.acquireFailures.Load(),
+		SessionsStarted:  counters.sessionsStarted.Load(),
+		SessionsKilled:   counters.sessionsKilled.Load(),
+		SessionsDraining: counters.sessionsDraining.Load(),
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/internal/lifecycle"
 	pb "github.com/herd-core/herd/proto/herd/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -34,11 +35,14 @@ func TestDaemonIntegration_AcquireProxyAndCleanup(t *testing.T) {
 	}
 	defer func() { _ = pool.Shutdown(context.Background()) }()
 
-	dataPlane := httptest.NewServer(NewDataPlaneHandler(pool, "/metrics"))
+	lm := lifecycle.NewManager(lifecycle.Config{AbsoluteTTL: 5 * time.Minute}, pool)
+	go lm.StartReaper(context.Background())
+
+	dataPlane := httptest.NewServer(NewDataPlaneHandler(pool, lm, "/metrics"))
 	defer dataPlane.Close()
 
 	socketPath := fmt.Sprintf("/tmp/herd-it-%d.sock", time.Now().UnixNano())
-	grpcServer, cleanup := startIntegrationGRPCServer(t, socketPath, NewServer(pool, dataPlane.URL, 1, NewEventLogger("text", nil)))
+	grpcServer, cleanup := startIntegrationGRPCServer(t, socketPath, NewServer(pool, lm, dataPlane.URL, 1, NewEventLogger("text", nil)))
 	defer cleanup()
 	defer grpcServer.Stop()
 
@@ -114,11 +118,14 @@ func TestDaemonIntegration_StatusHealthAndMetrics(t *testing.T) {
 	}
 	defer func() { _ = pool.Shutdown(context.Background()) }()
 
-	dataPlane := httptest.NewServer(NewDataPlaneHandler(pool, "/metrics"))
+	lm := lifecycle.NewManager(lifecycle.Config{AbsoluteTTL: 5 * time.Minute}, pool)
+	go lm.StartReaper(context.Background())
+
+	dataPlane := httptest.NewServer(NewDataPlaneHandler(pool, lm, "/metrics"))
 	defer dataPlane.Close()
 
 	socketPath := fmt.Sprintf("/tmp/herd-it-%d.sock", time.Now().UnixNano())
-	grpcServer, cleanup := startIntegrationGRPCServer(t, socketPath, NewServer(pool, dataPlane.URL, 1, NewEventLogger("text", nil)))
+	grpcServer, cleanup := startIntegrationGRPCServer(t, socketPath, NewServer(pool, lm, dataPlane.URL, 1, NewEventLogger("text", nil)))
 	defer cleanup()
 	defer grpcServer.Stop()
 
