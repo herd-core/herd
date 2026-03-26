@@ -37,22 +37,32 @@ sudo herd start --config ./herd.yaml
 
 ### 3. Usage
 
-First, use a Herd client (which connects to the UDS Control Plane) to acquire a session. This establishes a stream that acts as a dead-man's switch. Then, connect your tools through the HTTP Data Plane proxy using the returned `session_id`.
+First, explicitly install the `herd-client` package to communicate with the daemon:
+
+```bash
+pip install herd-client
+```
+
+Next, use a Herd client (which connects to the UDS Control Plane) to acquire a session. This establishes a stream that acts as a dead-man's switch. Then, connect your tools through the HTTP Data Plane proxy using the allocated session ID and proxy URL.
 
 ```python
 import asyncio
 from playwright.async_api import async_playwright
-from herd_client import HerdClient
+from herd import AsyncClient
 
 async def main():
-    # 1. Acquire session via Control Plane (UDS dead-man's switch)
-    with HerdClient("/tmp/herd.sock") as client:
-        session = client.acquire()
+    # 1. Connect to the Herd daemon via the Control Plane socket
+    client = AsyncClient("unix:///tmp/herd.sock")
+    
+    # 2. Acquire a session (holds a dead-man's switch via heartbeat)
+    async with client.acquire(worker_type="playwright-worker") as session:
+        print(f"Acquired worker session: {session.id}")
 
-        # 2. Connect to Data Plane proxy using the allocated session ID
+        # 3. Connect to the Data Plane proxy using the exact assigned session proxy_url
         async with async_playwright() as p:
+            # We pass the X-Session-ID header so the Proxy maps us to the correct worker
             browser = await p.chromium.connect(
-                "ws://127.0.0.1:8080/", 
+                f"ws://127.0.0.1:8080/", 
                 headers={"X-Session-ID": session.id}
             )
             
@@ -101,19 +111,26 @@ sudo herd start --config ./herd.yaml
 
 ### 3. Usage
 
-Just like the Playwright example, you first acquire a session over the UDS Control Plane, and then send your HTTP traffic to the Data Plane using that Session ID. Here is how that looks in Python.
+Just like the Playwright example, you first install `herd-client`. We'll use the easy-to-read synchronous API for this example so you can easily drop it into standard scripts.
+
+```bash
+pip install herd-client
+```
 
 ```python
 import requests
-from herd_client import HerdClient
+from herd import Client
 
-# 1. Acquire session via Control Plane (UDS dead-man's switch)
-with HerdClient("/tmp/herd.sock") as client:
-    session = client.acquire()
+# 1. Connect to the Herd daemon via the Control Plane socket
+client = Client("unix:///tmp/herd.sock")
 
-    # 2. Send API requests to the Data Plane proxy
+# 2. Acquire session via Control Plane (context manager handles background heartbeats)
+with client.acquire(worker_type="ollama") as session:
+    print(f"Acquired worker session: {session.id}")
+
+    # 3. Send API requests directly to this worker via the Session Proxy URL
     response = requests.post(
-        "http://127.0.0.1:8080/api/chat",
+        f"{session.proxy_url}/api/chat",
         headers={"X-Session-ID": session.id},
         json={
             "model": "llama3",
