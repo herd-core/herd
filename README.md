@@ -108,7 +108,7 @@ worker:
   command: ["npx", "playwright", "run-server", "--port", "{{.Port}}", "--host", "127.0.0.1"]
 
 resources:
-  min_workers: 1
+  target_idle: 1
   max_workers: 5
   ttl: 15m
   worker_reuse: false # CRITICAL: Never share browsers between users
@@ -183,7 +183,7 @@ worker:
     - "OLLAMA_HOST=127.0.0.1:{{.Port}}"
 
 resources:
-  min_workers: 1
+  target_idle: 1
   max_workers: 10
   ttl: 10m
   worker_reuse: true
@@ -241,7 +241,7 @@ with client.acquire(worker_type="ollama") as session:
 | `network.data_bind` | IP:Port for the Data Plane HTTP proxy (e.g., `127.0.0.1:8080`). |
 | `worker.command` | The subprocess command and args to spawn (e.g., `["npx", "playwright", "run-server"]`). |
 | `worker.env` | Environment variables to inject (`FOO=bar`). Supports templating like `{{.Port}}`. |
-| `resources.min_workers` / `max_workers` | Sets the auto-scaling floor and ceiling for the process fleet. |
+| `resources.target_idle` / `max_workers` | Sets the auto-scaling floor and ceiling for the process fleet. |
 | `resources.ttl` | Max idle time for a session before the worker is automatically evicted (e.g. `15m`). |
 | `resources.worker_reuse` | Whether to recycle workers for new sessions or kill them when TTL expires. |
 | `resources.health_interval` | How often to poll worker `/healthz` endpoints. |

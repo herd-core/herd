@@ -16,14 +16,13 @@ worker:
   env:
     - FOO=bar
 resources:
-  min_workers: 1
+  target_idle: 1
   max_workers: 4
   memory_limit_mb: 512
   cpu_limit_cores: 1
   pids_limit: 100
   ttl: 10m
   health_interval: 5s
-  worker_reuse: true
 telemetry:
   log_format: json
   metrics_path: /metrics
@@ -58,14 +57,13 @@ network:
 worker:
   command: ["python3", "worker.py"]
 resources:
-  min_workers: 1
+  target_idle: 1
   max_workers: 4
   memory_limit_mb: 512
   cpu_limit_cores: 1
   pids_limit: 100
   ttl: 10m
   health_interval: 5s
-  worker_reuse: true
 `)
 
 	_, err := Load(path)

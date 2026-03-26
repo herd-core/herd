@@ -171,18 +171,40 @@ func New[C any](factory WorkerFactory[C], opts ...Option) (*Pool[C], error) {
 		cancel:    cancel,
 	}
 
-	// Start the minimum number of workers synchronously.
-	// All min workers must be healthy before New returns.
-	for i := 0; i < cfg.min; i++ {
-		w, err := factory.Spawn(context.Background())
-		if err != nil {
-			// Best-effort cleanup of already-started workers
-			for _, started := range p.workers {
-				_ = started.Close()
-			}
-			return nil, fmt.Errorf("herd: New: failed to start initial worker %d: %w", i, err)
+	// Start the target number of idle workers concurrently.
+	// All initial workers must be healthy before New returns.
+	if cfg.targetIdle > 0 {
+		var wg sync.WaitGroup
+		errs := make(chan error, cfg.targetIdle)
+
+		for i := 0; i < cfg.targetIdle; i++ {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+				w, err := factory.Spawn(context.Background())
+				if err != nil {
+					errs <- fmt.Errorf("herd: New: failed to start initial worker %d: %w", idx, err)
+					return
+				}
+				p.wireWorker(w)
+			}(i)
 		}
-		p.wireWorker(w)
+
+		wg.Wait()
+		close(errs)
+
+		if err, hasErr := <-errs; hasErr {
+			// Best-effort cleanup of already-started workers
+			p.mu.Lock()
+			started := make([]Worker[C], len(p.workers))
+			copy(started, p.workers)
+			p.mu.Unlock()
+
+			for _, w := range started {
+				_ = w.Close()
+			}
+			return nil, err
+		}
 	}
 
 	// Background loops
@@ -320,6 +342,10 @@ func (p *Pool[C]) Acquire(ctx context.Context, sessionID string) (*Session[C], e
 		close(ch) // broadcast: all goroutines blocked in SINGLEFLIGHT WAIT unblock
 
 		log.Printf("[pool] Acquire(%q): pinned to worker %s", sessionID, w.ID())
+		
+		// Proactively trigger backfill immediately after consuming a worker
+		p.maybeScaleUp()
+		
 		return &Session[C]{ID: sessionID, Worker: w, pool: p}, nil
 	}
 }
@@ -350,12 +376,13 @@ func (p *Pool[C]) GetSession(ctx context.Context, sessionID string) (*Session[C]
 // release — called by Session.Release
 // ---------------------------------------------------------------------------
 
-// release removes the session → worker binding and returns the worker to the
-// available channel. Internal; external callers use Session.Release().
+// release removes the session → worker binding, closes the worker,
+// and effectively disposes of it since we disabled worker reuse.
+// Internal; external callers use Session.Release().
 func (p *Pool[C]) release(sessionID string, w Worker[C]) {
 	p.mu.Lock()
 	_ = p.registry.Delete(context.Background(), sessionID)
-	// Validate the worker wasn't evicted by a crash or health check
+	// Validate the worker wasn't already evicted
 	isValid := false
 	for _, existing := range p.workers {
 		if existing.ID() == w.ID() {
@@ -366,19 +393,19 @@ func (p *Pool[C]) release(sessionID string, w Worker[C]) {
 	p.mu.Unlock()
 
 	if !isValid {
-		log.Printf("[pool] release(%q): worker %s already evicted (crash or health-check), discarding", sessionID, w.ID())
+		log.Printf("[pool] release(%q): worker %s already evicted, discarding", sessionID, w.ID())
 		return
 	}
 
-	log.Printf("[pool] release(%q): worker %s returned to pool", sessionID, w.ID())
-
-	// Non-blocking push: if the channel is somehow already full (shouldn't
-	// happen with 1-session-per-worker) log and drop rather than deadlock.
-	select {
-	case p.available <- w:
-	default:
-		log.Printf("[pool] release(%q): available channel full — this is a bug", sessionID)
+	// Always close single-use workers instead of putting them back
+	if err := w.Close(); err != nil {
+		log.Printf("[pool] release(%q): worker %s close error: %v", sessionID, w.ID(), err)
 	}
+
+	p.removeWorker(w)
+	p.maybeScaleUp()
+
+	log.Printf("[pool] release(%q): worker %s terminated per single-use policy", sessionID, w.ID())
 }
 
 // KillWorker forcefully tears down the worker pinned to sessionID.
@@ -448,24 +475,32 @@ func (p *Pool[C]) onCrash(sessionID string) {
 // Scale helpers
 // ---------------------------------------------------------------------------
 
-// maybeScaleUp fires addWorker in a goroutine if the pool is below its ceiling
-// and there are no free workers. Uses the workers slice length + a pendingAdds
+// maybeScaleUp proactively spawns new background workers to maintain a buffer
+// of targetIdle idle workers. It uses the workers slice length + a pendingAdds
 // counter to avoid overshooting max under concurrent scale-up pressure.
 func (p *Pool[C]) maybeScaleUp() {
 	p.mu.Lock()
-	// p.available should be read with lock to avoid race conditions
-	if len(p.available) > 0 {
-		p.mu.Unlock()
+	defer p.mu.Unlock()
+
+	deficit := p.cfg.targetIdle - (len(p.available) + p.pendingAdds)
+	if deficit <= 0 {
 		return
 	}
+
 	total := len(p.workers) + p.pendingAdds
-	if total < p.cfg.max {
-		p.pendingAdds++
-		p.mu.Unlock()
-		go p.addWorker()
+	headroom := p.cfg.max - total
+	if deficit > headroom {
+		deficit = headroom
+	}
+
+	if deficit <= 0 {
 		return
 	}
-	p.mu.Unlock()
+
+	p.pendingAdds += deficit
+	for i := 0; i < deficit; i++ {
+		go p.addWorker()
+	}
 }
 
 // addWorker spawns one new worker and registers it. Runs in its own goroutine.

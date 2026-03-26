@@ -27,7 +27,7 @@ import (
 )
 
 func main() {
-	minWorkers := flag.Int("min", 1, "minimum playwright workers kept alive")
+	targetIdle := flag.Int("min", 1, "minimum playwright workers kept alive")
 	maxWorkers := flag.Int("max", 5, "maximum concurrent playwright workers")
 	port := flag.Int("port", 8080, "gateway listen port")
 	ttl := flag.Duration("ttl", 15*time.Minute, "idle session TTL before the worker is reclaimed")
@@ -53,7 +53,7 @@ func main() {
 	// To make a bulletproof multi-tenant tool and avoid shared fate, state leaks,
 	// and resource throttling, Herd spawns a fresh Playwright server per Session ID.
 	pool, err := herd.New(factory,
-		herd.WithAutoScale(*minWorkers, *maxWorkers),
+		herd.WithAutoScale(*targetIdle, *maxWorkers),
 		herd.WithTTL(*ttl),
 		herd.WithCrashHandler(func(sessionID string) {
 			log.Printf("[ALERT] playwright worker for session %q crashed", sessionID)
@@ -106,6 +106,6 @@ func main() {
 
 	addr := fmt.Sprintf(":%d", *port)
 	log.Printf("[playwright-gateway] listening on %s  (min=%d max=%d ttl=%s)",
-		addr, *minWorkers, *maxWorkers, *ttl)
+		addr, *targetIdle, *maxWorkers, *ttl)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }

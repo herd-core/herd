@@ -177,9 +177,8 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 	}
 
 	return herd.New(factory,
-		herd.WithAutoScale(cfg.Resources.MinWorkers, cfg.Resources.MaxWorkers),
+		herd.WithAutoScale(cfg.Resources.TargetIdle, cfg.Resources.MaxWorkers),
 		herd.WithTTL(cfg.Resources.IdleTTLDuration()),
 		herd.WithHealthInterval(cfg.Resources.HealthIntervalDuration()),
-		herd.WithWorkerReuse(cfg.Resources.WorkerReuse),
 	)
 }

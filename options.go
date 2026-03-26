@@ -30,9 +30,10 @@ import "time"
 // Defaults are set in defaultConfig(); all fields are safe to read concurrently
 // after New[C] returns because they are never mutated after that point.
 type config struct {
-	// min is the floor: the pool always keeps at least this many workers alive.
+	// targetIdle is the number of idle workers the pool attempts to keep ready
+	// at all times.
 	// Default: 1
-	min int
+	targetIdle int
 
 	// max is the ceiling: the pool will never spawn more than this many workers.
 	// Default: 10
@@ -56,11 +57,6 @@ type config struct {
 	crashHandler func(sessionID string)
 
 	startHealthCheckDelay time.Duration
-
-	// reuseWorkers controls if workers are recycled or killed when their
-	// session expires.
-	// Default: true
-	reuseWorkers bool
 }
 
 // defaultConfig returns the baseline configuration.
@@ -68,12 +64,11 @@ type config struct {
 // herd.New(factory) with no extra options produces a working pool.
 func defaultConfig() config {
 	return config{
-		min:                   1,
+		targetIdle:            1,
 		max:                   10,
 		ttl:                   5 * time.Minute,
 		healthInterval:        5 * time.Second,
 		startHealthCheckDelay: 1 * time.Second,
-		reuseWorkers:          true,
 	}
 }
 
@@ -88,23 +83,23 @@ type Option func(*config)
 // WithAutoScale — pool sizing
 // ---------------------------------------------------------------------------
 
-// WithAutoScale sets the minimum and maximum number of live workers.
+// WithAutoScale sets the target number of idle workers and the max capacity.
 //
-//   - min: the pool always keeps at least this many workers healthy,
-//     even with zero active sessions.
+//   - targetIdle: the pool proactively maintains this many unused workers on standby
+//     to absorb usage bursts.
 //   - max: hard cap on concurrent workers; Acquire blocks once this limit
 //     is reached until a worker becomes available.
 //
-// Panics if min < 1 or max < min.
-func WithAutoScale(min, max int) Option {
-	if min < 1 {
-		panic("herd: WithAutoScale min must be >= 1")
+// Panics if targetIdle < 1 or max < targetIdle.
+func WithAutoScale(targetIdle, max int) Option {
+	if targetIdle < 1 {
+		panic("herd: WithAutoScale targetIdle must be >= 1")
 	}
-	if max < min {
-		panic("herd: WithAutoScale max must be >= min")
+	if max < targetIdle {
+		panic("herd: WithAutoScale max must be >= targetIdle")
 	}
 	return func(c *config) {
-		c.min = min
+		c.targetIdle = targetIdle
 		c.max = max
 	}
 }
@@ -172,14 +167,4 @@ func WithStartHealthCheckDelay(d time.Duration) Option {
 	return func(c *config) { c.startHealthCheckDelay = d }
 }
 
-// ---------------------------------------------------------------------------
-// WithWorkerReuse — worker recycling policy
-// ---------------------------------------------------------------------------
 
-// WithWorkerReuse controls whether a worker is recycled when its session's TTL
-// expires. If true (the default), the worker is returned to the available pool
-// to serve new sessions. If false, the worker process is killed when the session
-// expires, and a fresh worker is spawned to maintain the minimum pool capacity.
-func WithWorkerReuse(reuse bool) Option {
-	return func(c *config) { c.reuseWorkers = reuse }
-}
