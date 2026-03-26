@@ -64,9 +64,9 @@ nav:
     - Installation: daemon/install.md
     - CLI Reference: daemon/cli.md
     - Unix Domain Sockets: daemon/uds.md
-#  - Language SDKs:
-#    - Python: sdks/python.md
-#    - Elixir: sdks/elixir.md
+  - Language SDKs:
+    - Python: sdks/python.md
+    # - Elixir: sdks/elixir.md
 #  - Deployment:
 #    - Kubernetes Sidecar: deployment/kubernetes.md
 #    - Host OS Execution: deployment/bare-metal.md
