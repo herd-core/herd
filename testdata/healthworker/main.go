@@ -16,6 +16,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"golang.org/x/net/websocket"
 )
 
 func main() {
@@ -34,6 +36,25 @@ func main() {
 	mux.HandleFunc("/deadlock", func(w http.ResponseWriter, r *http.Request) {
 		// Block indefinitely - triggers the context timeout in the proxy
 		<-make(chan struct{})
+	})
+
+	// Add websocket endpoint for long-running stream tests
+	mux.Handle("/ws", websocket.Server{
+		Handler: websocket.Handler(func(ws *websocket.Conn) {
+			defer ws.Close()
+			// Hold connection open indefinitely, wait for a message or close
+			for {
+				var msg string
+				if err := websocket.Message.Receive(ws, &msg); err != nil {
+					return
+				}
+				websocket.Message.Send(ws, "pong: "+msg)
+			}
+		}),
+		Handshake: func(config *websocket.Config, req *http.Request) error {
+			// Bypass Origin check for E2E tests
+			return nil
+		},
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:"+port)

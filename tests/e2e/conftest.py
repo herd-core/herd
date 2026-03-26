@@ -109,3 +109,62 @@ resources:
         os.remove(sock_path)
     if os.path.exists(cfg_path):
         os.remove(cfg_path)
+
+@pytest.fixture()
+def herd_daemon_websocket(compiled_binaries):
+    """
+    Spawns an isolated herd daemon specifically tuned for the WebSocket / Absolute TTL test.
+    """
+    import uuid
+    sock_path = f"/tmp/herd_e2e_{uuid.uuid4().hex[:8]}.sock"
+    herd_bin = compiled_binaries["herd"]
+    worker_bin = compiled_binaries["worker"]
+    
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('127.0.0.1', 0))
+    data_port = s.getsockname()[1]
+    s.close()
+    
+    cfg_path = f"/tmp/herd_cfg_{uuid.uuid4().hex[:8]}.yaml"
+    with open(cfg_path, "w") as f:
+        f.write(f'''
+network:
+  control_socket: "{sock_path}"
+  data_bind: "127.0.0.1:{data_port}"
+worker:
+  command: ["{worker_bin}"]
+  health_path: "/health"
+resources:
+  min_workers: 1
+  max_workers: 5
+  memory_limit_mb: 512
+  cpu_limit_cores: 1.0
+  pids_limit: 1024
+  insecure_sandbox: true
+  data_timeout: "2s"      # very small data timeout
+  heartbeat_grace: "5s"   # normal heartbeat grace
+  absolute_ttl: "15s"     # The guillotine drops at exactly 15s
+''')
+    
+    print(f"\\n[+] Starting WEBSOCKET test daemon at {sock_path} on data port {data_port}")
+    proc = subprocess.Popen([herd_bin, "start", "--config", cfg_path], 
+                            cwd=PROJ_ROOT, 
+                            stdout=subprocess.PIPE, 
+                            stderr=subprocess.PIPE)
+                            
+    if not wait_for_socket(sock_path):
+        proc.kill()
+        out, err = proc.communicate()
+        raise RuntimeError(f"Daemon failed to start:\\nSTDOUT: {out.decode()}\\nSTDERR: {err.decode()}")
+
+    yield {"remote": f"unix://{sock_path}", "data_port": data_port}
+
+    proc.terminate()
+    try:
+        proc.wait(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+    
+    if os.path.exists(sock_path): os.remove(sock_path)
+    if os.path.exists(cfg_path): os.remove(cfg_path)
