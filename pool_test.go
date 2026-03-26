@@ -310,13 +310,13 @@ func TestCrashDuringAcquire(t *testing.T) {
 func TestReleaseDestroysWorkerAndBackfills(t *testing.T) {
 	w1 := &stubWorker{id: "worker-1"}
 	w2 := &stubWorker{id: "worker-2"}
-	
+
 	// Create factory explicitly so we can consume w1 manually, leaving w2 for the backfill
 	factory := newStubFactory(w1, w2)
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	
+
 	cfg := defaultConfig()
 	cfg.targetIdle = 1 // one idle worker expected
 	cfg.max = 2
@@ -336,7 +336,7 @@ func TestReleaseDestroysWorkerAndBackfills(t *testing.T) {
 	// Manually wire w1 into the pool and increment factory index so w2 is next
 	p.workers = append(p.workers, w1)
 	p.available <- w1
-	factory.index = 1 
+	factory.index = 1
 
 	cCtx, cCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cCancel()

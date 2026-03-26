@@ -21,7 +21,6 @@ package herd
 
 import "time"
 
-
 // ---------------------------------------------------------------------------
 // config — internal knobs for Pool
 // ---------------------------------------------------------------------------
@@ -166,5 +165,3 @@ func WithHealthInterval(d time.Duration) Option {
 func WithStartHealthCheckDelay(d time.Duration) Option {
 	return func(c *config) { c.startHealthCheckDelay = d }
 }
-
-

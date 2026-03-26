@@ -342,10 +342,10 @@ func (p *Pool[C]) Acquire(ctx context.Context, sessionID string) (*Session[C], e
 		close(ch) // broadcast: all goroutines blocked in SINGLEFLIGHT WAIT unblock
 
 		log.Printf("[pool] Acquire(%q): pinned to worker %s", sessionID, w.ID())
-		
+
 		// Proactively trigger backfill immediately after consuming a worker
 		p.maybeScaleUp()
-		
+
 		return &Session[C]{ID: sessionID, Worker: w, pool: p}, nil
 	}
 }
