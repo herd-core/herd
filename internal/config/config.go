@@ -46,7 +46,7 @@ func (w WorkerConfig) StartHealthCheckDelayDuration() time.Duration {
 }
 
 type ResourceConfig struct {
-	MinWorkers     int     `yaml:"min_workers"`
+	TargetIdle     int     `yaml:"target_idle"`
 	MaxWorkers     int     `yaml:"max_workers"`
 	MemoryLimitMB  int64   `yaml:"memory_limit_mb"`
 	CPULimitCores  float64 `yaml:"cpu_limit_cores"`
@@ -56,7 +56,6 @@ type ResourceConfig struct {
 	HeartbeatGrace string  `yaml:"heartbeat_grace"` // Max time without ping
 	DataTimeout    string  `yaml:"data_timeout"`    // Max time for HTTP request
 	HealthInterval string  `yaml:"health_interval"`
-	WorkerReuse    bool    `yaml:"worker_reuse"`
 
 	// InsecureSandbox enables reduced sandboxing for local development.
 	// This should not be enabled in production.
@@ -178,11 +177,11 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("worker.env[%d] must be in KEY=VALUE format", i)
 		}
 	}
-	if c.Resources.MinWorkers < 1 {
-		return fmt.Errorf("resources.min_workers must be >= 1")
+	if c.Resources.TargetIdle < 1 {
+		return fmt.Errorf("resources.target_idle must be >= 1")
 	}
-	if c.Resources.MaxWorkers < c.Resources.MinWorkers {
-		return fmt.Errorf("resources.max_workers must be >= resources.min_workers")
+	if c.Resources.MaxWorkers < c.Resources.TargetIdle {
+		return fmt.Errorf("resources.max_workers must be >= resources.target_idle")
 	}
 	if c.Resources.MemoryLimitMB < 1 {
 		return fmt.Errorf("resources.memory_limit_mb must be >= 1")

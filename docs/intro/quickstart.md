@@ -18,7 +18,7 @@ worker:
   command: ["npx", "playwright", "run-server", "--port", "{{.Port}}", "--host", "127.0.0.1"]
 
 resources:
-  min_workers: 1
+  target_idle: 1
   max_workers: 5
   ttl: 15m
   worker_reuse: false # CRITICAL: Never share browsers between users
@@ -93,7 +93,7 @@ worker:
     - "OLLAMA_HOST=127.0.0.1:{{.Port}}"
 
 resources:
-  min_workers: 1
+  target_idle: 1
   max_workers: 10
   ttl: 10m
   worker_reuse: true

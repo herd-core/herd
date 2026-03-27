@@ -71,7 +71,7 @@ worker:
   command: ["{worker_bin}"]
   health_path: "/health"
 resources:
-  min_workers: 1
+  target_idle: 1
   max_workers: 5
   memory_limit_mb: 512
   cpu_limit_cores: 1.0
@@ -135,7 +135,7 @@ worker:
   command: ["{worker_bin}"]
   health_path: "/health"
 resources:
-  min_workers: 1
+  target_idle: 1
   max_workers: 5
   memory_limit_mb: 512
   cpu_limit_cores: 1.0
@@ -194,14 +194,14 @@ worker:
   command: ["{worker_bin}"]
   health_path: "/health"
 resources:
-  min_workers: 5
-  max_workers: 150
+  target_idle: 150
+  max_workers: 1000
   memory_limit_mb: 64
   cpu_limit_cores: 0.3
   pids_limit: 1024
   insecure_sandbox: true
-  data_timeout: "10s"
-  heartbeat_grace: "10s"
+  data_timeout: "60s"
+  heartbeat_grace: "30s"
 ''')
     
     print(f"\\n[+] Starting STRESS daemon at {sock_path} on data port {data_port}")

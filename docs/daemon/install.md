@@ -26,7 +26,7 @@ worker:
 	start_health_check_delay: 1s
 
 resources:
-	min_workers: 1
+	target_idle: 1
 	max_workers: 4
 	memory_limit_mb: 512
 	cpu_limit_cores: 1

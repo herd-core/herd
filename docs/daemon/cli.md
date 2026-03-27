@@ -30,7 +30,7 @@ worker:
   start_health_check_delay: 1s
 
 resources:
-  min_workers: 1
+  target_idle: 1
   max_workers: 4
   memory_limit_mb: 512
   cpu_limit_cores: 1
@@ -55,7 +55,7 @@ telemetry:
 | `worker.env` | Environment variables to inject (`FOO=bar`). Supports templating like `{{.Port}}`. |
 | `worker.health_path` | HTTP path polled for liveness. |
 | `worker.start_timeout` | Time allowed for worker to become healthy. |
-| `resources.min_workers` / `max_workers` | Sets the auto-scaling floor and ceiling for the process fleet. |
+| `resources.target_idle` / `max_workers` | Sets the auto-scaling floor and ceiling for the process fleet. |
 | `resources.ttl` | Max idle time for a session before the worker is automatically evicted (e.g. `15m`). |
 | `resources.worker_reuse` | Whether to recycle workers for new sessions or kill them when TTL expires. |
 | `resources.health_interval` | How often to poll worker health endpoints. |

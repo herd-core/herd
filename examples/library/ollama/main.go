@@ -40,7 +40,7 @@ import (
 )
 
 func main() {
-	minWorkers := flag.Int("min", 1, "minimum ollama workers kept alive")
+	targetIdle := flag.Int("min", 1, "minimum ollama workers kept alive")
 	maxWorkers := flag.Int("max", 5, "maximum concurrent ollama workers")
 	port := flag.Int("port", 8080, "gateway listen port")
 	modelsDir := flag.String("models", "/Users/sankalpnarula/.ollama/models", "shared models directory (read-only mount)")
@@ -67,7 +67,7 @@ func main() {
 
 	// ── Pool ───────────────────────────────────────────────────────────────
 	pool, err := herd.New(factory,
-		herd.WithAutoScale(*minWorkers, *maxWorkers),
+		herd.WithAutoScale(*targetIdle, *maxWorkers),
 		herd.WithTTL(*ttl),
 		herd.WithCrashHandler(func(agentID string) {
 			// An ollama worker crashed while serving an agent.
@@ -127,7 +127,7 @@ func main() {
 
 	addr := fmt.Sprintf(":%d", *port)
 	log.Printf("[ollama-gateway] listening on %s  (min=%d max=%d ttl=%s models=%s)",
-		addr, *minWorkers, *maxWorkers, *ttl, *modelsDir)
+		addr, *targetIdle, *maxWorkers, *ttl, *modelsDir)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 

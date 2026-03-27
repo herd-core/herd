@@ -304,43 +304,79 @@ func TestCrashDuringAcquire(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Test 4 — Release: worker is returned to available pool after Session.Release
+// Test 4 — Release: worker is destroyed and backfilled after Session.Release
 // ---------------------------------------------------------------------------
 
-func TestReleaseReturnsWorkerToPool(t *testing.T) {
-	w := &stubWorker{id: "worker-1"}
-	pool := newTestPool(t, w)
+func TestReleaseDestroysWorkerAndBackfills(t *testing.T) {
+	w1 := &stubWorker{id: "worker-1"}
+	w2 := &stubWorker{id: "worker-2"}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	// Create factory explicitly so we can consume w1 manually, leaving w2 for the backfill
+	factory := newStubFactory(w1, w2)
 
-	sess, err := pool.Acquire(ctx, "session-z")
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	cfg := defaultConfig()
+	cfg.targetIdle = 1 // one idle worker expected
+	cfg.max = 2
+
+	p := &Pool[*stubClient]{
+		factory:   factory,
+		cfg:       cfg,
+		registry:  NewLocalRegistry[*stubClient](),
+		inflight:  make(map[string]chan struct{}),
+		workers:   make([]Worker[*stubClient], 0, cfg.max),
+		available: make(chan Worker[*stubClient], cfg.max),
+		done:      make(chan struct{}),
+		ctx:       ctx,
+		cancel:    cancel,
+	}
+
+	// Manually wire w1 into the pool and increment factory index so w2 is next
+	p.workers = append(p.workers, w1)
+	p.available <- w1
+	factory.index = 1
+
+	cCtx, cCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cCancel()
+
+	sess, err := p.Acquire(cCtx, "session-z")
 	if err != nil {
 		t.Fatalf("Acquire: %v", err)
 	}
 
-	// After Acquire, pool should have 0 available workers
-	if got := pool.Stats().AvailableWorkers; got != 0 {
-		t.Fatalf("expected 0 available after Acquire, got %d", got)
-	}
 	// Verify session is pinned
-	if n := pool.registry.Len(); n != 1 {
+	if n := p.registry.Len(); n != 1 {
 		t.Fatalf("expected 1 session pinned, got %d", n)
 	}
-	sessions, _ := pool.registry.List(context.Background())
-	if worker, ok := sessions["session-z"]; !ok || worker != w {
+	sessions, _ := p.registry.List(context.Background())
+	if worker, ok := sessions["session-z"]; !ok || worker != w1 {
 		t.Fatalf("session-z should be pinned to worker w1")
+	}
+
+	// Wait briefly to allow Acquire's internal call to maybeScaleUp to finish spawning w2
+	time.Sleep(50 * time.Millisecond)
+
+	// Since we acquired w1, availability dropped to 0, causing a spawn of w2.
+	// So available should go back up to 1.
+	if got := p.Stats().AvailableWorkers; got != 1 {
+		t.Errorf("expected 1 available backfilled worker, got %d", got)
 	}
 
 	sess.Release()
 
-	// After Release, worker should be back
-	if got := pool.Stats().AvailableWorkers; got != 1 {
-		t.Errorf("expected 1 available after Release, got %d", got)
+	// Wait briefly to allow release's maybeScaleUp to process (though factory is empty now)
+	time.Sleep(50 * time.Millisecond)
+
+	// After Release, the worker should be closed. We no longer return the worker to the pool.
+	// Since w2 was already available, we have 1.
+	if got := p.Stats().AvailableWorkers; got != 1 {
+		t.Errorf("expected 1 available after Release backfill, got %d", got)
 	}
 
 	// And the session should be gone from the map
-	w_gone, _ := pool.registry.Get(context.Background(), "session-z")
+	w_gone, _ := p.registry.Get(context.Background(), "session-z")
 	if w_gone != nil {
 		t.Error("session-z should not exist in session map after Release")
 	}
