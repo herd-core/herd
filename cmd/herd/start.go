@@ -7,6 +7,10 @@ import (
 	"net/http"
 "path/filepath"
 
+"fmt"
+	"github.com/containerd/containerd"
+	"github.com/herd-core/herd/internal/storage"
+
 	"os"
 	"os/signal"
 	"runtime"
@@ -158,10 +162,23 @@ func runDaemon() {
 func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 	// Temporarily hardcoded for Firecracker pivot testing
 	cwd, _ := os.Getwd()
+
+	err := storage.Bootstrap(cfg.Storage.StateDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bootstrap storage: %w", err)
+	}
+
+	client, err := containerd.New(filepath.Join(cfg.Storage.StateDir, "containerd.sock"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create containerd client: %w", err)
+	}
+
+	mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
+
 	factory := &herd.FirecrackerFactory{
 		FirecrackerPath: "firecracker", // Requires firecracker in your $PATH
 		KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"), // Adjust to where your assets live
-		RootfsPath:      filepath.Join(cwd, "../assets/bionic.rootfs.ext4"),
+		Storage:         mgr,
 		SocketPathDir:   "/tmp", // Where Firecracker puts its API sockets 
 	}
 

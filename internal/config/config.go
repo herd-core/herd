@@ -17,9 +17,16 @@ import (
 // The daemon fails fast if any required field is missing or malformed.
 type Config struct {
 	Network   NetworkConfig   `yaml:"network"`
+	Storage   StorageConfig   `yaml:"storage"`
 	Worker    WorkerConfig    `yaml:"worker"`
 	Resources ResourceConfig  `yaml:"resources"`
 	Telemetry TelemetryConfig `yaml:"telemetry"`
+}
+
+type StorageConfig struct {
+	StateDir        string `yaml:"state_dir"`
+	SnapshotterName string `yaml:"snapshotter_name"`
+	Namespace       string `yaml:"namespace"`
 }
 
 type NetworkConfig struct {

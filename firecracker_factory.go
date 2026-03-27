@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+"github.com/herd-core/herd/internal/storage"
+
 	"time"
 )
 
@@ -14,12 +16,14 @@ import (
 type FirecrackerFactory struct {
 	FirecrackerPath string
 	KernelImagePath string
-	RootfsPath      string
+	Storage *storage.Manager
+
 	SocketPathDir   string
 }
 
 // FirecrackerWorker represents a single running Firecracker VM.
 type FirecrackerWorker struct {
+	storage *storage.Manager
 	id         string
 	socketPath string
 	cmd        *exec.Cmd
@@ -81,6 +85,10 @@ func (f *FirecrackerWorker) Close() error {
 		_ = f.cmd.Process.Kill()
 	}
 	os.Remove(f.socketPath)
+
+	if f.storage != nil {
+		f.storage.Teardown(context.Background(), f.id)
+	}
 	return nil
 }
 
@@ -88,6 +96,11 @@ func (f *FirecrackerWorker) Close() error {
 func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], error) {
 	workerID := fmt.Sprintf("fc-%d", time.Now().UnixNano())
 	socketPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.sock", workerID))
+
+	rootfsPath, err := f.Storage.PullAndSnapshot(ctx, "docker.io/library/ubuntu:latest", workerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull and snapshot rootfs: %w", err)
+	}
 
 	// Ensure old socket is removed
 	os.Remove(socketPath)
@@ -114,7 +127,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 			"vcpu_count": 1,
 			"mem_size_mib": 128
 		}
-	}`, f.KernelImagePath, f.RootfsPath)
+	}`, f.KernelImagePath, rootfsPath)
 
 	if err := os.WriteFile(configPath, []byte(configData), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write config: %w", err)
@@ -146,5 +159,6 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		socketPath: socketPath,
 		cmd:        cmd,
 		client:     &http.Client{}, // Default client, would need custom dialer for vsock
+		storage: f.Storage,
 	}, nil
 }

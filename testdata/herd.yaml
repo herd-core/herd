@@ -1,12 +1,16 @@
 network:
   control_socket: /tmp/herd.sock
   data_bind: 127.0.0.1:8080
+storage:
+  state_dir: /tmp/herd-storage
+  snapshotter_name: devmapper
+  namespace: herd
 worker:
   command: 	["npx", "playwright", "run-server", "--port", "{{.Port}}", "--host", "127.0.0.1"]
   env:
     - FOO=bar
 resources:
-  target_idle: 25
+  target_idle: 2
   max_workers: 100
   memory_limit_mb: 512
   cpu_limit_cores: 1
@@ -16,7 +20,6 @@ resources:
   heartbeat_grace: 30s
   data_timeout: 5m
   health_interval: 5s
-  worker_reuse: true
   insecure_sandbox: true
 telemetry:
   log_format: json

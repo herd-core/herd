@@ -1,13 +1,28 @@
-with open("tests/e2e/test_production_burst.py", "r") as f:
+import re
+
+with open('firecracker_factory.go', 'r') as f:
     code = f.read()
 
-old_burst = "burst_tasks = [asyncio.create_task(burst_worker(i)) for i in range(BURST_SESSIONS)]"
-new_burst = """burst_tasks = []
-    for i in range(BURST_SESSIONS):
-        burst_tasks.append(asyncio.create_task(burst_worker(i)))
-        await asyncio.sleep(0.01)"""
-        
-code = code.replace(old_burst, new_burst)
+code = code.replace(
+'''        // Ensure old socket is removed
+        os.Remove(socketPath)
 
-with open("tests/e2e/test_production_burst.py", "w") as f:
+        // In a real implementation we would interact via the API socket
+        // but for now we just start the process and configure via CLI
+
+        // Create a minimal config json
+        configPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.json", workerID))''',
+'''        // Ensure old socket is removed
+        os.Remove(socketPath)
+
+        rootfsPath, err := f.Storage.PullAndSnapshot(ctx, "docker.io/library/ubuntu:latest", workerID)
+        if err != nil {
+                return nil, fmt.Errorf("failed to pull and snapshot rootfs: %w", err)
+        }
+
+        // Create a minimal config json
+        configPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.json", workerID))'''
+)
+
+with open('firecracker_factory.go', 'w') as f:
     f.write(code)
