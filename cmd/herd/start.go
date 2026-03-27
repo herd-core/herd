@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log"
 	"net/http"
+"path/filepath"
+
 	"os"
 	"os/signal"
 	"runtime"
@@ -154,26 +156,13 @@ func runDaemon() {
 }
 
 func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
-	factory := herd.NewProcessFactory(cfg.Worker.Command[0], cfg.Worker.Command[1:]...).
-		WithHealthPath(cfg.Worker.HealthPath).
-		WithStartTimeout(cfg.Worker.StartTimeoutDuration()).
-		WithStartHealthCheckDelay(cfg.Worker.StartHealthCheckDelayDuration())
-
-	for _, envKV := range cfg.Worker.Env {
-		factory.WithEnv(envKV)
-	}
-
-	if cfg.Resources.MemoryLimitBytes() > 0 {
-		factory.WithMemoryLimit(cfg.Resources.MemoryLimitBytes())
-	}
-	if cfg.Resources.CPULimitCores > 0 {
-		factory.WithCPULimit(cfg.Resources.CPULimitCores)
-	}
-	if cfg.Resources.PIDsLimit != 0 {
-		factory.WithPIDsLimit(cfg.Resources.PIDsLimit)
-	}
-	if cfg.Resources.InsecureSandbox {
-		factory.WithInsecureSandbox()
+	// Temporarily hardcoded for Firecracker pivot testing
+	cwd, _ := os.Getwd()
+	factory := &herd.FirecrackerFactory{
+		FirecrackerPath: "firecracker", // Requires firecracker in your $PATH
+		KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"), // Adjust to where your assets live
+		RootfsPath:      filepath.Join(cwd, "../assets/bionic.rootfs.ext4"),
+		SocketPathDir:   "/tmp", // Where Firecracker puts its API sockets 
 	}
 
 	return herd.New(factory,
