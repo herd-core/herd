@@ -26,10 +26,10 @@ func Bootstrap(stateDir string) error {
 	metaFilePath := filepath.Join(devMapperDir, "metadata")
 
 	// 1. Create sparse files
-	if err := createSparseFile(dataFilePath, 100*1024*1024*1024); err != nil { // 100GB
+	if err := createSparseFile(dataFilePath, 2*1024*1024*1024); err != nil { // 2GB
 		return err
 	}
-	if err := createSparseFile(metaFilePath, 10*1024*1024*1024); err != nil { // 10GB
+	if err := createSparseFile(metaFilePath, 1*1024*1024*1024); err != nil { // 1GB
 		return err
 	}
 

@@ -163,26 +163,21 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 	// Temporarily hardcoded for Firecracker pivot testing
 	cwd, _ := os.Getwd()
 
-	err := storage.Bootstrap(cfg.Storage.StateDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to bootstrap storage: %w", err)
-	}
+        sockPath := filepath.Join(cfg.Storage.StateDir, "containerd.sock")
+        client, err := containerd.New(sockPath)
+        if err != nil {
+                return nil, fmt.Errorf("failed to connect to containerd at %s: %w", sockPath, err)
+        }
+mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
 
-	client, err := containerd.New(filepath.Join(cfg.Storage.StateDir, "containerd.sock"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create containerd client: %w", err)
-	}
+        factory := &herd.FirecrackerFactory{
+                FirecrackerPath: "firecracker", // Requires firecracker in your $PATH
+                KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"), // Adjust to where your assets live
+                Storage:         mgr,
+                SocketPathDir:   "/tmp", // Where Firecracker puts its API sockets 
+        }
 
-	mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
-
-	factory := &herd.FirecrackerFactory{
-		FirecrackerPath: "firecracker", // Requires firecracker in your $PATH
-		KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"), // Adjust to where your assets live
-		Storage:         mgr,
-		SocketPathDir:   "/tmp", // Where Firecracker puts its API sockets 
-	}
-
-	return herd.New(factory,
+        return herd.New(factory,
 		herd.WithAutoScale(cfg.Resources.TargetIdle, cfg.Resources.MaxWorkers),
 		herd.WithTTL(cfg.Resources.IdleTTLDuration()),
 		herd.WithHealthInterval(cfg.Resources.HealthIntervalDuration()),
