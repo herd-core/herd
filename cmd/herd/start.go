@@ -171,7 +171,7 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
 
         factory := &herd.FirecrackerFactory{
-                FirecrackerPath: "firecracker", // Requires firecracker in your $PATH
+                FirecrackerPath: "/home/hackstrix/firecracker-v15.0/firecracker", // Requires firecracker in your $PATH
                 KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"), // Adjust to where your assets live
                 Storage:         mgr,
                 SocketPathDir:   "/tmp", // Where Firecracker puts its API sockets 

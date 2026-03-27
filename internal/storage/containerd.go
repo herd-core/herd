@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/mount"
@@ -91,15 +92,10 @@ func (m *Manager) PullAndSnapshot(ctx context.Context, imageRef, vmID string) (s
 		}
 	}
 
-	// Ensure it's a devmapper mount and extract the physical block device path
-	for _, mnt := range mounts {
-		if mnt.Type == "devmapper" || mnt.Type == "bind" {
-			// In devmapper setups, the generic bind or devmapper mount types return the device path in Source.
-			if mnt.Source != "" {
-				slog.Info("extracted block device", "path", mnt.Source)
-				return mnt.Source, nil
-			}
-		}
+	devPath, ok := extractBlockDeviceFromMounts(mounts)
+	if ok {
+		slog.Info("extracted block device", "path", devPath)
+		return devPath, nil
 	}
 
 	return "", fmt.Errorf("failed to extract block device path from devmapper mounts")
@@ -109,11 +105,11 @@ func (m *Manager) PullAndSnapshot(ctx context.Context, imageRef, vmID string) (s
 func (m *Manager) Teardown(ctx context.Context, vmID string) error {
 	slog.Info("tearing down storage", "vmID", vmID)
 	nsCtx := namespaces.WithNamespace(ctx, m.namespace)
-	
+
 	// Remove snapshot
 	snapService := m.client.SnapshotService(m.snapshotter)
 	snapshotKey := m.snapshotKey(vmID)
-	
+
 	if err := snapService.Remove(nsCtx, snapshotKey); err != nil {
 		slog.Warn("failed to remove snapshot", "error", err)
 	}
@@ -129,7 +125,7 @@ func (m *Manager) Teardown(ctx context.Context, vmID string) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -140,7 +136,7 @@ func (m *Manager) snapshotKey(vmID string) string {
 func (m *Manager) withLease(ctx context.Context, vmID string) (context.Context, error) {
 	ls := m.client.LeasesService()
 	leaseID := fmt.Sprintf("lease-vm-%s", vmID)
-	
+
 	// Try creating
 	l, err := ls.Create(ctx, leases.WithID(leaseID))
 	if err != nil {
@@ -151,7 +147,7 @@ func (m *Manager) withLease(ctx context.Context, vmID string) (context.Context, 
 		}
 		return nil, err
 	}
-	
+
 	return leases.WithLease(ctx, l.ID), nil
 }
 
@@ -167,4 +163,29 @@ func (m *Manager) snapshotExists(ctx context.Context, ss snapshots.Snapshotter, 
 		return false, fmt.Errorf("walking snapshots: %w", err)
 	}
 	return exists, nil
+}
+
+func extractBlockDeviceFromMounts(mounts []mount.Mount) (string, bool) {
+	for _, mnt := range mounts {
+		slog.Debug("snapshot mount", "type", mnt.Type, "source", mnt.Source, "options", mnt.Options)
+
+		if strings.HasPrefix(mnt.Source, "/dev/") {
+			return mnt.Source, true
+		}
+
+		for _, opt := range mnt.Options {
+			if strings.HasPrefix(opt, "device=/dev/") {
+				return strings.TrimPrefix(opt, "device="), true
+			}
+		}
+	}
+
+	// Fallback for less common plugin behavior: use non-empty source if no explicit /dev path was found.
+	for _, mnt := range mounts {
+		if mnt.Source != "" {
+			return mnt.Source, true
+		}
+	}
+
+	return "", false
 }
