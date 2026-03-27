@@ -1,41 +1,41 @@
 package main
 
 import (
-"log"
+	"log"
 
-"github.com/herd-core/herd/internal/config"
-"github.com/herd-core/herd/internal/storage"
-"github.com/spf13/cobra"
+	"github.com/herd-core/herd/internal/config"
+	"github.com/herd-core/herd/internal/storage"
+	"github.com/spf13/cobra"
 )
 
 var (
-bootstrapConfigPath string
+	bootstrapConfigPath string
 )
 
 var bootstrapCmd = &cobra.Command{
-Use:   "bootstrap",
-Short: "Bootstrap the system requirements",
-Long:  `Bootstraps the required loop devices, devicemapper thin pools, and containerd configuration.`,
-Run: func(cmd *cobra.Command, args []string) {
-runBootstrap()
-},
+	Use:   "bootstrap",
+	Short: "Bootstrap the system requirements",
+	Long:  `Bootstraps the required loop devices, devicemapper thin pools, and containerd configuration.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		runBootstrap()
+	},
 }
 
 func init() {
-rootCmd.AddCommand(bootstrapCmd)
-bootstrapCmd.Flags().StringVar(&bootstrapConfigPath, "config", "/etc/herd/config.yaml", "Path to daemon configuration file")
+	rootCmd.AddCommand(bootstrapCmd)
+	bootstrapCmd.Flags().StringVar(&bootstrapConfigPath, "config", "/etc/herd/config.yaml", "Path to daemon configuration file")
 }
 
 func runBootstrap() {
-cfg, err := config.Load(bootstrapConfigPath)
-if err != nil {
-log.Fatalf("failed to load config %q: %v", bootstrapConfigPath, err)
-}
+	cfg, err := config.Load(bootstrapConfigPath)
+	if err != nil {
+		log.Fatalf("failed to load config %q: %v", bootstrapConfigPath, err)
+	}
 
-err = storage.Bootstrap(cfg.Storage.StateDir)
-if err != nil {
-log.Fatalf("failed to bootstrap storage: %v", err)
-}
+	err = storage.Bootstrap(cfg.Storage.StateDir)
+	if err != nil {
+		log.Fatalf("failed to bootstrap storage: %v", err)
+	}
 
-log.Println("Bootstrap completed successfully. Start containerd referencing the generated config.toml then run herd start.")
+	log.Println("Bootstrap completed successfully. Start containerd referencing the generated config.toml then run herd start.")
 }
