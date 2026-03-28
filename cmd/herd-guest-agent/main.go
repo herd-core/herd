@@ -188,9 +188,17 @@ func configureNetworking() error {
 
 	// 4. DNS
 	// Make sure /etc exists
+	dnsConfig := []byte("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
 	_ = os.MkdirAll("/etc", 0755)
-	if err := os.WriteFile("/etc/resolv.conf", []byte("nameserver 1.1.1.1\n"), 0644); err != nil {
+	if err := os.WriteFile("/etc/resolv.conf", dnsConfig, 0644); err != nil {
 		return fmt.Errorf("write resolv.conf: %w", err)
+	}
+
+	// Inject into the container rootfs where the user workload runs
+	_ = os.MkdirAll("/mnt/container/etc", 0755)
+	_ = os.Remove("/mnt/container/etc/resolv.conf") // remove symlinks to outside
+	if err := os.WriteFile("/mnt/container/etc/resolv.conf", dnsConfig, 0644); err != nil {
+		return fmt.Errorf("write container resolv.conf: %w", err)
 	}
 
 	return nil

@@ -58,6 +58,29 @@ func Teardown() error {
 	return nil
 }
 
+// CreateTap creates a new TAP interface and assigns it an IP.
+func CreateTap(name, ipAddr string) error {
+	slog.Info("creating tap interface", "name", name, "ip", ipAddr)
+	if err := runCmd("ip", "tuntap", "add", "dev", name, "mode", "tap"); err != nil {
+		return err
+	}
+	if err := runCmd("ip", "addr", "add", ipAddr, "dev", name); err != nil {
+		return runCmd("ip", "link", "del", "dev", name) // cleanup on fail
+	}
+	if err := runCmd("ip", "link", "set", "dev", name, "up"); err != nil {
+		_ = runCmd("ip", "link", "del", "dev", name)
+		return err
+	}
+	return nil
+}
+
+// DeleteTap removes a TAP interface.
+func DeleteTap(name string) error {
+	slog.Info("deleting tap interface", "name", name)
+	return runCmd("ip", "link", "del", "dev", name)
+}
+
+
 // getDefaultInterface parses standard Linux 'ip route' to find the physical outbound network card.
 func getDefaultInterface() (string, error) {
 	cmd := exec.Command("ip", "route")

@@ -6,7 +6,8 @@ storage:
   snapshotter_name: devmapper
   namespace: herd
 worker:
-  command: ["ls", "-l", "/sys/class/net/"]
+  # command: ["ls", "-l", "/sys/class/net/"]
+  command: ["ping", "-c", "3", "google.com"] 
   env:
     - FOO=bar
 resources:
