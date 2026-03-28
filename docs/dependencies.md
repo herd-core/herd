@@ -1,42 +1,132 @@
 # Herd Dependencies
 
-To achieve a fully automated, embedded orchestrator experience, the `herd` daemon expects a few standard low-level system binaries to be present on the host OS. 
+This page maps host dependencies for Firecracker microVM mode, including who needs each binary and in which phase of execution.
 
-`herd` shells out to these tools dynamically, meaning no external bash setup scripts are required. However, these binaries must exist in your `$PATH` (or be configured via absolute paths in your `herd.yaml` config).
+See also:
+
+- architecture/firecracker-storage-bootstrap.md
+
+## Dependency Map by Phase
+
+| Dependency | bootstrap | start | worker spawn | teardown | Purpose |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| dmsetup | yes | no | no | yes | Create and remove devmapper thin-pool |
+| losetup | yes | no | no | yes | Attach and detach sparse-file-backed loop devices |
+| blockdev | yes | no | no | no | Query loop-backed device size for dm table |
+| containerd binary | no | external process | no | stopped first | Runtime gRPC API and devmapper snapshotter |
+| firecracker binary | no | no | yes | no | Launch microVM process with block-device rootfs |
+| pkill | no | no | no | yes | Stop isolated containerd before thin-pool removal |
+
+## Runtime Component Graph
+
+```mermaid
+flowchart LR
+	A[herd bootstrap] --> B[losetup]
+	A --> C[dmsetup create herd-thinpool]
+	A --> D[stateDir/config.toml]
+
+	E[containerd --config stateDir/config.toml] --> F[devmapper snapshotter]
+	F --> C
+
+	G[herd start] --> H[containerd gRPC socket]
+	H --> I[PullAndSnapshot]
+	I --> J[/dev/mapper/herd-thinpool-snap-*]
+	J --> K[firecracker microVM]
+
+	L[herd teardown] --> M[pkill containerd]
+	M --> N[dmsetup remove herd-thinpool]
+	N --> O[losetup detach loops]
+	O --> P[RemoveAll stateDir]
+```
 
 ## Required Binaries
 
-### 1. `containerd`
-**Why it's needed:** `herd` acts as a direct gRPC client to Containerd to pull OCI images and unpack them via snapshotters. `herd` will automatically generate an isolated configuration and bootstrap a private `containerd` process.
-- **Provider:** Usually installed directly from [Containerd GitHub Releases](https://github.com/containerd/containerd), or via apt/yum.
+### containerd
 
-### 2. `firecracker`
-**Why it's needed:** The core microVM hypervisor. `herd` spawns `firecracker` instances to boot the parsed container root filesystems.
-- **Provider:** [Firecracker GitHub Releases](https://github.com/firecracker-microvm/firecracker).
+Why needed:
 
-### 3. `dmsetup`
-**Why it's needed:** The Device Mapper configuration utility. Used by `herd` to programmatically provision `thin-pool` volumes for Containerd's `devmapper` snapshotter plugin.
-- **Provider:** The `dmsetup` package (often bundled in `lvm2` on Ubuntu/Debian).
+- Herd uses containerd gRPC for pull, unpack, and snapshot lifecycle.
+- The generated config is isolated under stateDir and points at the devmapper pool.
 
-### 4. `losetup`
-**Why it's needed:** The Loop Device setup utility. Instead of requiring users to partition raw storage drives, `herd` creates large sparse files (metadata and data) and automatically binds them to loop devices using `losetup`. These loop devices are then fed to `dmsetup`.
-- **Provider:** The `mount` package (standard on almost all Linux distributions).
+Provider:
 
----
+- containerd release tarballs or distro packages.
 
-## Example Bare-Metal Installation (Ubuntu/Debian)
+### firecracker
+
+Why needed:
+
+- Spawned for each worker VM.
+- Receives the devmapper snapshot block device as rootfs.
+
+Provider:
+
+- Firecracker GitHub releases.
+
+### dmsetup
+
+Why needed:
+
+- Programs the thin-pool device map used by containerd devmapper snapshotter.
+- Required in bootstrap and teardown.
+
+Provider:
+
+- Usually from lvm2 packages.
+
+### losetup
+
+Why needed:
+
+- Binds sparse data and metadata files to loop devices before thin-pool creation.
+- During teardown, detaches only loops associated with those exact files.
+
+Provider:
+
+- util-linux or distro core mount tools.
+
+### blockdev
+
+Why needed:
+
+- Reads byte size of loop data device so dmsetup table length is correct.
+
+Provider:
+
+- util-linux package set on most Linux distributions.
+
+## Kernel and Privilege Requirements
+
+- Linux host with device-mapper support.
+- Permissions for loop device and dmsetup operations.
+- Access to run firecracker and containerd processes.
+
+In many environments this means root or equivalent capabilities for bootstrap and teardown paths.
+
+## Example Installation (Ubuntu or Debian)
 
 ```bash
-# System utilities
 sudo apt-get update
-sudo apt-get install dmsetup mount
+sudo apt-get install -y lvm2 util-linux
 
-# Download containerd
+# containerd example install path
 wget https://github.com/containerd/containerd/releases/download/.../containerd-X.Y.Z-linux-amd64.tar.gz
 sudo tar Cxzvf /usr/local containerd-X.Y.Z-linux-amd64.tar.gz
 
-# Download firecracker
+# firecracker example install path
 wget https://github.com/firecracker-microvm/firecracker/releases/download/.../firecracker-X.Y.Z-x86_64
 chmod +x firecracker-X.Y.Z-x86_64
 sudo mv firecracker-X.Y.Z-x86_64 /usr/local/bin/firecracker
 ```
+
+## Preflight Checks
+
+```bash
+command -v containerd
+command -v firecracker
+command -v dmsetup
+command -v losetup
+command -v blockdev
+```
+
+If any command is missing, install that dependency before running bootstrap.

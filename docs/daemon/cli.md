@@ -6,6 +6,25 @@
 herd start --config /etc/herd/config.yaml
 ```
 
+## Storage Commands (Firecracker microVM mode)
+
+Bootstrap host storage and generate isolated containerd config:
+
+```bash
+herd bootstrap --config /etc/herd/config.yaml
+```
+
+Teardown storage and remove thin-pool, loop devices, and state files:
+
+```bash
+herd teardown --config /etc/herd/config.yaml
+```
+
+For full internals and execution order, see:
+
+- architecture/firecracker-storage-bootstrap.md
+- dependencies.md
+
 ## Flags
 
 - `--config`: path to daemon YAML config (default: `/etc/herd/config.yaml`).
