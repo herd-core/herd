@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/herd-core/herd/internal/config"
+	"github.com/herd-core/herd/internal/network"
 	"github.com/herd-core/herd/internal/storage"
 	"github.com/spf13/cobra"
 )
@@ -34,6 +35,10 @@ func runTeardown() {
 
 	if err := storage.Teardown(cfg.Storage.StateDir); err != nil {
 		log.Fatalf("failed to teardown storage: %v", err)
+	}
+
+	if err := network.Teardown(); err != nil {
+		log.Fatalf("failed to teardown nat routing: %v", err)
 	}
 
 	log.Println("Teardown completed successfully.")

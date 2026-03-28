@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/herd-core/herd/internal/config"
+	"github.com/herd-core/herd/internal/network"
 	"github.com/herd-core/herd/internal/storage"
 	"github.com/spf13/cobra"
 )
@@ -35,6 +36,10 @@ func runBootstrap() {
 	err = storage.Bootstrap(cfg.Storage.StateDir)
 	if err != nil {
 		log.Fatalf("failed to bootstrap storage: %v", err)
+	}
+
+	if err := network.Bootstrap(); err != nil {
+		log.Fatalf("failed to bootstrap host nat routing: %v", err)
 	}
 
 	log.Println("Bootstrap completed successfully. Start containerd referencing the generated config.toml then run herd start.")
