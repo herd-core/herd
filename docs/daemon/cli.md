@@ -20,6 +20,12 @@ Teardown storage and remove thin-pool, loop devices, and state files:
 herd teardown --config /etc/herd/config.yaml
 ```
 
+Drop into a live, interactive `/bin/sh` shell inside an isolated MicroVM for debugging:
+
+```bash
+herd exec <vm-id>
+```
+
 For full internals and execution order, see:
 
 - architecture/firecracker-storage-bootstrap.md
