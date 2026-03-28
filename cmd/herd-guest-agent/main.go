@@ -179,10 +179,36 @@ func configureNetworking() error {
 		return nil
 	}
 
-	addr, err := netlink.ParseAddr("172.16.0.2/24")
+	cmdline, err := os.ReadFile("/proc/cmdline")
 	if err != nil {
-		return fmt.Errorf("parse address: %w", err)
+		return fmt.Errorf("read cmdline: %w", err)
 	}
+
+	var ipStr, gwStr string
+	parts := strings.Fields(string(cmdline))
+	for _, p := range parts {
+		if strings.HasPrefix(p, "ip=") {
+			ipStr = strings.TrimPrefix(p, "ip=")
+		} else if strings.HasPrefix(p, "gw=") {
+			gwStr = strings.TrimPrefix(p, "gw=")
+		}
+	}
+
+	if ipStr == "" || gwStr == "" {
+		return fmt.Errorf("missing ip or gw in cmdline: %s", string(cmdline))
+	}
+
+	ip := net.ParseIP(ipStr)
+	gw := net.ParseIP(gwStr)
+	if ip == nil || gw == nil {
+		return fmt.Errorf("invalid ip %q or gw %q", ipStr, gwStr)
+	}
+
+	addr := &netlink.Addr{
+		IPNet: &net.IPNet{IP: ip, Mask: net.CIDRMask(32, 32)},
+		Peer:  &net.IPNet{IP: gw, Mask: net.CIDRMask(32, 32)},
+	}
+
 	if err := netlink.AddrAdd(eth0, addr); err != nil {
 		return fmt.Errorf("add address: %w", err)
 	}
@@ -192,7 +218,6 @@ func configureNetworking() error {
 
 	// 3. Default Gateway Route
 	_, dest, _ := net.ParseCIDR("0.0.0.0/0")
-	gw := net.ParseIP("172.16.0.1")
 	route := &netlink.Route{
 		LinkIndex: eth0.Attrs().Index,
 		Dst:       dest,

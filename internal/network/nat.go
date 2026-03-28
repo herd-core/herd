@@ -88,6 +88,23 @@ func CreateTap(name, ipAddr string) error {
 	return nil
 }
 
+// CreatePointToPointTap creates a new TAP interface and establishes a Point-to-Point peer route.
+func CreatePointToPointTap(name, hostIP, guestIP string) error {
+	slog.Info("creating p2p tap interface", "name", name, "host", hostIP, "guest", guestIP)
+	if err := runCmd("ip", "tuntap", "add", "dev", name, "mode", "tap"); err != nil {
+		return err
+	}
+	// ip addr add 10.200.0.1 peer 10.200.0.X dev tapX
+	if err := runCmd("ip", "addr", "add", hostIP, "peer", guestIP, "dev", name); err != nil {
+		return runCmd("ip", "link", "del", "dev", name) // cleanup on fail
+	}
+	if err := runCmd("ip", "link", "set", "dev", name, "up"); err != nil {
+		_ = runCmd("ip", "link", "del", "dev", name)
+		return err
+	}
+	return nil
+}
+
 // DeleteTap removes a TAP interface.
 func DeleteTap(name string) error {
 	slog.Info("deleting tap interface", "name", name)

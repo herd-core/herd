@@ -24,6 +24,7 @@ type FirecrackerFactory struct {
 
 	SocketPathDir   string
 	Command         []string
+	IPAM            *network.IPAM
 }
 
 // FirecrackerWorker represents a single running Firecracker VM.
@@ -32,8 +33,10 @@ type FirecrackerWorker struct {
 	id         string
 	socketPath string
 	tapName    string
+	guestIP    string
 	cmd        *exec.Cmd
 	client     *http.Client
+	ipam       *network.IPAM
 }
 
 // ID returns the worker ID.
@@ -77,6 +80,9 @@ func (f *FirecrackerWorker) Close() error {
 	os.Remove(f.socketPath)
 
 	_ = network.DeleteTap(f.tapName)
+	if f.guestIP != "" && f.ipam != nil {
+		f.ipam.Release(f.guestIP)
+	}
 
 	if f.storage != nil {
 		f.storage.Teardown(context.Background(), f.id)
@@ -97,9 +103,16 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	// Ensure old socket is removed
 	os.Remove(socketPath)
 
-	tapName := "vnet0"
+	guestIP, err := f.IPAM.Acquire()
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire IP: %w", err)
+	}
+	hostIP := "10.200.0.1"
+
+	tapName := "tap-" + workerID[len(workerID)-8:]
 	_ = network.DeleteTap(tapName) // Cleanup stale tap interface if left behind by previous crash
-	if err := network.CreateTap(tapName, "172.16.0.1/24"); err != nil {
+	if err := network.CreatePointToPointTap(tapName, hostIP, guestIP); err != nil {
+		f.IPAM.Release(guestIP)
 		return nil, fmt.Errorf("failed to create tap device: %w", err)
 	}
 
@@ -111,7 +124,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	configData := fmt.Sprintf(`{
 		"boot-source": {
 			"kernel_image_path": "%s",
-			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off",
+			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off ip=%s gw=%s",
 			"initrd_path": "%s"
 		},
 		"drives": [
@@ -125,7 +138,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		"network-interfaces": [
 			{
 				"iface_id": "eth0",
-				"guest_mac": "AA:FC:00:00:00:01",
+				"guest_mac": "AA:FC:00:00:00:0%s",
 				"host_dev_name": "%s"
 			}
 		],
@@ -137,7 +150,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 			"guest_cid": 3,
 			"uds_path": "%s"
 		}
-	}`, f.KernelImagePath, f.InitrdPath, rootfsPath, tapName, socketPath)
+	}`, f.KernelImagePath, guestIP, hostIP, f.InitrdPath, rootfsPath, workerID[len(workerID)-1:], tapName, socketPath)
 
 	if err := os.WriteFile(configPath, []byte(configData), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write config: %w", err)
@@ -200,8 +213,10 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		id:         workerID,
 		socketPath: socketPath,
 		tapName:    tapName,
+		guestIP:    guestIP,
 		cmd:        cmd,
 		client:     agentClient,
 		storage:    f.Storage,
+		ipam:       f.IPAM,
 	}, nil
 }

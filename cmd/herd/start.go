@@ -22,6 +22,7 @@ import (
 	"github.com/herd-core/herd/internal/config"
 	"github.com/herd-core/herd/internal/daemon"
 	"github.com/herd-core/herd/internal/lifecycle"
+	"github.com/herd-core/herd/internal/network"
 	pb "github.com/herd-core/herd/proto/herd/v1"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -170,6 +171,11 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
         }
 mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
 
+	ipam, err := network.NewIPAM("10.200.0.0/16")
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize IPAM: %w", err)
+	}
+
         factory := &herd.FirecrackerFactory{
                 FirecrackerPath: "/home/hackstrix/firecracker-v15.0/firecracker", // Requires firecracker in your $PATH
                 KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"), // Adjust to where your assets live
@@ -177,6 +183,7 @@ mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.Snapshotter
                 SocketPathDir:   "/tmp", // Where Firecracker puts its API sockets 
 				InitrdPath:      filepath.Join(cwd, "/herd-guest-agent.initrd"),
 				Command:         cfg.Worker.Command,
+				IPAM:            ipam,
         }
 
         return herd.New(factory,
