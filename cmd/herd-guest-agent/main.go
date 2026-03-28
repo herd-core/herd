@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/mdlayher/vsock"
 	"github.com/vishvananda/netlink"
@@ -79,7 +80,7 @@ func reapZombies() {
 }
 
 func mountVirtualFilesystems() error {
-	// Ignore errors if the directory doesn't exist yet, we attempt to create it.
+	// Base initrd mounts so PID 1 can actually exist
 	_ = os.MkdirAll("/proc", 0755)
 	if err := unix.Mount("proc", "/proc", "proc", unix.MS_NODEV|unix.MS_NOEXEC|unix.MS_NOSUID, ""); err != nil {
 		return fmt.Errorf("mount /proc: %w", err)
@@ -93,6 +94,25 @@ func mountVirtualFilesystems() error {
 	_ = os.MkdirAll("/dev", 0755)
 	if err := unix.Mount("devtmpfs", "/dev", "devtmpfs", unix.MS_NOSUID, ""); err != nil {
 		return fmt.Errorf("mount /dev: %w", err)
+	}
+
+	// Give the kernel time to populate devtmpfs
+	time.Sleep(20 * time.Millisecond)
+
+	// Magic: Mount the Firecracker drive to a separate directory
+	containerRoot := "/mnt/container"
+	_ = os.MkdirAll(containerRoot, 0755)
+	if err := unix.Mount("/dev/vda", containerRoot, "ext4", 0, ""); err != nil {
+		return fmt.Errorf("failed to mount container rootfs at /dev/vda: %w", err)
+	}
+
+	// Bind mount virtual filesystems recursively into the container directory
+	for _, m := range []string{"/proc", "/sys", "/dev"} {
+		dest := containerRoot + m
+		_ = os.MkdirAll(dest, 0755)
+		if err := unix.Mount(m, dest, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
+			return fmt.Errorf("bind mount %s: %w", m, err)
+		}
 	}
 
 	return nil
@@ -169,6 +189,11 @@ func handleExecution(conn net.Conn) error {
 	cmd.Stdout = conn
 	cmd.Stderr = conn
 	cmd.Stdin = conn
+
+	// Lock the execution strictly inside the mounted container filesystem!
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Chroot: "/mnt/container",
+	}
 
 	// Run synchronously
 	return cmd.Run()

@@ -3,12 +3,14 @@ package herd
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-"github.com/herd-core/herd/internal/storage"
-
+	"github.com/herd-core/herd/internal/storage"
+	"github.com/herd-core/herd/internal/vsock"
+	
 	"time"
 )
 
@@ -16,7 +18,8 @@ import (
 type FirecrackerFactory struct {
 	FirecrackerPath string
 	KernelImagePath string
-	Storage *storage.Manager
+	InitrdPath      string
+	Storage         *storage.Manager
 
 	SocketPathDir   string
 }
@@ -113,7 +116,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	configData := fmt.Sprintf(`{
 		"boot-source": {
 			"kernel_image_path": "%s",
-			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off"
+			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off",
+			"initrd_path": "%s"
 		},
 		"drives": [
 			{
@@ -126,8 +130,12 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		"machine-config": {
 			"vcpu_count": 1,
 			"mem_size_mib": 128
+		},
+		"vsock": {
+			"guest_cid": 3,
+			"uds_path": "%s"
 		}
-	}`, f.KernelImagePath, rootfsPath)
+	}`, f.KernelImagePath, f.InitrdPath, rootfsPath, socketPath)
 
 	if err := os.WriteFile(configPath, []byte(configData), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write config: %w", err)
@@ -150,15 +158,32 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		_ = cmd.Wait()
 	}()
 
-	// We'd normally wait for the socket/guest agent to come up here.
-	// We'll just sleep briefly for now for this minimal implementation.
-	time.Sleep(500 * time.Millisecond)
+	// Loop to wait for the VM to boot and accept vsock connections
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := vsock.DialFirecracker(ctx, socketPath, 5000)
+		if err == nil {
+			conn.Close()
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Create a custom HTTP Client that dials over vsock for HTTP routing
+	agentClient := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				// We ignore the actual address and force route to Guest CID 3 over the Firecracker UDS
+				return vsock.DialFirecracker(ctx, socketPath, 5000)
+			},
+		},
+	}
 
 	return &FirecrackerWorker{
 		id:         workerID,
 		socketPath: socketPath,
 		cmd:        cmd,
-		client:     &http.Client{}, // Default client, would need custom dialer for vsock
-		storage: f.Storage,
+		client:     agentClient,
+		storage:    f.Storage,
 	}, nil
 }

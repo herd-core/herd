@@ -53,6 +53,7 @@ nav:
       - What is Herd?: index.md
       - Quickstart: intro/quickstart.md
   - Firecracker microVM:
+      - Execution Architecture: architecture/firecracker-microvm-execution.md
       - Storage Bootstrap: architecture/firecracker-storage-bootstrap.md
       - Dependencies: dependencies.md
       # Add more Firecracker-specific topics here as needed
