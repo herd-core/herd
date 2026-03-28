@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"net"
 	"os/exec"
-	"strings"
+
+	"github.com/vishvananda/netlink"
 )
 
 // Subnet is the internal IP range used for Firecracker microVMs.
@@ -75,59 +77,108 @@ func Teardown() error {
 // CreateTap creates a new TAP interface and assigns it an IP.
 func CreateTap(name, ipAddr string) error {
 	slog.Info("creating tap interface", "name", name, "ip", ipAddr)
-	if err := runCmd("ip", "tuntap", "add", "dev", name, "mode", "tap"); err != nil {
-		return err
+
+	tap := &netlink.Tuntap{
+		LinkAttrs: netlink.LinkAttrs{Name: name},
+		Mode:      netlink.TUNTAP_MODE_TAP,
 	}
-	if err := runCmd("ip", "addr", "add", ipAddr, "dev", name); err != nil {
-		return runCmd("ip", "link", "del", "dev", name) // cleanup on fail
+	if err := netlink.LinkAdd(tap); err != nil {
+		return fmt.Errorf("netlink: add tap %s: %w", name, err)
 	}
-	if err := runCmd("ip", "link", "set", "dev", name, "up"); err != nil {
-		_ = runCmd("ip", "link", "del", "dev", name)
-		return err
+
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		return fmt.Errorf("netlink: find tap %s after creation: %w", name, err)
 	}
+
+	addr, err := netlink.ParseAddr(ipAddr)
+	if err != nil {
+		_ = netlink.LinkDel(link)
+		return fmt.Errorf("netlink: parse addr %q: %w", ipAddr, err)
+	}
+	if err := netlink.AddrAdd(link, addr); err != nil {
+		_ = netlink.LinkDel(link)
+		return fmt.Errorf("netlink: addr add %s on %s: %w", ipAddr, name, err)
+	}
+
+	if err := netlink.LinkSetUp(link); err != nil {
+		_ = netlink.LinkDel(link)
+		return fmt.Errorf("netlink: set %s up: %w", name, err)
+	}
+
 	return nil
 }
 
 // CreatePointToPointTap creates a new TAP interface and establishes a Point-to-Point peer route.
+// Uses netlink syscalls directly to avoid fork/exec overhead and kernel RTNL lock contention
+// from concurrent `ip` command invocations.
 func CreatePointToPointTap(name, hostIP, guestIP string) error {
 	slog.Info("creating p2p tap interface", "name", name, "host", hostIP, "guest", guestIP)
-	if err := runCmd("ip", "tuntap", "add", "dev", name, "mode", "tap"); err != nil {
-		return err
+
+	tap := &netlink.Tuntap{
+		LinkAttrs: netlink.LinkAttrs{Name: name},
+		Mode:      netlink.TUNTAP_MODE_TAP,
 	}
-	// ip addr add 10.200.0.1 peer 10.200.0.X dev tapX
-	if err := runCmd("ip", "addr", "add", hostIP, "peer", guestIP, "dev", name); err != nil {
-		return runCmd("ip", "link", "del", "dev", name) // cleanup on fail
+	if err := netlink.LinkAdd(tap); err != nil {
+		return fmt.Errorf("netlink: add tap %s: %w", name, err)
 	}
-	if err := runCmd("ip", "link", "set", "dev", name, "up"); err != nil {
-		_ = runCmd("ip", "link", "del", "dev", name)
-		return err
+
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		return fmt.Errorf("netlink: find tap %s after creation: %w", name, err)
 	}
+
+	host := net.ParseIP(hostIP)
+	peer := net.ParseIP(guestIP)
+	if host == nil || peer == nil {
+		_ = netlink.LinkDel(link)
+		return fmt.Errorf("netlink: invalid IPs host=%q peer=%q", hostIP, guestIP)
+	}
+
+	addr := &netlink.Addr{
+		IPNet: &net.IPNet{IP: host, Mask: net.CIDRMask(32, 32)},
+		Peer:  &net.IPNet{IP: peer, Mask: net.CIDRMask(32, 32)},
+	}
+	if err := netlink.AddrAdd(link, addr); err != nil {
+		_ = netlink.LinkDel(link)
+		return fmt.Errorf("netlink: addr add %s peer %s on %s: %w", hostIP, guestIP, name, err)
+	}
+
+	if err := netlink.LinkSetUp(link); err != nil {
+		_ = netlink.LinkDel(link)
+		return fmt.Errorf("netlink: set %s up: %w", name, err)
+	}
+
 	return nil
 }
 
 // DeleteTap removes a TAP interface.
 func DeleteTap(name string) error {
 	slog.Info("deleting tap interface", "name", name)
-	return runCmd("ip", "link", "del", "dev", name)
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		// Already gone — treat as success for idempotent cleanup.
+		return nil
+	}
+	return netlink.LinkDel(link)
 }
 
-
-// getDefaultInterface parses standard Linux 'ip route' to find the physical outbound network card.
+// getDefaultInterface reads the kernel routing table via netlink to find the outbound NIC.
 func getDefaultInterface() (string, error) {
-	cmd := exec.Command("ip", "route")
-	out, err := cmd.CombinedOutput()
+	routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
 	if err != nil {
-		return "", fmt.Errorf("ip route failed: %v", string(out))
+		return "", fmt.Errorf("netlink: list routes: %w", err)
 	}
-
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.HasPrefix(line, "default") {
-			parts := strings.Fields(line)
-			for i, p := range parts {
-				if p == "dev" && i+1 < len(parts) {
-					return parts[i+1], nil
-				}
+	for _, r := range routes {
+		if r.Dst == nil || r.Dst.IP.Equal(net.IPv4zero) {
+			if r.LinkIndex == 0 {
+				continue
 			}
+			link, err := netlink.LinkByIndex(r.LinkIndex)
+			if err != nil {
+				return "", fmt.Errorf("netlink: link by index %d: %w", r.LinkIndex, err)
+			}
+			return link.Attrs().Name, nil
 		}
 	}
 	return "", fmt.Errorf("no default route interface found in routing tables")
