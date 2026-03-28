@@ -344,7 +344,7 @@ func (p *Pool[C]) Acquire(ctx context.Context, sessionID string) (*Session[C], e
 		log.Printf("[pool] Acquire(%q): pinned to worker %s", sessionID, w.ID())
 
 		// Proactively trigger backfill immediately after consuming a worker
-		p.maybeScaleUp()
+		p.refillIdle()
 
 		return &Session[C]{ID: sessionID, Worker: w, pool: p}, nil
 	}
@@ -403,7 +403,7 @@ func (p *Pool[C]) release(sessionID string, w Worker[C]) {
 	}
 
 	p.removeWorker(w)
-	p.maybeScaleUp()
+	p.refillIdle()
 
 	log.Printf("[pool] release(%q): worker %s terminated per single-use policy", sessionID, w.ID())
 }
@@ -430,7 +430,7 @@ func (p *Pool[C]) KillWorker(sessionID string, reason string) error {
 	}
 
 	p.removeWorker(w)
-	p.maybeScaleUp()
+	p.refillIdle()
 
 	log.Printf("[pool] KillWorker(%q): worker %s terminated (%s)", sessionID, w.ID(), reason)
 	return nil
@@ -468,17 +468,34 @@ func (p *Pool[C]) onCrash(sessionID string) {
 	}
 
 	// Replace the lost worker to keep the pool at min capacity
-	p.maybeScaleUp()
+	p.refillIdle()
 }
 
 // ---------------------------------------------------------------------------
 // Scale helpers
 // ---------------------------------------------------------------------------
 
-// maybeScaleUp proactively spawns new background workers to maintain a buffer
-// of targetIdle idle workers. It uses the workers slice length + a pendingAdds
-// counter to avoid overshooting max under concurrent scale-up pressure.
+// maybeScaleUp spawns a single worker to satisfy immediate demand from an
+// Acquire caller. Called from the Acquire slow path so each blocked caller
+// triggers at most one spawn, capped by headroom to max.
 func (p *Pool[C]) maybeScaleUp() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	headroom := p.cfg.max - len(p.workers) - p.pendingAdds
+	if headroom <= 0 {
+		return
+	}
+
+	p.pendingAdds++
+	go p.addWorker()
+}
+
+// refillIdle proactively tops up the available channel so that future Acquire
+// calls find a warm worker without waiting for a Spawn. Uses targetIdle as
+// the desired buffer size and counts pendingAdds to avoid duplicate refill
+// storms.
+func (p *Pool[C]) refillIdle() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -487,12 +504,10 @@ func (p *Pool[C]) maybeScaleUp() {
 		return
 	}
 
-	total := len(p.workers) + p.pendingAdds
-	headroom := p.cfg.max - total
+	headroom := p.cfg.max - len(p.workers) - p.pendingAdds
 	if deficit > headroom {
 		deficit = headroom
 	}
-
 	if deficit <= 0 {
 		return
 	}
