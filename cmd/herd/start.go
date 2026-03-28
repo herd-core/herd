@@ -161,32 +161,39 @@ func runDaemon() {
 }
 
 func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
-	// Temporarily hardcoded for Firecracker pivot testing
 	cwd, _ := os.Getwd()
 
-        sockPath := filepath.Join(cfg.Storage.StateDir, "containerd.sock")
-        client, err := containerd.New(sockPath)
-        if err != nil {
-                return nil, fmt.Errorf("failed to connect to containerd at %s: %w", sockPath, err)
-        }
-mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
+	sockPath := filepath.Join(cfg.Storage.StateDir, "containerd.sock")
+	client, err := containerd.New(sockPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to containerd at %s: %w", sockPath, err)
+	}
+
+	mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
+
+	// Pull + unpack the base image once at startup so the per-VM hot path
+	// (Snapshot) never touches the network.
+	const baseImage = "docker.io/xhemal/ubuntu-network-toolkit:latest"
+	if err := mgr.WarmImage(context.Background(), baseImage); err != nil {
+		return nil, fmt.Errorf("failed to warm base image: %w", err)
+	}
 
 	ipam, err := network.NewIPAM("10.200.0.0/16")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize IPAM: %w", err)
 	}
 
-        factory := &herd.FirecrackerFactory{
-                FirecrackerPath: "/home/hackstrix/firecracker-v15.0/firecracker", // Requires firecracker in your $PATH
-                KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"), // Adjust to where your assets live
-                Storage:         mgr,
-                SocketPathDir:   "/tmp", // Where Firecracker puts its API sockets 
-				InitrdPath:      filepath.Join(cwd, "/herd-guest-agent.initrd"),
-				Command:         cfg.Worker.Command,
-				IPAM:            ipam,
-        }
+	factory := &herd.FirecrackerFactory{
+		FirecrackerPath: "/home/hackstrix/firecracker-v15.0/firecracker",
+		KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"),
+		Storage:         mgr,
+		SocketPathDir:   "/tmp",
+		InitrdPath:      filepath.Join(cwd, "/herd-guest-agent.initrd"),
+		Command:         cfg.Worker.Command,
+		IPAM:            ipam,
+	}
 
-        return herd.New(factory,
+	return herd.New(factory,
 		herd.WithAutoScale(cfg.Resources.TargetIdle, cfg.Resources.MaxWorkers),
 		herd.WithTTL(cfg.Resources.IdleTTLDuration()),
 		herd.WithHealthInterval(cfg.Resources.HealthIntervalDuration()),

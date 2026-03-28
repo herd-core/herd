@@ -7,18 +7,29 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/mount"
-
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/leases"
+	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/opencontainers/image-spec/identity"
 )
 
+// Manager mediates between herd and containerd for rootfs provisioning.
+//
+// Lifecycle:
+//  1. Call WarmImage once at daemon startup to pull/cache the base image.
+//  2. Call Snapshot per-VM to create a copy-on-write block device from the cached image.
+//  3. Call Teardown per-VM when the VM is destroyed.
 type Manager struct {
 	client      *containerd.Client
 	namespace   string
 	snapshotter string
+
+	// parentChainID is the content-addressable identifier of the fully-unpacked
+	// image layer chain. Set by WarmImage, consumed by Snapshot. This avoids
+	// resolving the image on every Spawn — a ~400ms registry round-trip.
+	parentChainID string
 }
 
 func NewManager(client *containerd.Client, namespace, snapshotter string) *Manager {
@@ -29,84 +40,113 @@ func NewManager(client *containerd.Client, namespace, snapshotter string) *Manag
 	}
 }
 
-// PullImage pulls the given image reference and creates a devmapper snapshot for it.
-// It returns the physical path to the block device.
-func (m *Manager) PullAndSnapshot(ctx context.Context, imageRef, vmID string) (string, error) {
-	slog.Info("pulling image", "ref", imageRef, "vmID", vmID)
+// ---------------------------------------------------------------------------
+// Startup path (called once)
+// ---------------------------------------------------------------------------
+
+// WarmImage ensures the base image is present in the local content store
+// and unpacked for the configured snapshotter. It caches the parent chain ID
+// so that subsequent Snapshot calls never touch the network.
+//
+// Call this once at daemon startup before creating the pool.
+func (m *Manager) WarmImage(ctx context.Context, imageRef string) error {
 	nsCtx := namespaces.WithNamespace(ctx, m.namespace)
 
-	// Create a lease to protect the image and snapshot from GC
-	leaseCtx, err := m.withLease(nsCtx, vmID)
+	image, err := m.client.GetImage(nsCtx, imageRef)
 	if err != nil {
-		return "", fmt.Errorf("failed to create lease for %s: %w", vmID, err)
-	}
-
-	// Pull the image
-	image, err := m.client.Pull(leaseCtx, imageRef, containerd.WithPullUnpack)
-	if err != nil {
-		return "", fmt.Errorf("failed to pull image %s: %w", imageRef, err)
-	}
-
-	// Ensure it's unpacked with the thin-pool snapshotter
-	unpacked, err := image.IsUnpacked(leaseCtx, m.snapshotter)
-	if err != nil {
-		return "", fmt.Errorf("failed to check if image is unpacked: %w", err)
-	}
-	if !unpacked {
-		slog.Debug("unpacking image", "snapshotter", m.snapshotter)
-		if err := image.Unpack(leaseCtx, m.snapshotter); err != nil {
-			return "", fmt.Errorf("failed to unpack image: %w", err)
+		if !errdefs.IsNotFound(err) {
+			return fmt.Errorf("check local image %s: %w", imageRef, err)
+		}
+		slog.Info("image not cached, pulling from registry", "ref", imageRef)
+		image, err = m.client.Pull(nsCtx, imageRef, containerd.WithPullUnpack)
+		if err != nil {
+			return fmt.Errorf("pull image %s: %w", imageRef, err)
 		}
 	}
 
-	// Read image rootfs content to get the parent chain ID
-	rootFS, err := image.RootFS(leaseCtx)
+	unpacked, err := image.IsUnpacked(nsCtx, m.snapshotter)
 	if err != nil {
-		return "", fmt.Errorf("failed to get rootfs: %w", err)
+		return fmt.Errorf("check unpack status for %s: %w", imageRef, err)
 	}
-	parent := identity.ChainID(rootFS).String()
+	if !unpacked {
+		slog.Info("unpacking image for snapshotter", "ref", imageRef, "snapshotter", m.snapshotter)
+		if err := image.Unpack(nsCtx, m.snapshotter); err != nil {
+			return fmt.Errorf("unpack image %s: %w", imageRef, err)
+		}
+	}
+
+	rootFS, err := image.RootFS(nsCtx)
+	if err != nil {
+		return fmt.Errorf("read rootfs for %s: %w", imageRef, err)
+	}
+	m.parentChainID = identity.ChainID(rootFS).String()
+
+	slog.Info("image warmed", "ref", imageRef, "parent", m.parentChainID)
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Hot path (called per-VM)
+// ---------------------------------------------------------------------------
+
+// Snapshot creates a copy-on-write devmapper thin-volume for a single VM,
+// derived from the parent image cached by WarmImage.
+//
+// It returns the host path to the block device (e.g. /dev/dm-X).
+// This is a pure local operation — no registry or network calls.
+func (m *Manager) Snapshot(ctx context.Context, vmID string) (string, error) {
+	if m.parentChainID == "" {
+		return "", fmt.Errorf("storage: Snapshot called before WarmImage")
+	}
+
+	nsCtx := namespaces.WithNamespace(ctx, m.namespace)
+
+	leaseCtx, err := m.withLease(nsCtx, vmID)
+	if err != nil {
+		return "", fmt.Errorf("create lease for %s: %w", vmID, err)
+	}
 
 	snapshotKey := m.snapshotKey(vmID)
 	snapService := m.client.SnapshotService(m.snapshotter)
 
-	// Check if this specific snapshot exists
-	exists, err := m.snapshotExists(leaseCtx, snapService, snapshotKey)
-	if err != nil {
-		return "", err
-	}
-
-	// Prepare snapshot if it doesn't exist
 	var mounts []mount.Mount
-	if !exists {
-		slog.Debug("preparing devmapper snapshot", "key", snapshotKey)
-		mounts, err = snapService.Prepare(leaseCtx, snapshotKey, parent, snapshots.WithLabels(map[string]string{
+
+	_, statErr := snapService.Stat(leaseCtx, snapshotKey)
+	if errdefs.IsNotFound(statErr) {
+		mounts, err = snapService.Prepare(leaseCtx, snapshotKey, m.parentChainID, snapshots.WithLabels(map[string]string{
 			"herd/vmID": vmID,
 		}))
 		if err != nil {
-			return "", fmt.Errorf("failed to prepare snapshot: %w", err)
+			return "", fmt.Errorf("prepare snapshot %s: %w", snapshotKey, err)
 		}
+	} else if statErr != nil {
+		return "", fmt.Errorf("stat snapshot %s: %w", snapshotKey, statErr)
 	} else {
 		mounts, err = snapService.Mounts(leaseCtx, snapshotKey)
 		if err != nil {
-			return "", fmt.Errorf("failed to get mounts for snapshot: %w", err)
+			return "", fmt.Errorf("get mounts for snapshot %s: %w", snapshotKey, err)
 		}
 	}
 
 	devPath, ok := extractBlockDeviceFromMounts(mounts)
-	if ok {
-		slog.Info("extracted block device", "path", devPath)
-		return devPath, nil
+	if !ok {
+		return "", fmt.Errorf("no block device in mounts for snapshot %s", snapshotKey)
 	}
 
-	return "", fmt.Errorf("failed to extract block device path from devmapper mounts")
+	slog.Debug("snapshot ready", "vmID", vmID, "dev", devPath)
+	return devPath, nil
 }
 
-// Teardown safely releases the VM's lease, allowing containerd's garbage collector to destroy the block device.
+// ---------------------------------------------------------------------------
+// Teardown
+// ---------------------------------------------------------------------------
+
+// Teardown safely releases the VM's lease, allowing containerd's garbage
+// collector to destroy the block device.
 func (m *Manager) Teardown(ctx context.Context, vmID string) error {
 	slog.Info("tearing down storage", "vmID", vmID)
 	nsCtx := namespaces.WithNamespace(ctx, m.namespace)
 
-	// Remove snapshot
 	snapService := m.client.SnapshotService(m.snapshotter)
 	snapshotKey := m.snapshotKey(vmID)
 
@@ -114,20 +154,23 @@ func (m *Manager) Teardown(ctx context.Context, vmID string) error {
 		slog.Warn("failed to remove snapshot", "error", err)
 	}
 
-	// Delete lease
 	ctxWithLease, err := m.withLease(nsCtx, vmID)
 	if err == nil {
 		leaseStr, ok := leases.FromContext(ctxWithLease)
 		if ok {
 			ls := m.client.LeasesService()
 			if err := ls.Delete(nsCtx, leases.Lease{ID: leaseStr}); err != nil {
-				return fmt.Errorf("failed to delete lease %s: %w", leaseStr, err)
+				return fmt.Errorf("delete lease %s: %w", leaseStr, err)
 			}
 		}
 	}
 
 	return nil
 }
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
 func (m *Manager) snapshotKey(vmID string) string {
 	return fmt.Sprintf("herd-vm-%s", vmID)
@@ -137,10 +180,8 @@ func (m *Manager) withLease(ctx context.Context, vmID string) (context.Context, 
 	ls := m.client.LeasesService()
 	leaseID := fmt.Sprintf("lease-vm-%s", vmID)
 
-	// Try creating
 	l, err := ls.Create(ctx, leases.WithID(leaseID))
 	if err != nil {
-		// If exists, verify and use it
 		existing, listErr := ls.List(ctx, fmt.Sprintf("id==%s", leaseID))
 		if listErr == nil && len(existing) > 0 {
 			return leases.WithLease(ctx, existing[0].ID), nil
@@ -151,41 +192,21 @@ func (m *Manager) withLease(ctx context.Context, vmID string) (context.Context, 
 	return leases.WithLease(ctx, l.ID), nil
 }
 
-func (m *Manager) snapshotExists(ctx context.Context, ss snapshots.Snapshotter, key string) (bool, error) {
-	exists := false
-	err := ss.Walk(ctx, func(_ context.Context, info snapshots.Info) error {
-		if info.Name == key {
-			exists = true
-		}
-		return nil
-	})
-	if err != nil {
-		return false, fmt.Errorf("walking snapshots: %w", err)
-	}
-	return exists, nil
-}
-
 func extractBlockDeviceFromMounts(mounts []mount.Mount) (string, bool) {
 	for _, mnt := range mounts {
-		slog.Debug("snapshot mount", "type", mnt.Type, "source", mnt.Source, "options", mnt.Options)
-
 		if strings.HasPrefix(mnt.Source, "/dev/") {
 			return mnt.Source, true
 		}
-
 		for _, opt := range mnt.Options {
 			if strings.HasPrefix(opt, "device=/dev/") {
 				return strings.TrimPrefix(opt, "device="), true
 			}
 		}
 	}
-
-	// Fallback for less common plugin behavior: use non-empty source if no explicit /dev path was found.
 	for _, mnt := range mounts {
 		if mnt.Source != "" {
 			return mnt.Source, true
 		}
 	}
-
 	return "", false
 }
