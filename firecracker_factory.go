@@ -3,16 +3,17 @@ package herd
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
+
 	"github.com/herd-core/herd/internal/network"
 	"github.com/herd-core/herd/internal/storage"
 	"github.com/herd-core/herd/internal/vsock"
-	
-	"time"
 )
 
 // FirecrackerFactory is a minimal implementation of a WorkerFactory that spawns Firecracker VMs.
@@ -92,32 +93,37 @@ func (f *FirecrackerWorker) Close() error {
 
 // Spawn starts a new Firecracker VM.
 func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], error) {
+	spawnStart := time.Now()
 	workerID := fmt.Sprintf("fc-%d", time.Now().UnixNano())
 	socketPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.sock", workerID))
-	image_name := "xhemal/ubuntu-network-toolkit:latest"
-	rootfsPath, err := f.Storage.PullAndSnapshot(ctx, "docker.io/"+image_name, workerID)
+
+	t0 := time.Now()
+	rootfsPath, err := f.Storage.Snapshot(ctx, workerID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to pull and snapshot rootfs: %w", err)
+		return nil, fmt.Errorf("failed to create rootfs snapshot: %w", err)
 	}
+	log.Printf("[spawn:%s] Snapshot         %v", workerID, time.Since(t0))
 
 	// Ensure old socket is removed
 	os.Remove(socketPath)
 
+	t1 := time.Now()
 	guestIP, err := f.IPAM.Acquire()
 	if err != nil {
 		return nil, fmt.Errorf("failed to acquire IP: %w", err)
 	}
+	log.Printf("[spawn:%s] IPAM.Acquire     %v", workerID, time.Since(t1))
+
 	hostIP := "10.200.0.1"
 
+	t2 := time.Now()
 	tapName := "tap-" + workerID[len(workerID)-8:]
-	_ = network.DeleteTap(tapName) // Cleanup stale tap interface if left behind by previous crash
+	_ = network.DeleteTap(tapName)
 	if err := network.CreatePointToPointTap(tapName, hostIP, guestIP); err != nil {
 		f.IPAM.Release(guestIP)
 		return nil, fmt.Errorf("failed to create tap device: %w", err)
 	}
-
-	// In a real implementation we would interact via the API socket
-	// but for now we just start the process and configure via CLI
+	log.Printf("[spawn:%s] TAP setup        %v", workerID, time.Since(t2))
 
 	// Create a minimal config json
 	configPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.json", workerID))
@@ -156,17 +162,16 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		return nil, fmt.Errorf("failed to write config: %w", err)
 	}
 
-	// Start firecracker with the config
 	// `--no-api` tells Firecracker to autoboot the machine using the provided config immediately
 	cmd := exec.CommandContext(ctx, f.FirecrackerPath, "--no-api", "--config-file", configPath)
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
 
-	// In a real scenario we'd pipe stdout/err to a logger
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
+	t3 := time.Now()
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start firecracker: %w", err)
 	}
+	log.Printf("[spawn:%s] cmd.Start        %v", workerID, time.Since(t3))
 
 	// Wait for the process in the background so cmd.ProcessState is populated on crash
 	go func() {
@@ -174,6 +179,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	}()
 
 	// Loop to wait for the VM to boot and accept vsock connections
+	t4 := time.Now()
 	deadline := time.Now().Add(5 * time.Second)
 	var execConn net.Conn
 	var lastErr error
@@ -186,6 +192,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		lastErr = err
 		time.Sleep(100 * time.Millisecond)
 	}
+	log.Printf("[spawn:%s] vsock connect    %v", workerID, time.Since(t4))
 
 	if execConn == nil {
 		return nil, fmt.Errorf("failed to connect to guest agent vsock port 5000 within timeout: %v", lastErr)
@@ -208,6 +215,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 			},
 		},
 	}
+
+	log.Printf("[spawn:%s] TOTAL            %v", workerID, time.Since(spawnStart))
 
 	return &FirecrackerWorker{
 		id:         workerID,
