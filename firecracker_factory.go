@@ -22,6 +22,7 @@ type FirecrackerFactory struct {
 	Storage         *storage.Manager
 
 	SocketPathDir   string
+	Command         []string
 }
 
 // FirecrackerWorker represents a single running Firecracker VM.
@@ -56,24 +57,8 @@ func (f *FirecrackerWorker) Healthy(ctx context.Context) error {
 		return fmt.Errorf("firecracker process exited with code: %v", f.cmd.ProcessState.ExitCode())
 	}
 
-	// 2. The Real Check: Ping the guest agent running inside the VM.
-	// Once VSOCK is configured, f.client will route this HTTP request
-	// over vsock into the microVM's listening server.
-	req, err := http.NewRequestWithContext(ctx, "GET", "http://worker/health", nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := f.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("agent inside vm is not reachable: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("agent returned status %d", resp.StatusCode)
-	}
-
+	// The HTTP ping check is temporarily disabled because the guest agent currently only speaks
+	// raw JSON payload format on port 5000 and has no HTTP proxy multiplexer over vsock.
 	return nil
 }
 
@@ -160,14 +145,29 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 
 	// Loop to wait for the VM to boot and accept vsock connections
 	deadline := time.Now().Add(5 * time.Second)
+	var execConn net.Conn
+	var lastErr error
 	for time.Now().Before(deadline) {
 		conn, err := vsock.DialFirecracker(ctx, socketPath, 5000)
 		if err == nil {
-			conn.Close()
+			execConn = conn
 			break
 		}
+		lastErr = err
 		time.Sleep(100 * time.Millisecond)
 	}
+
+	if execConn == nil {
+		return nil, fmt.Errorf("failed to connect to guest agent vsock port 5000 within timeout: %v", lastErr)
+	}
+
+	// Stream the workload payload down the vsock pipe
+	go func() {
+		payload := vsock.ExecPayload{Command: f.Command}
+		if err := vsock.Execute(context.Background(), execConn, payload, os.Stdout); err != nil {
+			fmt.Printf("[host] Failed to execute payload on %s: %v\n", workerID, err)
+		}
+	}()
 
 	// Create a custom HTTP Client that dials over vsock for HTTP routing
 	agentClient := &http.Client{

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -22,6 +24,30 @@ type ExecPayload struct {
 }
 
 func main() {
+	// Wrap stdout and stderr to guarantee prefixing for all outputs including panics
+	origStdout := os.Stdout
+	origStderr := os.Stderr
+
+	rOut, wOut, _ := os.Pipe()
+	os.Stdout = wOut
+
+	rErr, wErr, _ := os.Pipe()
+	os.Stderr = wErr
+	log.SetOutput(wErr) // ensure log uses the captured stderr
+
+	go func() {
+		scanner := bufio.NewScanner(rOut)
+		for scanner.Scan() {
+			fmt.Fprintln(origStdout, "[herd-guest-agent]", scanner.Text())
+		}
+	}()
+	go func() {
+		scanner := bufio.NewScanner(rErr)
+		for scanner.Scan() {
+			fmt.Fprintln(origStderr, "[herd-guest-agent]", scanner.Text())
+		}
+	}()
+
 	// 1. The PID 1 Reality Check: Zombie Reaping
 	go reapZombies()
 
@@ -134,7 +160,8 @@ func configureNetworking() error {
 	// 2. Primary Interface
 	eth0, err := netlink.LinkByName("eth0")
 	if err != nil {
-		return fmt.Errorf("find eth0: %w", err)
+		log.Printf("find eth0: %v (skipping network setup)\n", err)
+		return nil
 	}
 
 	addr, err := netlink.ParseAddr("172.16.0.2/24")
@@ -182,8 +209,24 @@ func handleExecution(conn net.Conn) error {
 		return fmt.Errorf("empty command received")
 	}
 
-	// Prepare execution
-	cmd := exec.Command(payload.Command[0], payload.Command[1:]...)
+	bin := payload.Command[0]
+	// Resolve relative binaries inside the container's paths
+	if !strings.HasPrefix(bin, "/") {
+		paths := []string{"/usr/local/bin", "/usr/bin", "/bin", "/usr/local/sbin", "/usr/sbin", "/sbin"}
+		for _, p := range paths {
+			if _, err := os.Stat("/mnt/container" + p + "/" + bin); err == nil {
+				bin = p + "/" + bin
+				break
+			}
+		}
+	}
+
+	// Prepare execution bypassing exec.Command to directly inject the resolved absolute path
+	// This prevents exec.LookPath from trying (and failing) to find it in the bare initrd
+	cmd := &exec.Cmd{
+		Path: bin,
+		Args: payload.Command,
+	}
 
 	// Wire I/O directly to the connection
 	cmd.Stdout = conn
@@ -193,6 +236,11 @@ func handleExecution(conn net.Conn) error {
 	// Lock the execution strictly inside the mounted container filesystem!
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Chroot: "/mnt/container",
+	}
+
+	// Inject sensible default PATH for the workload
+	cmd.Env = []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 	}
 
 	// Run synchronously

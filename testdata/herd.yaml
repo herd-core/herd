@@ -6,11 +6,11 @@ storage:
   snapshotter_name: devmapper
   namespace: herd
 worker:
-  command: 	["npx", "playwright", "run-server", "--port", "{{.Port}}", "--host", "127.0.0.1"]
+  command: 	["sleep", "100"]
   env:
     - FOO=bar
 resources:
-  target_idle: 5
+  target_idle: 1
   max_workers: 100
   memory_limit_mb: 512
   cpu_limit_cores: 1

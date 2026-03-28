@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -63,9 +64,9 @@ func DialFirecracker(ctx context.Context, udsPath string, port uint32) (net.Conn
 		return nil, fmt.Errorf("failed to read handshake response: %w", err)
 	}
 
-	expected := fmt.Sprintf("OK %d\n", port)
-	if response != expected {
-		return nil, fmt.Errorf("handshake rejected: expected %q, got %q", expected, response)
+	response = strings.TrimSpace(response)
+	if !strings.HasPrefix(response, "OK") {
+		return nil, fmt.Errorf("handshake rejected: expected OK prefix, got %q", response)
 	}
 
 	// Clear deadlines for the actual payload proxying

@@ -175,6 +175,8 @@ mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.Snapshotter
                 KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"), // Adjust to where your assets live
                 Storage:         mgr,
                 SocketPathDir:   "/tmp", // Where Firecracker puts its API sockets 
+				InitrdPath:      filepath.Join(cwd, "/herd-guest-agent.initrd"),
+				Command:         cfg.Worker.Command,
         }
 
         return herd.New(factory,
