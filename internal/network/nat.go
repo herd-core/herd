@@ -9,7 +9,7 @@ import (
 )
 
 // Subnet is the internal IP range used for Firecracker microVMs.
-const Subnet = "172.16.0.0/24"
+const Subnet = "10.200.0.0/16"
 
 // Bootstrap dynamically configures the host's networking stack to allow
 // the MicroVMs to reach the internet via NAT and IP Forwarding.
@@ -32,6 +32,14 @@ func Bootstrap() error {
 	if err := runCmd("iptables", "-A", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"); err != nil {
 		return err
 	}
+
+	// Drop all traffic from the MicroVM subnet to RFC 1918 private subnets for isolation
+	for _, privNet := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"} {
+		if err := runCmd("iptables", "-A", "FORWARD", "-s", Subnet, "-d", privNet, "-j", "DROP"); err != nil {
+			return err
+		}
+	}
+
 	if err := runCmd("iptables", "-A", "FORWARD", "-s", Subnet, "-o", iface, "-j", "ACCEPT"); err != nil {
 		return err
 	}
@@ -52,6 +60,12 @@ func Teardown() error {
 	// We intentionally suppress errors on teardown so that the failure to delete one rule doesn't halt the rest.
 	_ = runCmd("iptables", "-t", "nat", "-D", "POSTROUTING", "-o", iface, "-s", Subnet, "-j", "MASQUERADE")
 	_ = runCmd("iptables", "-D", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT")
+
+	// Remove RFC 1918 drop rules
+	for _, privNet := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"} {
+		_ = runCmd("iptables", "-D", "FORWARD", "-s", Subnet, "-d", privNet, "-j", "DROP")
+	}
+
 	_ = runCmd("iptables", "-D", "FORWARD", "-s", Subnet, "-o", iface, "-j", "ACCEPT")
 
 	slog.Info("nat routing successfully torn down")
