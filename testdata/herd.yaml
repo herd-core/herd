@@ -7,7 +7,7 @@ storage:
   namespace: herd
 worker:
   # command: ["ls", "-l", "/sys/class/net/"]
-  command: ["ping", "-c", "3", "google.com"] 
+  command: ["ping", "google.com"] 
   env:
     - FOO=bar
 resources:

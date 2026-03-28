@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/creack/pty"
 	"github.com/mdlayher/vsock"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
@@ -61,7 +63,10 @@ func main() {
 		die("Networking bootstrap failed: %v", err)
 	}
 
-	// 4. The Control Plane (Vsock Server)
+	// 4. The Exec Server (Vsock Port 5001)
+	go startExecServer()
+
+	// 5. The Control Plane (Vsock Server)
 	log.Println("Starting vsock Control Plane on port 5000...")
 	listener, err := vsock.Listen(5000, nil)
 	if err != nil {
@@ -123,6 +128,17 @@ func mountVirtualFilesystems() error {
 
 	// Give the kernel time to populate devtmpfs
 	time.Sleep(20 * time.Millisecond)
+
+	// Mount devpts for PTY support (crucial for 'herd exec')
+	_ = os.MkdirAll("/dev/pts", 0755)
+	if err := unix.Mount("devpts", "/dev/pts", "devpts", unix.MS_NOSUID|unix.MS_NOEXEC, "ptmxmode=0666"); err != nil {
+		return fmt.Errorf("mount /dev/pts: %w", err)
+	}
+
+	// Ensure /dev/ptmx exists (devtmpfs might provide a node, but linking /dev/pts/ptmx is safer)
+	if _, err := os.Stat("/dev/ptmx"); os.IsNotExist(err) {
+		_ = os.Symlink("/dev/pts/ptmx", "/dev/ptmx")
+	}
 
 	// Magic: Mount the Firecracker drive to a separate directory
 	containerRoot := "/mnt/container"
@@ -263,4 +279,71 @@ func die(format string, args ...any) {
 	// Still attempt to cleanly end the MicroVM on failure instead of just exiting and staying idle
 	_ = unix.Reboot(unix.LINUX_REBOOT_CMD_POWER_OFF)
 	os.Exit(1)
+}
+
+func startExecServer() {
+	log.Println("Starting vsock Exec Server on port 5001...")
+	listener, err := vsock.Listen(5001, nil)
+	if err != nil {
+		log.Printf("Failed to listen on vsock port 5001: %v\n", err)
+		return
+	}
+	defer listener.Close()
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("Failed to accept exec connection: %v\n", err)
+			continue
+		}
+
+		log.Println("Exec connection accepted. Spawning interactive shell...")
+		go func(c net.Conn) {
+			defer c.Close()
+			if err := handleInteractiveShell(c); err != nil {
+				log.Printf("Interactive shell error: %v\n", err)
+			}
+		}(conn)
+	}
+}
+
+func handleInteractiveShell(conn net.Conn) error {
+	bin := "/bin/bash"
+	// Check if sh exists in the standard location inside the chroot
+	if _, err := os.Stat("/mnt/container" + bin); err != nil {
+		// Fallback or let exec.Cmd fail
+		log.Printf("Warning: %s not found in %s: %v", bin, "/mnt/container"+bin, err)
+	}
+
+	cmd := &exec.Cmd{
+		Path: bin,
+	}
+
+	// Lock the execution strictly inside the mounted container filesystem!
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Chroot: "/mnt/container",
+	}
+
+	// Inject sensible default PATH for the workload
+	cmd.Env = []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"TERM=xterm",
+	}
+
+	ptmx, err := pty.Start(cmd)
+	if err != nil {
+		return fmt.Errorf("pty start error: %w", err)
+	}
+	defer ptmx.Close()
+
+	// Wait for shell to exit, but also copy I/O asynchronously
+	go func() {
+		_, _ = io.Copy(ptmx, conn)
+	}()
+
+	go func() {
+		_, _ = io.Copy(conn, ptmx)
+	}()
+
+	return cmd.Wait()
 }
