@@ -69,24 +69,23 @@ func main() {
 	}
 	defer listener.Close()
 
-	log.Println("Waiting for host control connection...")
-	conn, err := listener.Accept()
-	if err != nil {
-		die("Failed to accept control connection: %v", err)
-	}
-	defer conn.Close()
+	for {
+		log.Println("Waiting for host control connection...")
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("Failed to accept control connection: %v\n", err)
+			continue
+		}
 
-	// 5. The Execution Bridge
-	log.Println("Connection accepted. Entering Execution Bridge...")
-	if err := handleExecution(conn); err != nil {
-		log.Printf("Execution bridge error: %v\n", err)
+		// 5. The Execution Bridge
+		log.Println("Connection accepted. Entering Execution Bridge...")
+		go func(c net.Conn) {
+			defer c.Close()
+			if err := handleExecution(c); err != nil {
+				log.Printf("Execution bridge error: %v\n", err)
+			}
+		}(conn)
 	}
-
-	// Graceful shutdown and microVM termination
-	log.Println("Workload completed. Terminating microVM...")
-	listener.Close()
-	conn.Close()
-	_ = unix.Reboot(unix.LINUX_REBOOT_CMD_POWER_OFF)
 }
 
 func reapZombies() {
@@ -219,6 +218,10 @@ func handleExecution(conn net.Conn) error {
 				break
 			}
 		}
+	}
+
+	if !strings.HasPrefix(bin, "/") {
+		return fmt.Errorf("executable %q not found in container's standard paths", payload.Command[0])
 	}
 
 	// Prepare execution bypassing exec.Command to directly inject the resolved absolute path

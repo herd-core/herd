@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -188,6 +189,23 @@ state = "%s"
 			slog.Warn("rollback failed to remove containerd config", "path", configPath, "error", rmErr)
 		}
 	})
+
+	// Start containerd in the background
+	slog.Info("starting containerd", "config", configPath)
+	cmd := exec.Command("containerd", "--config", configPath)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // detach
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start containerd: %w", err)
+	}
+
+	// Wait for the socket to be created
+	slog.Info("waiting for containerd socket", "socket", sockPath)
+	for i := 0; i < 30; i++ {
+		if _, err := os.Stat(sockPath); err == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	return nil
 }

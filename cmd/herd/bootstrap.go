@@ -42,5 +42,5 @@ func runBootstrap() {
 		log.Fatalf("failed to bootstrap host nat routing: %v", err)
 	}
 
-	log.Println("Bootstrap completed successfully. Start containerd referencing the generated config.toml then run herd start.")
+	log.Println("Bootstrap completed successfully. Containerd is running. You can now run herd start.")
 }

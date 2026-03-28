@@ -6,7 +6,7 @@ storage:
   snapshotter_name: devmapper
   namespace: herd
 worker:
-  command: 	["sleep", "100"]
+  command: ["ls", "-l", "/sys/class/net/"]
   env:
     - FOO=bar
 resources:
