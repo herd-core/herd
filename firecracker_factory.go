@@ -140,7 +140,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	configData := fmt.Sprintf(`{
 		"boot-source": {
 			"kernel_image_path": "%s",
-			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off quiet mitigations=off i8042.nokbd i8042.noaux tsc=reliable random.trust_cpu=on root=/dev/vda rw init=%s herd_rootfs=1 ip=%s gw=%s"
+			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off quiet mitigations=off i8042.nokbd i8042.noaux tsc=reliable random.trust_cpu=on root=/dev/vda rw rootfstype=ext4 rootflags=noload,noinit_itable init=%s herd_rootfs=1 ip=%s gw=%s"
 		},
 		"drives": [
 			{
@@ -159,7 +159,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		],
 		"machine-config": {
 			"vcpu_count": 1,
-			"mem_size_mib": 128
+			"mem_size_mib": 256
 		},
 		"vsock": {
 			"guest_cid": 3,

@@ -412,7 +412,7 @@ func startExecServer(ready <-chan struct{}) {
 }
 
 func handleInteractiveShell(conn net.Conn) error {
-	bin := "/bin/bash"
+	bin := "/bin/sh"
 	// Check if sh exists in the standard location inside the chroot
 	if _, err := os.Stat("/mnt/container" + bin); err != nil {
 		// Fallback or let exec.Cmd fail

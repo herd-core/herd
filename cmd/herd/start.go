@@ -177,7 +177,7 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 
 	// Pull + unpack the base image once at startup so the per-VM hot path
 	// (Snapshot) never touches the network.
-	const baseImage = "docker.io/xhemal/ubuntu-network-toolkit:latest"
+	const baseImage = "docker.io/library/alpine:latest"
 	if err := mgr.WarmImage(context.Background(), baseImage); err != nil {
 		return nil, fmt.Errorf("failed to warm base image: %w", err)
 	}

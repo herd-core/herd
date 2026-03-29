@@ -72,7 +72,7 @@ storage:
   snapshotter_name: "devmapper"
   namespace: "herd"
 worker:
-  command: ["{worker_bin}"]
+  command: ["sleep", "60"]
   health_path: "/health"
 resources:
   target_idle: 1
@@ -140,7 +140,7 @@ storage:
   snapshotter_name: "devmapper"
   namespace: "herd"
 worker:
-  command: ["ping", "10.200.0.1"]
+  command: ["sleep", "60"]
   health_path: "/health"
 resources:
   target_idle: 1
@@ -203,10 +203,10 @@ storage:
   snapshotter_name: "devmapper"
   namespace: "herd"
 worker:
-  command: ["{worker_bin}"]
+  command: ["sleep", "60"]
   health_path: "/health"
 resources:
-  target_idle: 3
+  target_idle: 5
   max_workers: 20
   memory_limit_mb: 64
   cpu_limit_cores: 0.3
