@@ -1,22 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
-# Compile the guest agent as a static binary
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
+
+# Builds the static herd-guest-agent binary at the repo root. The daemon copies
+# this into each containerd snapshot before Firecracker boots (no initrd).
+
 echo "Compiling herd-guest-agent..."
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o herd-guest-agent ./cmd/herd-guest-agent
 
-# Create a temporary staging directory
-BUILD_DIR=$(mktemp -d -t herd-initrd.XXXXXX)
-trap "rm -rf $BUILD_DIR" EXIT
-
-# Copy the binary to the standard Linux init path
-# Note: When the kernel boots from initrd, it executes /init as PID 1
-cp herd-guest-agent "$BUILD_DIR/init"
-chmod +x "$BUILD_DIR/init"
-
-echo "Packaging initrd archive..."
-cd "$BUILD_DIR"
-find . -print0 | cpio --null -o -V -H newc > "$OLDPWD/herd-guest-agent.initrd"
-cd "$OLDPWD"
-
-echo "Successfully built herd-guest-agent.initrd!"
+echo "Built $REPO_ROOT/herd-guest-agent (injected into rootfs at spawn; initrd not used)."

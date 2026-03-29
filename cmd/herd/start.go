@@ -192,7 +192,7 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 		KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"),
 		Storage:         mgr,
 		SocketPathDir:   "/tmp",
-		InitrdPath:      filepath.Join(cwd, "herd-guest-agent.initrd"),
+		GuestAgentPath:  filepath.Join(cwd, "herd-guest-agent"),
 		Command:         cfg.Worker.Command,
 		IPAM:            ipam,
 	}

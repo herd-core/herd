@@ -131,17 +131,17 @@ func reapZombies() {
 
 func mountBaseFilesystems() error {
 	_ = os.MkdirAll("/proc", 0755)
-	if err := unix.Mount("proc", "/proc", "proc", unix.MS_NODEV|unix.MS_NOEXEC|unix.MS_NOSUID, ""); err != nil {
+	if err := unix.Mount("proc", "/proc", "proc", unix.MS_NODEV|unix.MS_NOEXEC|unix.MS_NOSUID, ""); err != nil && err != unix.EBUSY {
 		return fmt.Errorf("mount /proc: %w", err)
 	}
 
 	_ = os.MkdirAll("/sys", 0755)
-	if err := unix.Mount("sysfs", "/sys", "sysfs", unix.MS_NODEV|unix.MS_NOEXEC|unix.MS_NOSUID, ""); err != nil {
+	if err := unix.Mount("sysfs", "/sys", "sysfs", unix.MS_NODEV|unix.MS_NOEXEC|unix.MS_NOSUID, ""); err != nil && err != unix.EBUSY {
 		return fmt.Errorf("mount /sys: %w", err)
 	}
 
 	_ = os.MkdirAll("/dev", 0755)
-	if err := unix.Mount("devtmpfs", "/dev", "devtmpfs", unix.MS_NOSUID, ""); err != nil {
+	if err := unix.Mount("devtmpfs", "/dev", "devtmpfs", unix.MS_NOSUID, ""); err != nil && err != unix.EBUSY {
 		return fmt.Errorf("mount /dev: %w", err)
 	}
 
@@ -157,6 +157,14 @@ func listenVsock(port uint32) (*vsock.Listener, error) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	return vsock.Listen(port, nil)
+}
+
+func cmdlineHasHerdRootfs() bool {
+	b, err := os.ReadFile("/proc/cmdline")
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(b), "herd_rootfs=1")
 }
 
 func mountContainerFilesystems() error {
@@ -190,16 +198,25 @@ func mountContainerFilesystems() error {
 
 	containerRoot := "/mnt/container"
 	_ = os.MkdirAll(containerRoot, 0755)
-	var extErr error
-	for attempt := 0; attempt < 20; attempt++ {
-		extErr = unix.Mount("/dev/vda", containerRoot, "ext4", unix.MS_NOATIME, "")
-		if extErr == nil {
-			break
+
+	if cmdlineHasHerdRootfs() {
+		// Kernel already mounted root=/dev/vda at /. Bind / onto /mnt/container
+		// so existing chroot paths keep working.
+		if err := unix.Mount("/", containerRoot, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
+			return fmt.Errorf("bind mount / to %s: %w", containerRoot, err)
 		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if extErr != nil {
-		return fmt.Errorf("failed to mount container rootfs at /dev/vda: %w", extErr)
+	} else {
+		var extErr error
+		for attempt := 0; attempt < 20; attempt++ {
+			extErr = unix.Mount("/dev/vda", containerRoot, "ext4", unix.MS_NOATIME, "")
+			if extErr == nil {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if extErr != nil {
+			return fmt.Errorf("failed to mount container rootfs at /dev/vda: %w", extErr)
+		}
 	}
 
 	for _, m := range []string{"/proc", "/sys", "/dev"} {

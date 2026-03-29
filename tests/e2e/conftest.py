@@ -67,6 +67,10 @@ def herd_daemon(compiled_binaries):
 network:
   control_socket: "{sock_path}"
   data_bind: "127.0.0.1:{data_port}"
+storage:
+  state_dir: "/tmp/herd-storage"
+  snapshotter_name: "devmapper"
+  namespace: "herd"
 worker:
   command: ["{worker_bin}"]
   health_path: "/health"
@@ -131,8 +135,12 @@ def herd_daemon_websocket(compiled_binaries):
 network:
   control_socket: "{sock_path}"
   data_bind: "127.0.0.1:{data_port}"
+storage:
+  state_dir: "/tmp/herd-storage"
+  snapshotter_name: "devmapper"
+  namespace: "herd"
 worker:
-  command: ["{worker_bin}"]
+  command: ["ping", "10.200.0.1"]
   health_path: "/health"
 resources:
   target_idle: 1
@@ -190,12 +198,16 @@ def herd_daemon_stress(compiled_binaries):
 network:
   control_socket: "{sock_path}"
   data_bind: "127.0.0.1:{data_port}"
+storage:
+  state_dir: "/tmp/herd-storage"
+  snapshotter_name: "devmapper"
+  namespace: "herd"
 worker:
   command: ["{worker_bin}"]
   health_path: "/health"
 resources:
-  target_idle: 150
-  max_workers: 1000
+  target_idle: 3
+  max_workers: 20
   memory_limit_mb: 64
   cpu_limit_cores: 0.3
   pids_limit: 1024

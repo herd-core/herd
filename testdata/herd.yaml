@@ -11,8 +11,8 @@ worker:
   env:
     - FOO=bar
 resources:
-  target_idle: 2
-  max_workers: 100
+  target_idle: 5
+  max_workers: 10
   memory_limit_mb: 512
   cpu_limit_cores: 1
   pids_limit: 100

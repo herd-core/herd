@@ -3,7 +3,10 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/containerd/containerd"
@@ -13,6 +16,7 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/opencontainers/image-spec/identity"
+	"golang.org/x/sys/unix"
 )
 
 // Manager mediates between herd and containerd for rootfs provisioning.
@@ -135,6 +139,82 @@ func (m *Manager) Snapshot(ctx context.Context, vmID string) (string, error) {
 
 	slog.Debug("snapshot ready", "vmID", vmID, "dev", devPath)
 	return devPath, nil
+}
+
+// DefaultGuestAgentPath is where the binary is placed inside the VM rootfs and
+// must match the kernel boot arg init=...
+const DefaultGuestAgentPath = "/usr/local/bin/herd-guest-agent"
+
+// InjectGuestAgent mounts the snapshot's root filesystem on the host, copies a
+// static herd-guest-agent binary into the image, then unmounts. Required for
+// initrd-less boot (kernel runs init from ext4).
+func (m *Manager) InjectGuestAgent(ctx context.Context, vmID, hostBinaryPath, guestPath string) error {
+	if guestPath == "" {
+		guestPath = DefaultGuestAgentPath
+	}
+	st, err := os.Stat(hostBinaryPath)
+	if err != nil {
+		return fmt.Errorf("stat host guest agent %s: %w", hostBinaryPath, err)
+	}
+	if st.IsDir() {
+		return fmt.Errorf("host guest agent path is a directory: %s", hostBinaryPath)
+	}
+
+	nsCtx := namespaces.WithNamespace(ctx, m.namespace)
+	leaseCtx, err := m.withLease(nsCtx, vmID)
+	if err != nil {
+		return fmt.Errorf("lease for inject %s: %w", vmID, err)
+	}
+
+	snapshotKey := m.snapshotKey(vmID)
+	snapService := m.client.SnapshotService(m.snapshotter)
+	mounts, err := snapService.Mounts(leaseCtx, snapshotKey)
+	if err != nil {
+		return fmt.Errorf("mounts for inject %s: %w", snapshotKey, err)
+	}
+	if len(mounts) == 0 {
+		return fmt.Errorf("no mounts for snapshot %s", snapshotKey)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "herd-inject-*")
+	if err != nil {
+		return fmt.Errorf("mkdir temp for inject: %w", err)
+	}
+	defer func() {
+		_ = mount.Unmount(tmpDir, unix.MNT_DETACH)
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	if err := mount.All(mounts, tmpDir); err != nil {
+		return fmt.Errorf("mount snapshot for inject: %w", err)
+	}
+
+	rel := strings.TrimPrefix(guestPath, "/")
+	dstPath := filepath.Join(tmpDir, rel)
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		return fmt.Errorf("mkdir guest parent dirs: %w", err)
+	}
+
+	src, err := os.Open(hostBinaryPath)
+	if err != nil {
+		return fmt.Errorf("open host binary: %w", err)
+	}
+	defer src.Close()
+
+	dst, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		return fmt.Errorf("create guest binary: %w", err)
+	}
+	if _, err := io.Copy(dst, src); err != nil {
+		dst.Close()
+		return fmt.Errorf("copy guest binary: %w", err)
+	}
+	if err := dst.Close(); err != nil {
+		return fmt.Errorf("close guest binary: %w", err)
+	}
+
+	slog.Debug("injected guest agent", "vmID", vmID, "guestPath", guestPath)
+	return nil
 }
 
 // ---------------------------------------------------------------------------

@@ -20,12 +20,14 @@ import (
 type FirecrackerFactory struct {
 	FirecrackerPath string
 	KernelImagePath string
-	InitrdPath      string
-	Storage         *storage.Manager
+	// GuestAgentPath is the host path to the static herd-guest-agent binary; it is
+	// copied into each VM rootfs before boot (no initrd).
+	GuestAgentPath string
+	Storage        *storage.Manager
 
-	SocketPathDir   string
-	Command         []string
-	IPAM            *network.IPAM
+	SocketPathDir string
+	Command       []string
+	IPAM          *network.IPAM
 }
 
 // FirecrackerWorker represents a single running Firecracker VM.
@@ -104,6 +106,13 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	}
 	log.Printf("[spawn:%s] Snapshot         %v", workerID, time.Since(t0))
 
+	tInject := time.Now()
+	if err := f.Storage.InjectGuestAgent(ctx, workerID, f.GuestAgentPath, storage.DefaultGuestAgentPath); err != nil {
+		_ = f.Storage.Teardown(ctx, workerID)
+		return nil, fmt.Errorf("inject guest agent: %w", err)
+	}
+	log.Printf("[spawn:%s] inject guest     %v", workerID, time.Since(tInject))
+
 	// Ensure old socket is removed
 	os.Remove(socketPath)
 
@@ -127,11 +136,11 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 
 	// Create a minimal config json
 	configPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.json", workerID))
+	initPath := storage.DefaultGuestAgentPath
 	configData := fmt.Sprintf(`{
 		"boot-source": {
 			"kernel_image_path": "%s",
-			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off quiet mitigations=off i8042.nokbd i8042.noaux tsc=reliable random.trust_cpu=on ip=%s gw=%s",
-			"initrd_path": "%s"
+			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off quiet mitigations=off i8042.nokbd i8042.noaux tsc=reliable random.trust_cpu=on root=/dev/vda rw init=%s herd_rootfs=1 ip=%s gw=%s"
 		},
 		"drives": [
 			{
@@ -156,7 +165,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 			"guest_cid": 3,
 			"uds_path": "%s"
 		}
-	}`, f.KernelImagePath, guestIP, hostIP, f.InitrdPath, rootfsPath, workerID[len(workerID)-1:], tapName, socketPath)
+	}`, f.KernelImagePath, initPath, guestIP, hostIP, rootfsPath, workerID[len(workerID)-1:], tapName, socketPath)
 
 	if err := os.WriteFile(configPath, []byte(configData), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write config: %w", err)
