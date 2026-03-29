@@ -11,17 +11,16 @@ PROJ_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 HERD_CMD_DIR = os.path.join(PROJ_ROOT, "cmd", "herd")
 HEALTHWORKER_DIR = os.path.join(PROJ_ROOT, "testdata", "healthworker")
 
-def wait_for_socket(socket_path: str, timeout: float = 5.0) -> bool:
-    """Block until the unix domain socket exists and accepts connections."""
+def wait_for_tcp_port(port: int, timeout: float = 5.0) -> bool:
+    """Block until the TCP port accepts connections."""
     start = time.time()
     while time.time() - start < timeout:
-        if os.path.exists(socket_path):
-            try:
-                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                    s.connect(socket_path)
-                    return True
-            except ConnectionRefusedError:
-                pass
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect(('127.0.0.1', port))
+                return True
+        except ConnectionRefusedError:
+            pass
         time.sleep(0.1)
     return False
 
@@ -54,10 +53,15 @@ def herd_daemon(compiled_binaries):
     herd_bin = compiled_binaries["herd"]
     worker_bin = compiled_binaries["worker"]
     
-    # Get a random free port for HTTP data plane
+    # Get a random free port for HTTP data plane and control plane
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(('127.0.0.1', 0))
     data_port = s.getsockname()[1]
+    s.close()
+    
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('127.0.0.1', 0))
+    control_port = s.getsockname()[1]
     s.close()
     
     # Create configuration file dynamically
@@ -65,7 +69,7 @@ def herd_daemon(compiled_binaries):
     with open(cfg_path, "w") as f:
         f.write(f'''
 network:
-  control_socket: "{sock_path}"
+  control_bind: "127.0.0.1:{control_port}"
   data_bind: "127.0.0.1:{data_port}"
 storage:
   state_dir: "/tmp/herd-storage"
@@ -86,19 +90,19 @@ resources:
 ''')
     
     # Run daemon process
-    print(f"\\n[+] Starting daemon at {sock_path} on data port {data_port}")
+    print(f"\\n[+] Starting daemon at TCP port {control_port} on data port {data_port}")
     proc = subprocess.Popen([herd_bin, "start", "--config", cfg_path], 
                             cwd=PROJ_ROOT, 
                             stdout=subprocess.PIPE, 
                             stderr=subprocess.PIPE)
                             
     # Wait for the gRPC socket to be listening
-    if not wait_for_socket(sock_path):
+    if not wait_for_tcp_port(control_port):
         proc.kill()
         out, err = proc.communicate()
         raise RuntimeError(f"Daemon failed to start:\\nSTDOUT: {out.decode()}\\nSTDERR: {err.decode()}")
 
-    yield f"unix://{sock_path}"
+    yield f"http://127.0.0.1:{control_port}"
 
     # Teardown daemon
     proc.terminate()
@@ -129,11 +133,16 @@ def herd_daemon_websocket(compiled_binaries):
     data_port = s.getsockname()[1]
     s.close()
     
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('127.0.0.1', 0))
+    control_port = s.getsockname()[1]
+    s.close()
+    
     cfg_path = f"/tmp/herd_cfg_{uuid.uuid4().hex[:8]}.yaml"
     with open(cfg_path, "w") as f:
         f.write(f'''
 network:
-  control_socket: "{sock_path}"
+  control_bind: "127.0.0.1:{control_port}"
   data_bind: "127.0.0.1:{data_port}"
 storage:
   state_dir: "/tmp/herd-storage"
@@ -154,18 +163,18 @@ resources:
   absolute_ttl: "15s"     # The guillotine drops at exactly 15s
 ''')
     
-    print(f"\\n[+] Starting WEBSOCKET test daemon at {sock_path} on data port {data_port}")
+    print(f"\\n[+] Starting WEBSOCKET test daemon at TCP port {control_port} on data port {data_port}")
     proc = subprocess.Popen([herd_bin, "start", "--config", cfg_path], 
                             cwd=PROJ_ROOT, 
                             stdout=subprocess.PIPE, 
                             stderr=subprocess.PIPE)
                             
-    if not wait_for_socket(sock_path):
+    if not wait_for_tcp_port(control_port):
         proc.kill()
         out, err = proc.communicate()
         raise RuntimeError(f"Daemon failed to start:\\nSTDOUT: {out.decode()}\\nSTDERR: {err.decode()}")
 
-    yield {"remote": f"unix://{sock_path}", "data_port": data_port}
+    yield {"remote": f"http://127.0.0.1:{control_port}", "data_port": data_port}
 
     proc.terminate()
     try:
@@ -192,11 +201,16 @@ def herd_daemon_stress(compiled_binaries):
     data_port = s.getsockname()[1]
     s.close()
     
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('127.0.0.1', 0))
+    control_port = s.getsockname()[1]
+    s.close()
+    
     cfg_path = f"/tmp/herd_cfg_{uuid.uuid4().hex[:8]}.yaml"
     with open(cfg_path, "w") as f:
         f.write(f'''
 network:
-  control_socket: "{sock_path}"
+  control_bind: "127.0.0.1:{control_port}"
   data_bind: "127.0.0.1:{data_port}"
 storage:
   state_dir: "/tmp/herd-storage"
@@ -216,7 +230,7 @@ resources:
   heartbeat_grace: "30s"
 ''')
     
-    print(f"\\n[+] Starting STRESS daemon at {sock_path} on data port {data_port}")
+    print(f"\\n[+] Starting STRESS daemon at TCP port {control_port} on data port {data_port}")
     
     log_file = open(f"/tmp/herd_stress_{data_port}.log", "w")
     proc = subprocess.Popen([herd_bin, "start", "--config", cfg_path], 
@@ -224,11 +238,11 @@ resources:
                             stdout=log_file, 
                             stderr=subprocess.STDOUT)
                             
-    if not wait_for_socket(sock_path, timeout=10.0):
+    if not wait_for_tcp_port(control_port, timeout=10.0):
         proc.kill()
         raise RuntimeError(f"Daemon failed to start")
 
-    yield f"unix://{sock_path}"
+    yield f"http://127.0.0.1:{control_port}"
 
     proc.terminate()
     try:
