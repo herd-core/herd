@@ -81,10 +81,16 @@ func (h *ControlPlaneHandler) handleLogsSession(w http.ResponseWriter, r *http.R
 		http.Error(w, "logs not available: " + err.Error(), 404)
 		return
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil {
+			h.logger.Error("failed_to_close_log_file", map[string]any{"error": cerr, "session_id": sessionID})
+		}
+	}()
 
 	// In a real app we'd tail this, but io.Copy is fine for now
-	io.Copy(w, f)
+	if _, err := io.Copy(w, f); err != nil {
+		h.logger.Error("failed_to_copy_logs_to_response", map[string]any{"error": err, "worker_id": workerID})
+	}
 }
 
 func (h *ControlPlaneHandler) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +123,9 @@ func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http
 
 	var req SessionCreateRequest
 	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.logger.Error("failed_to_decode_create_request", map[string]any{"error": err})
+		}
 	}
 
 	sessionID := fmt.Sprintf("sess-%d-%d", time.Now().UnixNano(), h.seq.Add(1))
@@ -148,7 +156,9 @@ func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		h.logger.Error("failed_to_encode_create_response", map[string]any{"error": err, "session_id": sessionID})
+	}
 }
 
 func (h *ControlPlaneHandler) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
@@ -206,11 +216,21 @@ func (h *ControlPlaneHandler) handleExecSession(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		if cerr := conn.Close(); cerr != nil {
+			h.logger.Error("failed_to_close_hijacked_conn", map[string]any{"error": cerr, "session_id": sessionID})
+		}
+	}()
 
 	// Write HTTP 101 Switching Protocols
-	bufrw.WriteString("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: herd-exec\r\n\r\n")
-	bufrw.Flush()
+	if _, err := bufrw.WriteString("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: herd-exec\r\n\r\n"); err != nil {
+		h.logger.Error("failed_to_write_exec_upgrade_header", map[string]any{"error": err, "session_id": sessionID})
+		return
+	}
+	if err := bufrw.Flush(); err != nil {
+		h.logger.Error("failed_to_flush_exec_upgrade_header", map[string]any{"error": err, "session_id": sessionID})
+		return
+	}
 
 	// Dial Firecracker vsock:5001
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -218,10 +238,14 @@ func (h *ControlPlaneHandler) handleExecSession(w http.ResponseWriter, r *http.R
 
 	vsockConn, err := vsock.DialFirecracker(ctx, socketPath, 5001)
 	if err != nil {
-		fmt.Fprintf(conn, "failed to dial vsock: %v\n", err)
+		_, _ = fmt.Fprintf(conn, "failed to dial vsock: %v\n", err)
 		return
 	}
-	defer vsockConn.Close()
+	defer func() {
+		if cerr := vsockConn.Close(); cerr != nil {
+			h.logger.Error("failed_to_close_vsock_conn", map[string]any{"error": cerr, "session_id": sessionID})
+		}
+	}()
 
 	errc := make(chan error, 2)
 	go func() {

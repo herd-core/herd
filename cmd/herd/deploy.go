@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -29,7 +30,11 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("failed to deploy: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
+		}
+	}()
 
 		if resp.StatusCode != 200 {
 			body, _ := io.ReadAll(resp.Body)
@@ -37,7 +42,9 @@ var deployCmd = &cobra.Command{
 		}
 
 		var result map[string]any
-		json.NewDecoder(resp.Body).Decode(&result)
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			log.Fatalf("failed to decode response: %v", err)
+		}
 		fmt.Printf("Successfully deployed MicroVM!\n")
 		fmt.Printf("Session ID: %v\n", result["session_id"])
 		fmt.Printf("Internal IP: %v\n", result["internal_ip"])

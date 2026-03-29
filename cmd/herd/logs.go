@@ -20,7 +20,11 @@ var logsCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("failed to fetch logs: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close log stream body: %v\n", cerr)
+		}
+	}()
 
 		if resp.StatusCode != 200 {
 			body, _ := io.ReadAll(resp.Body)

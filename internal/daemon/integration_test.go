@@ -48,7 +48,11 @@ func TestDaemonIntegration_AcquireProxyAndCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to post /v1/sessions: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			t.Logf("warning: failed to close response body: %v", cerr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
@@ -75,7 +79,9 @@ func TestDaemonIntegration_AcquireProxyAndCleanup(t *testing.T) {
 		t.Fatalf("data-plane request failed: %v", err)
 	}
 	body, _ := io.ReadAll(httpResp.Body)
-	httpResp.Body.Close()
+	if cerr := httpResp.Body.Close(); cerr != nil {
+		t.Logf("warning: failed to close data-plane response body: %v", cerr)
+	}
 
 	if httpResp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 from data-plane, got %d", httpResp.StatusCode)
@@ -90,7 +96,9 @@ func TestDaemonIntegration_AcquireProxyAndCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to delete session: %v", err)
 	}
-	delResp.Body.Close()
+	if cerr := delResp.Body.Close(); cerr != nil {
+		t.Logf("warning: failed to close delete response body: %v", cerr)
+	}
 
 	first := factory.firstWorker()
 	if first == nil {
@@ -121,7 +129,9 @@ func TestDaemonIntegration_StatusHealthAndMetrics(t *testing.T) {
 		t.Fatalf("healthz request failed: %v", err)
 	}
 	healthBody, _ := io.ReadAll(healthResp.Body)
-	healthResp.Body.Close()
+	if cerr := healthResp.Body.Close(); cerr != nil {
+		t.Logf("warning: failed to close health response body: %v", cerr)
+	}
 	if healthResp.StatusCode != http.StatusOK || string(healthBody) != "ok" {
 		t.Fatalf("unexpected healthz response: status=%d body=%q", healthResp.StatusCode, string(healthBody))
 	}
@@ -131,7 +141,9 @@ func TestDaemonIntegration_StatusHealthAndMetrics(t *testing.T) {
 		t.Fatalf("metrics request failed: %v", err)
 	}
 	metricsBody, _ := io.ReadAll(metricsResp.Body)
-	metricsResp.Body.Close()
+	if cerr := metricsResp.Body.Close(); cerr != nil {
+		t.Logf("warning: failed to close metrics response body: %v", cerr)
+	}
 	metrics := string(metricsBody)
 
 	if metricsResp.StatusCode != http.StatusOK {

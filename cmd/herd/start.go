@@ -144,7 +144,9 @@ func runDaemon() {
 	done := make(chan struct{})
 	go func() {
 		once.Do(func() {
-			controlServer.Shutdown(shutdownCtx)
+			if err := controlServer.Shutdown(shutdownCtx); err != nil {
+				log.Printf("error: daemon control plane shutdown failed: %v", err)
+			}
 		})
 		close(done)
 	}()
@@ -153,7 +155,9 @@ func runDaemon() {
 	case <-done:
 	case <-shutdownCtx.Done():
 		eventLogger.Warn("control_plane_graceful_shutdown_timeout", map[string]any{})
-		controlServer.Close()
+		if err := controlServer.Close(); err != nil {
+			log.Printf("error: failed to close control server: %v", err)
+		}
 	}
 
 	eventLogger.Info("daemon_stopped", map[string]any{})

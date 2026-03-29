@@ -40,13 +40,13 @@ func main() {
 	go func() {
 		scanner := bufio.NewScanner(rOut)
 		for scanner.Scan() {
-			fmt.Fprintln(origStdout, "[herd-guest-agent]", scanner.Text())
+			_, _ = fmt.Fprintln(origStdout, "[herd-guest-agent]", scanner.Text())
 		}
 	}()
 	go func() {
 		scanner := bufio.NewScanner(rErr)
 		for scanner.Scan() {
-			fmt.Fprintln(origStderr, "[herd-guest-agent]", scanner.Text())
+			_, _ = fmt.Fprintln(origStderr, "[herd-guest-agent]", scanner.Text())
 		}
 	}()
 
@@ -74,7 +74,11 @@ func main() {
 	if err != nil {
 		die("Failed to listen on vsock port 5000: %v", err)
 	}
-	defer listener.Close()
+	defer func() {
+		if cerr := listener.Close(); cerr != nil {
+			_, _ = fmt.Fprintf(origStderr, "[herd-guest-agent] warning: failed to close control listener: %v\n", cerr)
+		}
+	}()
 	log.Printf("vsock listener ready  %v", time.Since(bootStart))
 
 	// Phase 3: Mount container rootfs and configure networking concurrently
@@ -105,7 +109,11 @@ func main() {
 
 		log.Println("Connection accepted. Entering Execution Bridge...")
 		go func(c net.Conn) {
-			defer c.Close()
+			defer func() {
+				if cerr := c.Close(); cerr != nil {
+					_, _ = fmt.Fprintf(origStderr, "[herd-guest-agent] warning: failed to close control connection: %v\n", cerr)
+				}
+			}()
 			if err := handleExecution(c, readyCh); err != nil {
 				log.Printf("Execution bridge error: %v\n", err)
 			}
@@ -391,7 +399,11 @@ func startExecServer(ready <-chan struct{}) {
 		log.Printf("Failed to listen on vsock port 5001: %v\n", err)
 		return
 	}
-	defer listener.Close()
+	defer func() {
+		if cerr := listener.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close vsock listener: %v\n", cerr)
+		}
+	}()
 
 	for {
 		conn, err := listener.Accept()
@@ -402,7 +414,11 @@ func startExecServer(ready <-chan struct{}) {
 
 		log.Println("Exec connection accepted. Spawning interactive shell...")
 		go func(c net.Conn) {
-			defer c.Close()
+			defer func() {
+				if cerr := c.Close(); cerr != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to close connection: %v\n", cerr)
+				}
+			}()
 			<-ready
 			if err := handleInteractiveShell(c); err != nil {
 				log.Printf("Interactive shell error: %v\n", err)
@@ -438,7 +454,11 @@ func handleInteractiveShell(conn net.Conn) error {
 	if err != nil {
 		return fmt.Errorf("pty start error: %w", err)
 	}
-	defer ptmx.Close()
+	defer func() {
+		if cerr := ptmx.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close ptmx: %v\n", cerr)
+		}
+	}()
 
 	// Wait for shell to exit, but also copy I/O asynchronously
 	go func() {

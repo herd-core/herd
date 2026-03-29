@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
@@ -31,7 +32,9 @@ func DialFirecracker(ctx context.Context, udsPath string, port uint32) (net.Conn
 	success := false
 	defer func() {
 		if !success {
-			conn.Close()
+			if cerr := conn.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close connection after failed vsock handshake: %v\n", cerr)
+			}
 		}
 	}()
 
@@ -82,7 +85,11 @@ func DialFirecracker(ctx context.Context, udsPath string, port uint32) (net.Conn
 // on the guest, we stream everything from the connection into the stdout writer here
 // (unless the guest agent multiplexes them with headers, which is out of scope for now).
 func Execute(ctx context.Context, conn net.Conn, payload ExecPayload, stdout io.Writer) error {
-	defer conn.Close()
+	defer func() {
+		if cerr := conn.Close(); cerr != nil {
+			fmt.Printf("warning: failed to close vsock execute connection: %v\n", cerr)
+		}
+	}()
 
 	// 1. Serialize and send the instruction payload
 	data, err := json.Marshal(payload)

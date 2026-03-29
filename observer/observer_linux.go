@@ -48,7 +48,11 @@ func readMemInfo() (memInfo, error) {
 	if err != nil {
 		return memInfo{}, err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil {
+			fmt.Printf("warning: failed to close /proc/meminfo: %v\n", cerr)
+		}
+	}()
 
 	var info memInfo
 	found := 0
@@ -113,7 +117,11 @@ func readCPUStat() (cpuStat, error) {
 	if err != nil {
 		return cpuStat{}, err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil {
+			fmt.Printf("warning: failed to close /proc/stat: %v\n", cerr)
+		}
+	}()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {

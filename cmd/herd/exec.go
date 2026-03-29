@@ -43,14 +43,18 @@ func runExec(vmID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to dial vsock: %w", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if cerr := conn.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close vsock connection: %v\n", cerr)
+		}
+	}()
 
 	// Put the host terminal into raw mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		return fmt.Errorf("failed to set raw terminal: %w", err)
 	}
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }()
 
 	errc := make(chan error, 1)
 

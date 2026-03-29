@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -86,7 +87,9 @@ func (f *FirecrackerWorker) Close() error {
 	if f.cmd != nil && f.cmd.Process != nil {
 		_ = f.cmd.Process.Kill()
 	}
-	os.Remove(f.socketPath)
+	if err := os.Remove(f.socketPath); err != nil {
+		slog.Warn("failed to remove firecracker socket", "path", f.socketPath, "error", err)
+	}
 
 	_ = network.DeleteTap(f.tapName)
 	if f.guestIP != "" && f.ipam != nil {
@@ -94,7 +97,9 @@ func (f *FirecrackerWorker) Close() error {
 	}
 
 	if f.storage != nil {
-		f.storage.Teardown(context.Background(), f.id)
+		if err := f.storage.Teardown(context.Background(), f.id); err != nil {
+			slog.Error("failed to teardown storage", "vmID", f.id, "error", err)
+		}
 	}
 	return nil
 }
@@ -120,7 +125,9 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	log.Printf("[spawn:%s] inject guest     %v", workerID, time.Since(tInject))
 
 	// Ensure old socket is removed
-	os.Remove(socketPath)
+	if err := os.Remove(socketPath); err != nil {
+		slog.Warn("failed to remove legacy socket", "path", socketPath, "error", err)
+	}
 
 	t1 := time.Now()
 	guestIP, err := f.IPAM.Acquire()
@@ -220,7 +227,11 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 
 	// Stream the workload payload down the vsock pipe
 	go func() {
-		defer logFile.Close()
+		defer func() {
+		if cerr := logFile.Close(); cerr != nil {
+			slog.Warn("failed to close worker log file", "error", cerr)
+		}
+	}()
 		payload := vsock.ExecPayload{Command: f.Command}
 		if err := vsock.Execute(context.Background(), execConn, payload, io.MultiWriter(os.Stdout, logFile)); err != nil {
 			fmt.Printf("[host] Failed to execute payload on %s: %v\n", workerID, err)

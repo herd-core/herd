@@ -267,7 +267,7 @@ func createSparseFile(path string, size int64) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed creating sparse file %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if err := f.Truncate(size); err != nil {
 		return false, fmt.Errorf("failed to truncate file %s: %w", path, err)

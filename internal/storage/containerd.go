@@ -199,18 +199,24 @@ func (m *Manager) InjectGuestAgent(ctx context.Context, vmID, hostBinaryPath, gu
 	if err != nil {
 		return fmt.Errorf("open host binary: %w", err)
 	}
-	defer src.Close()
+	defer func() {
+		if cerr := src.Close(); cerr != nil {
+			slog.Warn("failed to close host binary source", "error", cerr, "path", hostBinaryPath)
+		}
+	}()
 
 	dst, err := os.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 	if err != nil {
 		return fmt.Errorf("create guest binary: %w", err)
 	}
 	if _, err := io.Copy(dst, src); err != nil {
-		dst.Close()
+		if cerr := dst.Close(); cerr != nil {
+			slog.Warn("failed to close guest binary destination on copy error", "error", cerr, "path", dstPath)
+		}
 		return fmt.Errorf("copy guest binary: %w", err)
 	}
-	if err := dst.Close(); err != nil {
-		return fmt.Errorf("close guest binary: %w", err)
+	if cerr := dst.Close(); cerr != nil {
+		return fmt.Errorf("close guest binary: %w", cerr)
 	}
 
 	slog.Debug("injected guest agent", "vmID", vmID, "guestPath", guestPath)
