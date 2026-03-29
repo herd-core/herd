@@ -9,7 +9,7 @@ import (
 
 const validConfigYAML = `
 network:
-  control_socket: /tmp/herd.sock
+  control_bind: 127.0.0.1:8080
   data_bind: 127.0.0.1:4000
 worker:
   command: ["python3", "worker.py"]
@@ -37,8 +37,8 @@ func TestLoad_ValidConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.Network.ControlSocket != "/tmp/herd.sock" {
-		t.Fatalf("unexpected control socket: %q", cfg.Network.ControlSocket)
+	if cfg.Network.ControlBind != "127.0.0.1:8080" {
+		t.Fatalf("unexpected control bind: %q", cfg.Network.ControlBind)
 	}
 	if got := cfg.Worker.StartTimeoutDuration().String(); got != "30s" {
 		t.Fatalf("expected default start_timeout 30s, got %q", got)
@@ -53,7 +53,7 @@ func TestLoad_MissingRequiredField(t *testing.T) {
 
 	path := writeTempConfig(t, `
 network:
-  control_socket: /tmp/herd.sock
+  control_bind: 127.0.0.1:8080
 worker:
   command: ["python3", "worker.py"]
 resources:
@@ -112,9 +112,9 @@ func TestLoad_ValidationMatrix(t *testing.T) {
 		expectPart string
 	}{
 		{
-			name:       "relative socket path",
-			yaml:       strings.ReplaceAll(validConfigYAML, "/tmp/herd.sock", "tmp/herd.sock"),
-			expectPart: "network.control_socket must be an absolute path",
+			name:       "invalid control bind",
+			yaml:       strings.ReplaceAll(validConfigYAML, "127.0.0.1:8080", "127.0.0.1:99999"),
+			expectPart: "network.control_bind invalid",
 		},
 		{
 			name:       "non-loopback data bind",

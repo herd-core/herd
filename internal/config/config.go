@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +29,7 @@ type StorageConfig struct {
 }
 
 type NetworkConfig struct {
-	ControlSocket string `yaml:"control_socket"`
+	ControlBind string `yaml:"control_bind"`
 	DataBind      string `yaml:"data_bind"`
 }
 
@@ -149,14 +148,11 @@ func (c *Config) applyDefaults() {
 }
 
 func (c *Config) Validate() error {
-	if c.Network.ControlSocket == "" {
-		return fmt.Errorf("network.control_socket is required")
+	if c.Network.ControlBind == "" {
+		return fmt.Errorf("network.control_bind is required")
 	}
-	if !filepath.IsAbs(c.Network.ControlSocket) {
-		return fmt.Errorf("network.control_socket must be an absolute path")
-	}
-	if len(c.Network.ControlSocket) > 103 {
-		return fmt.Errorf("network.control_socket path is too long (>103 bytes for unix domain sockets)")
+	if err := validateDataBind(c.Network.ControlBind); err != nil {
+		return fmt.Errorf("network.control_bind invalid: %w", err)
 	}
 	if c.Network.DataBind == "" {
 		return fmt.Errorf("network.data_bind is required")

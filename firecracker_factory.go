@@ -3,6 +3,7 @@ package herd
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -45,6 +46,11 @@ type FirecrackerWorker struct {
 // ID returns the worker ID.
 func (f *FirecrackerWorker) ID() string {
 	return f.id
+}
+
+// GuestIP returns the internal IP allocated to the worker.
+func (f *FirecrackerWorker) GuestIP() string {
+	return f.guestIP
 }
 
 // Address returns the socket path. Wait, returning empty string since vsock
@@ -209,10 +215,14 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		return nil, fmt.Errorf("failed to connect to guest agent vsock port 5000 within timeout: %v", lastErr)
 	}
 
+	logPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.log", workerID))
+	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+
 	// Stream the workload payload down the vsock pipe
 	go func() {
+		defer logFile.Close()
 		payload := vsock.ExecPayload{Command: f.Command}
-		if err := vsock.Execute(context.Background(), execConn, payload, os.Stdout); err != nil {
+		if err := vsock.Execute(context.Background(), execConn, payload, io.MultiWriter(os.Stdout, logFile)); err != nil {
 			fmt.Printf("[host] Failed to execute payload on %s: %v\n", workerID, err)
 		}
 	}()

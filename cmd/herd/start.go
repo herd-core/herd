@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 "path/filepath"
 
@@ -23,9 +24,7 @@ import (
 	"github.com/herd-core/herd/internal/daemon"
 	"github.com/herd-core/herd/internal/lifecycle"
 	"github.com/herd-core/herd/internal/network"
-	pb "github.com/herd-core/herd/proto/herd/v1"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -64,7 +63,7 @@ func runDaemon() {
 	eventLogger := daemon.NewEventLogger(cfg.Telemetry.LogFormat, log.Default())
 	eventLogger.Info("daemon_starting", map[string]any{
 		"config_path":      configPath,
-		"control_socket":   cfg.Network.ControlSocket,
+		"control_bind":     cfg.Network.ControlBind,
 		"data_bind":        cfg.Network.DataBind,
 		"metrics_path":     cfg.Telemetry.MetricsPath,
 		"telemetry_format": cfg.Telemetry.LogFormat,
@@ -80,16 +79,13 @@ func runDaemon() {
 		}
 	}()
 
-	controlLis, err := daemon.ListenUnixSocket(cfg.Network.ControlSocket)
+	controlLis, err := net.Listen("tcp", cfg.Network.ControlBind)
 	if err != nil {
 		log.Fatalf("failed to create control socket listener: %v", err)
 	}
 	defer func() {
 		if err := controlLis.Close(); err != nil {
 			eventLogger.Error("control_listener_close_failed", map[string]any{"error": err})
-		}
-		if err := daemon.RemoveUnixSocket(cfg.Network.ControlSocket); err != nil {
-			eventLogger.Error("control_socket_cleanup_failed", map[string]any{"error": err})
 		}
 	}()
 
@@ -103,8 +99,9 @@ func runDaemon() {
 	lm := lifecycle.NewManager(lcConfig, pool)
 	go lm.StartReaper(ctx) // Run reaper in background
 
-	grpcServer := grpc.NewServer()
-	pb.RegisterHerdServiceServer(grpcServer, daemon.NewServer(pool, lm, "http://"+cfg.Network.DataBind, cfg.Resources.MaxWorkers, eventLogger))
+	controlServer := &http.Server{
+		Handler: daemon.NewControlPlaneHandler(pool, lm, "http://"+cfg.Network.DataBind, eventLogger),
+	}
 
 	httpServer := &http.Server{
 		Addr:    cfg.Network.DataBind,
@@ -114,8 +111,8 @@ func runDaemon() {
 	errCh := make(chan error, 2)
 
 	go func() {
-		eventLogger.Info("control_plane_listening", map[string]any{"address": "unix://" + cfg.Network.ControlSocket})
-		if err := grpcServer.Serve(controlLis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+		eventLogger.Info("control_plane_listening", map[string]any{"address": "http://" + cfg.Network.ControlBind})
+		if err := controlServer.Serve(controlLis); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
 	}()
@@ -146,7 +143,9 @@ func runDaemon() {
 	var once sync.Once
 	done := make(chan struct{})
 	go func() {
-		once.Do(grpcServer.GracefulStop)
+		once.Do(func() {
+			controlServer.Shutdown(shutdownCtx)
+		})
 		close(done)
 	}()
 
@@ -154,7 +153,7 @@ func runDaemon() {
 	case <-done:
 	case <-shutdownCtx.Done():
 		eventLogger.Warn("control_plane_graceful_shutdown_timeout", map[string]any{})
-		grpcServer.Stop()
+		controlServer.Close()
 	}
 
 	eventLogger.Info("daemon_stopped", map[string]any{})
