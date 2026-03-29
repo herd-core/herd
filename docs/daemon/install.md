@@ -30,11 +30,9 @@ resources:
 	max_workers: 4
 	memory_limit_mb: 512
 	cpu_limit_cores: 1
-	pids_limit: 100
 	ttl: 10m
 	health_interval: 5s
 	worker_reuse: true
-	insecure_sandbox: false
 
 telemetry:
 	log_format: json
@@ -52,4 +50,12 @@ telemetry:
 - Linux: full guarantee mode, including parent-death kill behavior for child workers.
 - macOS: reduced-guarantee mode with explicit warnings; orphan prevention is best-effort.
 - Other platforms: startup fails fast.
+
+## Why does Herd require root (`sudo`)?
+
+Herd inherently requires elevated privileges because it leverages hardware-level virtualization and advanced networking to isolate your workloads. Specifically:
+
+- **Device Mapper & Block Storage (`CAP_SYS_ADMIN`)**: To provision rapid root filesystems for your MicroVMs, `herd` creates devicemapper thin-pool snapshots, loopback mounts, and filesystem images on the fly. Linux strictly requires root privileges to configure and mount these block devices.
+- **Network Namespaces & TAP Interfaces (`CAP_NET_ADMIN`)**: Firecracker instances require virtual tap interfaces to communicate with the host. Creating these tap devices, binding them to a bridge, setting up IP addresses, and configuring NAT routing requires elevated networking privileges.
+- **Containerd Socket Ownership**: The daemon communicates with containerd to pull and unpack container images. By default, the containerd UNIX socket is restricted so that only the root user can interact with its API.
 
