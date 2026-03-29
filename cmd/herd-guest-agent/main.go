@@ -50,29 +50,50 @@ func main() {
 		}
 	}()
 
-	// 1. The PID 1 Reality Check: Zombie Reaping
+	bootStart := time.Now()
+
 	go reapZombies()
 
-	// 2. Mounting the World
-	if err := mountVirtualFilesystems(); err != nil {
-		die("Failed to mount filesystems: %v", err)
+	// Phase 1: Mount /proc, /sys, /dev — fast (<5ms) and required before
+	// AF_VSOCK works because the kernel needs these to finish probing the
+	// virtio_vsock transport.
+	if err := mountBaseFilesystems(); err != nil {
+		die("Failed to mount base filesystems: %v", err)
 	}
 
-	// 3. Bootstrapping the Data Plane (Networking)
-	if err := configureNetworking(); err != nil {
-		die("Networking bootstrap failed: %v", err)
-	}
+	// Phase 2: Start vsock listeners BEFORE the slow I/O (ext4 mount,
+	// networking). Retry briefly in case virtio_vsock hasn't finished
+	// initializing — the base mounts above give it time but there's a
+	// small race window on fast boots.
+	readyCh := make(chan struct{})
 
-	// 4. The Exec Server (Vsock Port 5001)
-	go startExecServer()
+	go startExecServer(readyCh)
 
-	// 5. The Control Plane (Vsock Server)
 	log.Println("Starting vsock Control Plane on port 5000...")
-	listener, err := vsock.Listen(5000, nil)
+	listener, err := listenVsock(5000)
 	if err != nil {
 		die("Failed to listen on vsock port 5000: %v", err)
 	}
 	defer listener.Close()
+	log.Printf("vsock listener ready  %v", time.Since(bootStart))
+
+	// Phase 3: Mount container rootfs and configure networking concurrently
+	// while the host's vsock connect is already succeeding above.
+	go func() {
+		t0 := time.Now()
+		if err := mountContainerFilesystems(); err != nil {
+			die("Failed to mount container filesystems: %v", err)
+		}
+		log.Printf("container mounted    %v", time.Since(t0))
+
+		t1 := time.Now()
+		if err := configureNetworking(); err != nil {
+			die("Networking bootstrap failed: %v", err)
+		}
+		log.Printf("networking ready     %v", time.Since(t1))
+		log.Printf("boot total           %v", time.Since(bootStart))
+		close(readyCh)
+	}()
 
 	for {
 		log.Println("Waiting for host control connection...")
@@ -82,11 +103,10 @@ func main() {
 			continue
 		}
 
-		// 5. The Execution Bridge
 		log.Println("Connection accepted. Entering Execution Bridge...")
 		go func(c net.Conn) {
 			defer c.Close()
-			if err := handleExecution(c); err != nil {
+			if err := handleExecution(c, readyCh); err != nil {
 				log.Printf("Execution bridge error: %v\n", err)
 			}
 		}(conn)
@@ -109,8 +129,7 @@ func reapZombies() {
 	}
 }
 
-func mountVirtualFilesystems() error {
-	// Base initrd mounts so PID 1 can actually exist
+func mountBaseFilesystems() error {
 	_ = os.MkdirAll("/proc", 0755)
 	if err := unix.Mount("proc", "/proc", "proc", unix.MS_NODEV|unix.MS_NOEXEC|unix.MS_NOSUID, ""); err != nil {
 		return fmt.Errorf("mount /proc: %w", err)
@@ -126,28 +145,43 @@ func mountVirtualFilesystems() error {
 		return fmt.Errorf("mount /dev: %w", err)
 	}
 
-	// Give the kernel time to populate devtmpfs
-	time.Sleep(20 * time.Millisecond)
+	return nil
+}
 
-	// Mount devpts for PTY support (crucial for 'herd exec')
+func listenVsock(port uint32) (*vsock.Listener, error) {
+	for i := 0; i < 50; i++ {
+		l, err := vsock.Listen(port, nil)
+		if err == nil {
+			return l, nil
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	return vsock.Listen(port, nil)
+}
+
+func mountContainerFilesystems() error {
+	for i := 0; i < 200; i++ {
+		if _, err := os.Stat("/dev/vda"); err == nil {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+
 	_ = os.MkdirAll("/dev/pts", 0755)
 	if err := unix.Mount("devpts", "/dev/pts", "devpts", unix.MS_NOSUID|unix.MS_NOEXEC, "ptmxmode=0666"); err != nil {
 		return fmt.Errorf("mount /dev/pts: %w", err)
 	}
 
-	// Ensure /dev/ptmx exists (devtmpfs might provide a node, but linking /dev/pts/ptmx is safer)
 	if _, err := os.Stat("/dev/ptmx"); os.IsNotExist(err) {
 		_ = os.Symlink("/dev/pts/ptmx", "/dev/ptmx")
 	}
 
-	// Magic: Mount the Firecracker drive to a separate directory
 	containerRoot := "/mnt/container"
 	_ = os.MkdirAll(containerRoot, 0755)
-	if err := unix.Mount("/dev/vda", containerRoot, "ext4", 0, ""); err != nil {
+	if err := unix.Mount("/dev/vda", containerRoot, "ext4", unix.MS_NOATIME, ""); err != nil {
 		return fmt.Errorf("failed to mount container rootfs at /dev/vda: %w", err)
 	}
 
-	// Bind mount virtual filesystems recursively into the container directory
 	for _, m := range []string{"/proc", "/sys", "/dev"} {
 		dest := containerRoot + m
 		_ = os.MkdirAll(dest, 0755)
@@ -245,8 +279,7 @@ func configureNetworking() error {
 	return nil
 }
 
-func handleExecution(conn net.Conn) error {
-	// Parse the JSON payload arriving over vsock
+func handleExecution(conn net.Conn, ready <-chan struct{}) error {
 	decoder := json.NewDecoder(conn)
 	var payload ExecPayload
 	if err := decoder.Decode(&payload); err != nil {
@@ -256,6 +289,8 @@ func handleExecution(conn net.Conn) error {
 	if len(payload.Command) == 0 {
 		return fmt.Errorf("empty command received")
 	}
+
+	<-ready
 
 	bin := payload.Command[0]
 	// Resolve relative binaries inside the container's paths
@@ -306,7 +341,7 @@ func die(format string, args ...any) {
 	os.Exit(1)
 }
 
-func startExecServer() {
+func startExecServer(ready <-chan struct{}) {
 	log.Println("Starting vsock Exec Server on port 5001...")
 	listener, err := vsock.Listen(5001, nil)
 	if err != nil {
@@ -325,6 +360,7 @@ func startExecServer() {
 		log.Println("Exec connection accepted. Spawning interactive shell...")
 		go func(c net.Conn) {
 			defer c.Close()
+			<-ready
 			if err := handleInteractiveShell(c); err != nil {
 				log.Printf("Interactive shell error: %v\n", err)
 			}

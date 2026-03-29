@@ -130,7 +130,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	configData := fmt.Sprintf(`{
 		"boot-source": {
 			"kernel_image_path": "%s",
-			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off ip=%s gw=%s",
+			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off quiet mitigations=off i8042.nokbd i8042.noaux tsc=reliable random.trust_cpu=on ip=%s gw=%s",
 			"initrd_path": "%s"
 		},
 		"drives": [
@@ -164,8 +164,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 
 	// `--no-api` tells Firecracker to autoboot the machine using the provided config immediately
 	cmd := exec.CommandContext(ctx, f.FirecrackerPath, "--no-api", "--config-file", configPath)
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	t3 := time.Now()
 	if err := cmd.Start(); err != nil {
@@ -178,9 +178,11 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		_ = cmd.Wait()
 	}()
 
-	// Loop to wait for the VM to boot and accept vsock connections
+	// Loop to wait for the VM to boot and accept vsock connections.
+	// 30s accommodates concurrent boot contention when multiple VMs
+	// share host CPU during pool initialization.
 	t4 := time.Now()
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(30 * time.Second)
 	var execConn net.Conn
 	var lastErr error
 	for time.Now().Before(deadline) {
@@ -190,7 +192,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 			break
 		}
 		lastErr = err
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 	log.Printf("[spawn:%s] vsock connect    %v", workerID, time.Since(t4))
 
