@@ -59,7 +59,6 @@ resources:
   max_workers: 4
   memory_limit_mb: 512
   cpu_limit_cores: 1
-  pids_limit: 100
   ttl: 10m
   health_interval: 5s
   worker_reuse: true
@@ -76,7 +75,7 @@ telemetry:
 | :--- | :--- |
 | `network.control_socket` | UDS socket path for the Control Plane (e.g., `/tmp/herd.sock`). |
 | `network.data_bind` | IP:Port for the Data Plane HTTP proxy (e.g., `127.0.0.1:8080`). |
-| `worker.command` | The subprocess command and args to spawn (e.g., `["npx", "playwright", "run-server"]`). |
+| `worker.command` | The subprocess command and args to spawn (e.g., `["python3", "worker.py"]`). |
 | `worker.env` | Environment variables to inject (`FOO=bar`). Supports templating like `{{.Port}}`. |
 | `worker.health_path` | HTTP path polled for liveness. |
 | `worker.start_timeout` | Time allowed for worker to become healthy. |
@@ -86,7 +85,6 @@ telemetry:
 | `resources.health_interval` | How often to poll worker health endpoints. |
 | `resources.memory_limit_mb` | (Linux) cgroups-based hard memory limit per worker. |
 | `resources.cpu_limit_cores` | (Linux) cgroups-based CPU slicing per worker. |
-| `resources.pids_limit` | (Linux) cgroups-based PID limits. |
 
 ## Startup Contract
 

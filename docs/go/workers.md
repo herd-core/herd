@@ -50,28 +50,21 @@ Most users will **not** need to implement this interface directly. They will ins
 
 ---
 
-## 🏭 3. ProcessFactory (Built-in)
+## 🏭 3. FirecrackerFactory (Built-in)
 
-The default implementation is `ProcessFactory`. It manages local OS subprocesses.
+The default implementation is `FirecrackerFactory`. It manages fully isolated microVMs via Firecracker.
 
 ### Basic Usage
 
 ```go
-factory := herd.NewProcessFactory("npx", "playwright", "run-server", "--port", "{{.Port}}")
+factory := &herd.FirecrackerFactory{
+    FirecrackerPath: "/usr/bin/firecracker",
+    KernelImagePath: "/opt/herd/vmlinux.bin",
+    InitrdPath:      "/opt/herd/initrd.img",
+    SocketPathDir:   "/tmp/herd-vms",
+}
 ```
 
-### ⚙️ Configuration & Sandboxing
+### ⚙️ MicroVM Sandboxing
 
-You can chain options to configure limits and environment variables. On Linux, Herd automatically enables a **namespace & cgroup sandbox** for isolation.
-
-| Method | Description |
-| :--- | :--- |
-| `WithEnv(kv string)` | Injects an environment variable. Supports `{{.Port}}` expansion. |
-| `WithHealthPath(path)` | Sets the HTTP endpoint polled to decide readiness (default `/health`). |
-| `WithStartTimeout(d)` | Maximum time to wait for first healthy response. |
-| `WithMemoryLimit(bytes)` | Sets the cgroup `memory.max` limit for the worker (Linux). |
-| `WithCPULimit(cores)` | Sets the cgroup CPU quota (e.g., `0.5` for half a core) (Linux). |
-| `WithPIDsLimit(n)` | Sets maximum number of PIDs in the cgroup (Linux). |
-| `WithInsecureSandbox()` | Disables the namespace/cgroup sandbox. *Not recommended for production.* |
-
-> **⚠️ Linux Sandboxing**: Setting cgroup limits requires running with root privileges (or a delegated slice) on a system with cgroup v2 enabled to enforce absolute Isolation between independent sessions.
+Herd inherently uses hardware-level virtualization through Firecracker, meaning complete network, CPU, and memory isolation without relying on OS-level cgroups or namespaces.

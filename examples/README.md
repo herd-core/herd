@@ -2,14 +2,7 @@
 
 This directory contains examples for using Herd in different scenarios, split by deployment mode.
 
-## 📚 [Library Mode](./library)
 
-Examples in this directory demonstrate how to use Herd as a **Go library** inside your own application. In this mode, your application manages the worker lifecycle and proxy routing directly in-process.
-
-- **[ollama](./library/ollama)**: A one-process-per-agent Ollama gateway routing to stateful LLM workers.
-- **[playwright](./library/playwright)**: A viewport/session-isolated Playwright server pool for browser automation.
-
----
 
 ## 🛰️ [Daemon Mode](./daemon)
 

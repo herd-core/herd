@@ -36,7 +36,7 @@ with client.acquire(worker_type="healthworker", timeout=15) as session:
 
 ## Quick Start (Asyncio)
 
-For high-performance gateways, FastAPI integrations, or asynchronous tools like Playwright, use the `AsyncClient`.
+For high-performance gateways, FastAPI integrations, or asynchronous tools, use the `AsyncClient`.
 
 ```python
 import asyncio
@@ -46,7 +46,7 @@ from herd import AsyncClient
 async def main():
     client = AsyncClient("unix:///tmp/herd.sock")
     
-    async with client.acquire(worker_type="playwright-worker") as session:
+    async with client.acquire(worker_type="my-worker") as session:
         print(f"Connected to worker: {session.id}")
         
         async with httpx.AsyncClient() as http:
