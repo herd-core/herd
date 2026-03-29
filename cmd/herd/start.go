@@ -164,9 +164,13 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 	cwd, _ := os.Getwd()
 
 	sockPath := filepath.Join(cfg.Storage.StateDir, "containerd.sock")
-	client, err := containerd.New(sockPath)
+	absSock, err := filepath.Abs(sockPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to containerd at %s: %w", sockPath, err)
+		return nil, fmt.Errorf("resolve containerd socket path: %w", err)
+	}
+	client, err := containerd.New(absSock)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to containerd at %s: %w", absSock, err)
 	}
 
 	mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
@@ -188,7 +192,7 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 		KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"),
 		Storage:         mgr,
 		SocketPathDir:   "/tmp",
-		InitrdPath:      filepath.Join(cwd, "/herd-guest-agent.initrd"),
+		InitrdPath:      filepath.Join(cwd, "herd-guest-agent.initrd"),
 		Command:         cfg.Worker.Command,
 		IPAM:            ipam,
 	}

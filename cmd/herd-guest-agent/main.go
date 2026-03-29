@@ -167,9 +167,21 @@ func mountContainerFilesystems() error {
 		time.Sleep(time.Millisecond)
 	}
 
+	// Settle time after devtmpfs (was unconditional in the old single-path boot before
+	// vsock was moved earlier). Avoids racing devpts / block mount on cold plug.
+	time.Sleep(20 * time.Millisecond)
+
 	_ = os.MkdirAll("/dev/pts", 0755)
-	if err := unix.Mount("devpts", "/dev/pts", "devpts", unix.MS_NOSUID|unix.MS_NOEXEC, "ptmxmode=0666"); err != nil {
-		return fmt.Errorf("mount /dev/pts: %w", err)
+	var devptsErr error
+	for attempt := 0; attempt < 10; attempt++ {
+		devptsErr = unix.Mount("devpts", "/dev/pts", "devpts", unix.MS_NOSUID|unix.MS_NOEXEC, "ptmxmode=0666")
+		if devptsErr == nil {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if devptsErr != nil {
+		return fmt.Errorf("mount /dev/pts: %w", devptsErr)
 	}
 
 	if _, err := os.Stat("/dev/ptmx"); os.IsNotExist(err) {
@@ -178,8 +190,16 @@ func mountContainerFilesystems() error {
 
 	containerRoot := "/mnt/container"
 	_ = os.MkdirAll(containerRoot, 0755)
-	if err := unix.Mount("/dev/vda", containerRoot, "ext4", unix.MS_NOATIME, ""); err != nil {
-		return fmt.Errorf("failed to mount container rootfs at /dev/vda: %w", err)
+	var extErr error
+	for attempt := 0; attempt < 20; attempt++ {
+		extErr = unix.Mount("/dev/vda", containerRoot, "ext4", unix.MS_NOATIME, "")
+		if extErr == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if extErr != nil {
+		return fmt.Errorf("failed to mount container rootfs at /dev/vda: %w", extErr)
 	}
 
 	for _, m := range []string{"/proc", "/sys", "/dev"} {
@@ -335,7 +355,13 @@ func handleExecution(conn net.Conn, ready <-chan struct{}) error {
 }
 
 func die(format string, args ...any) {
-	log.Printf("FATAL: "+format+"\n", args...)
+	msg := fmt.Sprintf("FATAL: "+format+"\n", args...)
+	log.Print(msg)
+	if c, err := os.OpenFile("/dev/console", os.O_WRONLY, 0); err == nil {
+		_, _ = fmt.Fprintf(c, "[herd-guest-agent] %s", msg)
+		_ = c.Sync()
+		_ = c.Close()
+	}
 	// Still attempt to cleanly end the MicroVM on failure instead of just exiting and staying idle
 	_ = unix.Reboot(unix.LINUX_REBOOT_CMD_POWER_OFF)
 	os.Exit(1)
