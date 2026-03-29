@@ -11,7 +11,7 @@
 //
 // # Usage
 //
-//	pool, _ := herd.New(herd.NewProcessFactory("./my-binary", "--port", "{{.Port}}"))
+//	pool, _ := herd.New(&herd.FirecrackerFactory{...})
 //
 //	proxy := proxy.NewReverseProxy(pool, func(r *http.Request) string {
 //	    return r.Header.Get("X-Session-ID")
@@ -63,7 +63,7 @@ import (
 // ReverseProxy is an http.Handler that acquires a session from pool, proxies
 // the request to the worker's address, and releases the session when done.
 //
-// C is the worker client type — for ProcessFactory this is *http.Client.
+// C is the worker client type — for FirecrackerFactory this is *http.Client.
 // ReverseProxy does not use C directly; it proxies via the worker's Address().
 type ReverseProxy[C any] struct {
 	pool             *herd.Pool[C]

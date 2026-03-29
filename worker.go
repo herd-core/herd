@@ -62,8 +62,7 @@ type Worker[C any] interface {
 // WorkerFactory knows how to spawn one worker process and return a typed
 // Worker[C] that is ready to accept requests (i.e. Healthy returns nil).
 //
-// Most users never implement this interface — they use NewProcessFactory
-// instead. Implement WorkerFactory only if you need custom spawn logic
+// Implement WorkerFactory to define custom spawn logic
 // (e.g. Firecracker microVM, Docker container, remote SSH process).
 type WorkerFactory[C any] interface {
 	// Spawn starts one new worker and blocks until it is healthy.

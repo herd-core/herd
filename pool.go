@@ -40,7 +40,7 @@
 //
 // # Crash path
 //
-// processWorker.monitor() calls p.onCrash(sessionID) when it detects that the
+// The worker monitor (e.g., Firecracker process waiter) calls p.onCrash(sessionID) when it detects that the
 // subprocess exited while holding a session. onCrash:
 //  1. Removes the session from p.sessions.
 //  2. If there is a pending inflight chan for the same sessionID, closes it so
@@ -218,8 +218,7 @@ func New[C any](factory WorkerFactory[C], opts ...Option) (*Pool[C], error) {
 // wireWorker registers w in the pool and wires its crash callback.
 // Must be called with p.mu NOT held.
 func (p *Pool[C]) wireWorker(w Worker[C]) {
-	// Wire crash callback if the underlying worker supports it
-	// (i.e. it is a *processWorker from ProcessFactory).
+	// Wire crash callback if the underlying worker supports it.
 	w.OnCrash(func(sessionID string) {
 		p.onCrash(sessionID)
 	})
