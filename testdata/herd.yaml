@@ -15,13 +15,11 @@ resources:
   max_workers: 10
   memory_limit_mb: 512
   cpu_limit_cores: 1
-  pids_limit: 100
   ttl: 10m
   absolute_ttl: 1h
   heartbeat_grace: 30s
   data_timeout: 5m
   health_interval: 5s
-  insecure_sandbox: true
 telemetry:
   log_format: json
   metrics_path: /metrics

@@ -56,16 +56,11 @@ type ResourceConfig struct {
 	MaxWorkers     int     `yaml:"max_workers"`
 	MemoryLimitMB  int64   `yaml:"memory_limit_mb"`
 	CPULimitCores  float64 `yaml:"cpu_limit_cores"`
-	PIDsLimit      int64   `yaml:"pids_limit"`
 	TTL            string  `yaml:"ttl"`             // Maps to IdleTTL
 	AbsoluteTTL    string  `yaml:"absolute_ttl"`    // Max session duration
 	HeartbeatGrace string  `yaml:"heartbeat_grace"` // Max time without ping
 	DataTimeout    string  `yaml:"data_timeout"`    // Max time for HTTP request
 	HealthInterval string  `yaml:"health_interval"`
-
-	// InsecureSandbox enables reduced sandboxing for local development.
-	// This should not be enabled in production.
-	InsecureSandbox bool `yaml:"insecure_sandbox"`
 }
 
 type TelemetryConfig struct {
@@ -191,9 +186,6 @@ func (c *Config) Validate() error {
 	}
 	if c.Resources.CPULimitCores < 0 {
 		return fmt.Errorf("resources.cpu_limit_cores must be >= 0")
-	}
-	if c.Resources.PIDsLimit == 0 || c.Resources.PIDsLimit < -1 {
-		return fmt.Errorf("resources.pids_limit must be > 0 or -1")
 	}
 	if d, err := time.ParseDuration(c.Worker.StartTimeout); err != nil {
 		return fmt.Errorf("worker.start_timeout invalid duration: %w", err)

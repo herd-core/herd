@@ -20,7 +20,6 @@ resources:
   max_workers: 4
   memory_limit_mb: 512
   cpu_limit_cores: 1
-  pids_limit: 100
   ttl: 10m
   health_interval: 5s
 telemetry:
@@ -61,7 +60,6 @@ resources:
   max_workers: 4
   memory_limit_mb: 512
   cpu_limit_cores: 1
-  pids_limit: 100
   ttl: 10m
   health_interval: 5s
 `)
