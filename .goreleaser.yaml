@@ -51,6 +51,5 @@ release:
   github:
     owner: herd-core
     name: herd
-  replace_existing: true
   extra_files:
     - glob: assets/vmlinux-v6.1.bin
