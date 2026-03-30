@@ -102,6 +102,10 @@ func (f *metricsFactory) Spawn(_ context.Context, _ string, _ herd.TenantConfig)
 	return &metricsWorker{id: "m1"}, nil
 }
 
+func (f *metricsFactory) WarmImage(_ context.Context, _ string) error {
+	return nil
+}
+
 func newMetricsPool(t *testing.T) *herd.Pool[*http.Client] {
 	t.Helper()
 	p, err := herd.New[*http.Client](&metricsFactory{}, herd.WithMaxWorkers(1))
