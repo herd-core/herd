@@ -1,6 +1,4 @@
 # .goreleaser.yaml
-version: 2
-
 before:
   hooks:
     - go mod tidy
@@ -40,7 +38,7 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  version_template: "{{ .Tag }}-next"
+  name_template: "{{ .Tag }}-next"
 
 changelog:
   sort: asc
