@@ -43,13 +43,16 @@ func main() {
 		Storage:         mgr,
 		SocketPathDir:   "/tmp",
 		GuestAgentPath:  filepath.Join(cwd, "herd-guest-agent"),
-		Command:         []string{"/bin/sh"},
 		IPAM:            ipam,
 	}
 
 	for i := 0; i < 3; i++ {
 		t0 := time.Now()
-		worker, err := factory.Spawn(context.Background())
+		sessionID := fmt.Sprintf("test-boot-%d", i)
+		worker, err := factory.Spawn(context.Background(), sessionID, herd.TenantConfig{
+			Image:   "docker.io/xhemal/ubuntu-network-toolkit:latest",
+			Command: []string{"/bin/sh"},
+		})
 		if err != nil {
 			log.Fatalf("Spawn error: %v", err)
 		}

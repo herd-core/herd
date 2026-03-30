@@ -23,6 +23,7 @@ import (
 // ExecPayload matches the struct from the host's internal/vsock package
 type ExecPayload struct {
 	Command []string `json:"command"`
+	Env     []string `json:"env"`
 }
 
 func main() {
@@ -99,26 +100,24 @@ func main() {
 		close(readyCh)
 	}()
 
-	for {
-		log.Println("Waiting for host control connection...")
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Printf("Failed to accept control connection: %v\n", err)
-			continue
-		}
-
-		log.Println("Connection accepted. Entering Execution Bridge...")
-		go func(c net.Conn) {
-			defer func() {
-				if cerr := c.Close(); cerr != nil {
-					_, _ = fmt.Fprintf(origStderr, "[herd-guest-agent] warning: failed to close control connection: %v\n", cerr)
-				}
-			}()
-			if err := handleExecution(c, readyCh); err != nil {
-				log.Printf("Execution bridge error: %v\n", err)
-			}
-		}(conn)
+	log.Println("Waiting for host control connection...")
+	conn, err := listener.Accept()
+	if err != nil {
+		die("Failed to accept control connection: %v", err)
 	}
+
+	log.Println("Connection accepted. Entering Execution Bridge...")
+	execErr := handleExecution(conn, readyCh)
+	_ = conn.Close()
+
+	if execErr != nil {
+		log.Printf("Workload exited with error: %v", execErr)
+	} else {
+		log.Println("Workload exited successfully")
+	}
+
+	log.Println("Main workload finished — shutting down VM")
+	_ = unix.Reboot(unix.LINUX_REBOOT_CMD_POWER_OFF)
 }
 
 func reapZombies() {
@@ -153,6 +152,11 @@ func mountBaseFilesystems() error {
 		return fmt.Errorf("mount /dev: %w", err)
 	}
 
+	_ = os.MkdirAll("/dev/shm", 0o1777)
+	if err := unix.Mount("tmpfs", "/dev/shm", "tmpfs", unix.MS_NOSUID|unix.MS_NODEV, "size=100m,mode=1777"); err != nil && err != unix.EBUSY {
+		return fmt.Errorf("mount /dev/shm: %w", err)
+	}
+
 	return nil
 }
 
@@ -175,6 +179,15 @@ func cmdlineHasHerdRootfs() bool {
 	return strings.Contains(string(b), "herd_rootfs=1")
 }
 
+// replaceSymlink removes path if present so os.Symlink can succeed (e.g. shadowing
+// nodes left by a recursive /dev bind mount).
+func replaceSymlink(oldname, newname string) error {
+	if err := os.Remove(newname); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove %s: %w", newname, err)
+	}
+	return os.Symlink(oldname, newname)
+}
+
 func mountContainerFilesystems() error {
 	for i := 0; i < 200; i++ {
 		if _, err := os.Stat("/dev/vda"); err == nil {
@@ -183,8 +196,6 @@ func mountContainerFilesystems() error {
 		time.Sleep(time.Millisecond)
 	}
 
-	// Settle time after devtmpfs (was unconditional in the old single-path boot before
-	// vsock was moved earlier). Avoids racing devpts / block mount on cold plug.
 	time.Sleep(20 * time.Millisecond)
 
 	_ = os.MkdirAll("/dev/pts", 0755)
@@ -208,8 +219,6 @@ func mountContainerFilesystems() error {
 	_ = os.MkdirAll(containerRoot, 0755)
 
 	if cmdlineHasHerdRootfs() {
-		// Kernel already mounted root=/dev/vda at /. Bind / onto /mnt/container
-		// so existing chroot paths keep working.
 		if err := unix.Mount("/", containerRoot, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
 			return fmt.Errorf("bind mount / to %s: %w", containerRoot, err)
 		}
@@ -232,6 +241,41 @@ func mountContainerFilesystems() error {
 		_ = os.MkdirAll(dest, 0755)
 		if err := unix.Mount(m, dest, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
 			return fmt.Errorf("bind mount %s: %w", m, err)
+		}
+	}
+
+	// Mount a dedicated tmpfs at /dev/shm inside the container for POSIX shared memory.
+	containerShm := containerRoot + "/dev/shm"
+	_ = os.MkdirAll(containerShm, 0o1777)
+	if err := unix.Mount("tmpfs", containerShm, "tmpfs", unix.MS_NOSUID|unix.MS_NODEV, "size=64m,mode=1777"); err != nil {
+		return fmt.Errorf("mount container /dev/shm: %w", err)
+	}
+
+	_ = os.MkdirAll(containerRoot+"/tmp", 0o1777)
+	if err := unix.Mount("tmpfs", containerRoot+"/tmp", "tmpfs", unix.MS_NOSUID|unix.MS_NODEV, "size=64m,mode=1777"); err != nil {
+		return fmt.Errorf("mount container /tmp: %w", err)
+	}
+	_ = os.MkdirAll(containerRoot+"/run", 0o755)
+	if err := unix.Mount("tmpfs", containerRoot+"/run", "tmpfs", unix.MS_NOSUID|unix.MS_NODEV, "size=16m,mode=0755"); err != nil {
+		return fmt.Errorf("mount container /run: %w", err)
+	}
+
+	// Many images expect /var/run -> /run (e.g. PostgreSQL runtime dir).
+	if err := replaceSymlink("/run", containerRoot+"/var/run"); err != nil {
+		return fmt.Errorf("symlink var/run: %w", err)
+	}
+
+	// Create standard /dev/fd, /dev/stdin, /dev/stdout, /dev/stderr symlinks
+	// that many programs (e.g. PostgreSQL initdb) rely on for process substitution.
+	devSymlinks := [][2]string{
+		{"/proc/self/fd", containerRoot + "/dev/fd"},
+		{"/proc/self/fd/0", containerRoot + "/dev/stdin"},
+		{"/proc/self/fd/1", containerRoot + "/dev/stdout"},
+		{"/proc/self/fd/2", containerRoot + "/dev/stderr"},
+	}
+	for _, sl := range devSymlinks {
+		if err := replaceSymlink(sl[0], sl[1]); err != nil {
+			return fmt.Errorf("symlink %s: %w", sl[1], err)
 		}
 	}
 
@@ -266,10 +310,10 @@ func configureNetworking() error {
 	var ipStr, gwStr string
 	parts := strings.Fields(string(cmdline))
 	for _, p := range parts {
-		if strings.HasPrefix(p, "ip=") {
-			ipStr = strings.TrimPrefix(p, "ip=")
-		} else if strings.HasPrefix(p, "gw=") {
-			gwStr = strings.TrimPrefix(p, "gw=")
+		if strings.HasPrefix(p, "herd_ip=") {
+			ipStr = strings.TrimPrefix(p, "herd_ip=")
+		} else if strings.HasPrefix(p, "herd_gw=") {
+			gwStr = strings.TrimPrefix(p, "herd_gw=")
 		}
 	}
 
@@ -338,7 +382,6 @@ func handleExecution(conn net.Conn, ready <-chan struct{}) error {
 	<-ready
 
 	bin := payload.Command[0]
-	// Resolve relative binaries inside the container's paths
 	if !strings.HasPrefix(bin, "/") {
 		paths := []string{"/usr/local/bin", "/usr/bin", "/bin", "/usr/local/sbin", "/usr/sbin", "/sbin"}
 		for _, p := range paths {
@@ -353,29 +396,26 @@ func handleExecution(conn net.Conn, ready <-chan struct{}) error {
 		return fmt.Errorf("executable %q not found in container's standard paths", payload.Command[0])
 	}
 
-	// Prepare execution bypassing exec.Command to directly inject the resolved absolute path
-	// This prevents exec.LookPath from trying (and failing) to find it in the bare initrd
 	cmd := &exec.Cmd{
 		Path: bin,
 		Args: payload.Command,
 	}
 
-	// Wire I/O directly to the connection
 	cmd.Stdout = conn
 	cmd.Stderr = conn
 	cmd.Stdin = conn
 
-	// Lock the execution strictly inside the mounted container filesystem!
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Chroot: "/mnt/container",
 	}
 
-	// Inject sensible default PATH for the workload
 	cmd.Env = []string{
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 	}
+	if len(payload.Env) > 0 {
+		cmd.Env = append(cmd.Env, payload.Env...)
+	}
 
-	// Run synchronously
 	return cmd.Run()
 }
 
@@ -387,7 +427,6 @@ func die(format string, args ...any) {
 		_ = c.Sync()
 		_ = c.Close()
 	}
-	// Still attempt to cleanly end the MicroVM on failure instead of just exiting and staying idle
 	_ = unix.Reboot(unix.LINUX_REBOOT_CMD_POWER_OFF)
 	os.Exit(1)
 }
@@ -428,7 +467,7 @@ func startExecServer(ready <-chan struct{}) {
 }
 
 func handleInteractiveShell(conn net.Conn) error {
-	bin := "/bin/sh"
+	bin := "/bin/bash"
 	// Check if sh exists in the standard location inside the chroot
 	if _, err := os.Stat("/mnt/container" + bin); err != nil {
 		// Fallback or let exec.Cmd fail

@@ -55,6 +55,16 @@ type Worker[C any] interface {
 	io.Closer
 }
 
+// TenantConfig describes the on-demand container workload and its per-session limits.
+type TenantConfig struct {
+	Image              string
+	Command            []string
+	Env                map[string]string
+	IdleTimeoutSeconds int
+	TTLSeconds         int
+	HealthInterval     string
+}
+
 // ---------------------------------------------------------------------------
 // WorkerFactory[C]
 // ---------------------------------------------------------------------------
@@ -68,5 +78,8 @@ type WorkerFactory[C any] interface {
 	// Spawn starts one new worker and blocks until it is healthy.
 	// If ctx is cancelled before the worker becomes healthy, Spawn must
 	// kill the process and return a non-nil error.
-	Spawn(ctx context.Context) (Worker[C], error)
+	Spawn(ctx context.Context, sessionID string, config TenantConfig) (Worker[C], error)
+
+	// WarmImage ensures the requested image is present in the local cache.
+	WarmImage(ctx context.Context, imageRef string) error
 }

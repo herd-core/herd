@@ -44,7 +44,37 @@ func NewControlPlaneHandler(
 	mux.HandleFunc("POST /v1/sessions/", h.handleExecSession)     // /v1/sessions/{id}/exec
 	mux.HandleFunc("PUT /v1/sessions/", h.handleHeartbeat)        // /v1/sessions/{id}/heartbeat
 
+	mux.HandleFunc("POST /v1/images/warm", h.handleWarmImage)
+	
 	return mux
+}
+
+func (h *ControlPlaneHandler) handleWarmImage(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Image string `json:"image"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if req.Image == "" {
+		http.Error(w, "image required", http.StatusBadRequest)
+		return
+	}
+
+	// This assumes the factory has a way to warm images.
+	// Since the storage manager is buried inside FirecrackerFactory, we need a way
+	// to expose it. For now, since storage manager warms images implicitly on Acquire
+	// we could just let the client rely on that, but if we want an explicit API:
+	if warmer, ok := h.pool.Factory().(interface{ WarmImage(context.Context, string) error }); ok {
+		if err := warmer.WarmImage(r.Context(), req.Image); err != nil {
+			http.Error(w, fmt.Sprintf("failed to warm image: %v", err), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	http.Error(w, "warming not supported by factory", http.StatusNotImplemented)
 }
 
 func (h *ControlPlaneHandler) handleLogsSession(w http.ResponseWriter, r *http.Request) {
@@ -104,19 +134,24 @@ func (h *ControlPlaneHandler) handleHeartbeat(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusOK)
 }
 
-// SessionCreateRequest is the JSON body for POST /v1/sessions
-type SessionCreateRequest struct {
-	Image              string            `json:"image"`
-	Env                map[string]string `json:"env"`
-	IdleTimeoutSeconds int               `json:"idle_timeout_seconds"`
-}
+	// SessionCreateRequest is the JSON body for POST /v1/sessions
+	// It acts as the TenantDeploymentConfig.
+	type SessionCreateRequest struct {
+		Image              string            `json:"image"`
+		Command            []string          `json:"command,omitempty"`
+		Env                map[string]string `json:"env,omitempty"`
+		IdleTimeoutSeconds int               `json:"idle_timeout_seconds,omitempty"`
+		TTLSeconds         int               `json:"ttl_seconds,omitempty"`
+		HealthInterval     string            `json:"health_interval,omitempty"`
+		Warm               bool              `json:"warm,omitempty"`
+	}
 
-// SessionCreateResponse is the JSON response
-type SessionCreateResponse struct {
-	SessionID    string `json:"session_id"`
-	InternalIP   string `json:"internal_ip"`
-	ProxyAddress string `json:"proxy_address"`
-}
+	// SessionCreateResponse is the JSON response
+	type SessionCreateResponse struct {
+		SessionID    string `json:"session_id"`
+		InternalIP   string `json:"internal_ip"`
+		ProxyAddress string `json:"proxy_address"`
+	}
 
 func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	RecordAcquireRequest()
@@ -128,10 +163,27 @@ func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http
 		}
 	}
 
+	if req.Warm {
+		if err := h.pool.Factory().WarmImage(r.Context(), req.Image); err != nil {
+			h.logger.Error("failed_to_warm_image", map[string]any{"error": err, "image": req.Image})
+			http.Error(w, fmt.Sprintf("failed to warm image: %v", err), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	sessionID := fmt.Sprintf("sess-%d-%d", time.Now().UnixNano(), h.seq.Add(1))
 	h.logger.Info("acquire_request_received", map[string]any{"session_id": sessionID})
 
-	session, err := h.pool.Acquire(r.Context(), sessionID)
+	tenantConfig := herd.TenantConfig{
+		Image:              req.Image,
+		Command:            req.Command,
+		Env:                req.Env,
+		IdleTimeoutSeconds: req.IdleTimeoutSeconds,
+		TTLSeconds:         req.TTLSeconds,
+		HealthInterval:     req.HealthInterval,
+	}
+
+	session, err := h.pool.Acquire(r.Context(), sessionID, tenantConfig)
 	if err != nil {
 		RecordAcquireFailure()
 		h.logger.Error("session_acquire_failed", map[string]any{"session_id": sessionID, "error": err})
@@ -139,7 +191,7 @@ func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http
 		return
 	}
 
-	h.lifecycleManager.Register(sessionID)
+	h.lifecycleManager.Register(sessionID, tenantConfig)
 	RecordSessionStarted()
 	h.logger.Info("session_acquired", map[string]any{"session_id": sessionID})
 
@@ -197,13 +249,21 @@ func (h *ControlPlaneHandler) handleExecSession(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Address() returns unix://<path>
-	addr := session.Worker.Address()
-	if !strings.HasPrefix(addr, "unix://") {
-		http.Error(w, "worker does not support local vsock exec", http.StatusBadRequest)
+	var socketPath string
+	if fv, ok := session.Worker.(interface{ VsockUDSPath() string }); ok {
+		socketPath = fv.VsockUDSPath()
+	} else {
+		addr := session.Worker.Address()
+		if !strings.HasPrefix(addr, "unix://") {
+			http.Error(w, "worker does not support local vsock exec", http.StatusBadRequest)
+			return
+		}
+		socketPath = strings.TrimPrefix(addr, "unix://")
+	}
+	if socketPath == "" {
+		http.Error(w, "worker vsock path unavailable", http.StatusBadRequest)
 		return
 	}
-	socketPath := strings.TrimPrefix(addr, "unix://")
 
 	hj, ok := w.(http.Hijacker)
 	if !ok {

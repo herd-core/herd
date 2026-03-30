@@ -15,6 +15,7 @@ import (
 // ExecPayload defines the JSON structure sent to the guest-agent to trigger a command.
 type ExecPayload struct {
 	Command []string `json:"command"`
+	Env     []string `json:"env,omitempty"`
 }
 
 // DialFirecracker connects to a Firecracker microVM vsock port using its Unix Domain Socket.

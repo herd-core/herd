@@ -7,7 +7,12 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/herd-core/herd/internal/config"
 	"github.com/spf13/cobra"
+)
+
+var (
+	logsConfig string
 )
 
 var logsCmd = &cobra.Command{
@@ -16,7 +21,14 @@ var logsCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		sessionID := args[0]
-		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:8080/v1/sessions/%s/logs", sessionID))
+		
+		cfg, err := config.Load(logsConfig)
+		if err != nil {
+			log.Fatalf("failed to load config %q: %v", logsConfig, err)
+		}
+		
+		url := fmt.Sprintf("http://%s/v1/sessions/%s/logs", cfg.Network.ControlBind, sessionID)
+		resp, err := http.Get(url)
 		if err != nil {
 			log.Fatalf("failed to fetch logs: %v", err)
 		}
@@ -40,4 +52,5 @@ var logsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(logsCmd)
+	logsCmd.Flags().StringVar(&logsConfig, "config", "/etc/herd/config.yaml", "Path to daemon configuration file")
 }

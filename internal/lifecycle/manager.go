@@ -3,18 +3,13 @@ package lifecycle
 import (
 	"sync"
 	"time"
+
+	"github.com/herd-core/herd"
 )
 
 // WorkerReaper is the interface to your pool to execute a specific worker.
 type WorkerReaper interface {
 	KillWorker(sessionID string, reason string) error
-}
-
-type Config struct {
-	AbsoluteTTL    time.Duration
-	IdleTTL        time.Duration
-	HeartbeatGrace time.Duration
-	DataTimeout    time.Duration
 }
 
 type SessionState struct {
@@ -24,25 +19,26 @@ type SessionState struct {
 	LastControlHeartbeat time.Time
 	LastDataActivity     time.Time
 	ActiveConns          int
+
+	IdleTTL        time.Duration
+	AbsoluteTTL    time.Duration
 }
 
 type Manager struct {
 	mu       sync.RWMutex
 	registry map[string]*SessionState
-	Config   Config
 	reaper   WorkerReaper
 }
 
-func NewManager(cfg Config, reaper WorkerReaper) *Manager {
+func NewManager(reaper WorkerReaper) *Manager {
 	return &Manager{
 		registry: make(map[string]*SessionState),
-		Config:   cfg,
 		reaper:   reaper,
 	}
 }
 
 // Register explicitly creates the session lease.
-func (m *Manager) Register(sessionID string) {
+func (m *Manager) Register(sessionID string, config herd.TenantConfig) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := time.Now()
@@ -53,6 +49,8 @@ func (m *Manager) Register(sessionID string) {
 		LastControlHeartbeat: now,
 		LastDataActivity:     now,
 		ActiveConns:          0,
+		IdleTTL:              time.Duration(config.IdleTimeoutSeconds) * time.Second,
+		AbsoluteTTL:          time.Duration(config.TTLSeconds) * time.Second,
 	}
 	m.registry[sessionID] = s
 }

@@ -11,17 +11,10 @@ const validConfigYAML = `
 network:
   control_bind: 127.0.0.1:8080
   data_bind: 127.0.0.1:4000
-worker:
-  command: ["python3", "worker.py"]
-  env:
-    - FOO=bar
 resources:
-  target_idle: 1
-  max_workers: 4
-  memory_limit_mb: 512
-  cpu_limit_cores: 1
-  ttl: 10m
-  health_interval: 5s
+  max_global_vms: 100
+  max_global_memory_mb: 32000
+  cpu_limit_cores: 16
 telemetry:
   log_format: json
   metrics_path: /metrics
@@ -39,8 +32,8 @@ func TestLoad_ValidConfig(t *testing.T) {
 	if cfg.Network.ControlBind != "127.0.0.1:8080" {
 		t.Fatalf("unexpected control bind: %q", cfg.Network.ControlBind)
 	}
-	if got := cfg.Worker.StartTimeoutDuration().String(); got != "30s" {
-		t.Fatalf("expected default start_timeout 30s, got %q", got)
+	if cfg.Resources.MaxGlobalVMs != 100 {
+		t.Fatalf("expected max_global_vms 100, got %d", cfg.Resources.MaxGlobalVMs)
 	}
 	if cfg.Telemetry.LogFormat != "json" {
 		t.Fatalf("expected telemetry.log_format=json, got %q", cfg.Telemetry.LogFormat)
@@ -53,15 +46,10 @@ func TestLoad_MissingRequiredField(t *testing.T) {
 	path := writeTempConfig(t, `
 network:
   control_bind: 127.0.0.1:8080
-worker:
-  command: ["python3", "worker.py"]
 resources:
-  target_idle: 1
-  max_workers: 4
-  memory_limit_mb: 512
-  cpu_limit_cores: 1
-  ttl: 10m
-  health_interval: 5s
+  max_global_vms: 100
+  max_global_memory_mb: 32000
+  cpu_limit_cores: 16
 `)
 
 	_, err := Load(path)
@@ -120,24 +108,14 @@ func TestLoad_ValidationMatrix(t *testing.T) {
 			expectPart: "host must be loopback",
 		},
 		{
-			name:       "invalid worker env",
-			yaml:       strings.ReplaceAll(validConfigYAML, "FOO=bar", "INVALID_ENV"),
-			expectPart: "KEY=VALUE",
+			name:       "invalid max global vms",
+			yaml:       strings.ReplaceAll(validConfigYAML, "max_global_vms: 100", "max_global_vms: 0"),
+			expectPart: "resources.max_global_vms must be >= 1",
 		},
 		{
-			name:       "invalid health path",
-			yaml:       strings.Replace(validConfigYAML, "command: [\"python3\", \"worker.py\"]", "command: [\"python3\", \"worker.py\"]\n  health_path: health", 1),
-			expectPart: "worker.health_path must start with '/'",
-		},
-		{
-			name:       "invalid ttl duration",
-			yaml:       strings.ReplaceAll(validConfigYAML, "ttl: 10m", "ttl: ten"),
-			expectPart: "resources.ttl invalid duration",
-		},
-		{
-			name:       "non-positive health interval",
-			yaml:       strings.ReplaceAll(validConfigYAML, "health_interval: 5s", "health_interval: 0s"),
-			expectPart: "resources.health_interval must be > 0",
+			name:       "invalid max global memory",
+			yaml:       strings.ReplaceAll(validConfigYAML, "max_global_memory_mb: 32000", "max_global_memory_mb: 0"),
+			expectPart: "resources.max_global_memory_mb must be >= 1",
 		},
 		{
 			name:       "invalid log format",

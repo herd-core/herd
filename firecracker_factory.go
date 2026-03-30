@@ -28,7 +28,6 @@ type FirecrackerFactory struct {
 	Storage        *storage.Manager
 
 	SocketPathDir string
-	Command       []string
 	IPAM          *network.IPAM
 }
 
@@ -42,6 +41,7 @@ type FirecrackerWorker struct {
 	cmd        *exec.Cmd
 	client     *http.Client
 	ipam       *network.IPAM
+	done       chan struct{} // closed when cmd.Wait() returns
 }
 
 // ID returns the worker ID.
@@ -54,10 +54,15 @@ func (f *FirecrackerWorker) GuestIP() string {
 	return f.guestIP
 }
 
-// Address returns the socket path. Wait, returning empty string since vsock
-// or unix domains can't be represented easily here.
+// Address returns the HTTP base URL for the workload on the guest LAN (data-plane
+// reverse proxy). Exec and other vsock paths use VsockUDSPath.
 func (f *FirecrackerWorker) Address() string {
-	return fmt.Sprintf("unix://%s", f.socketPath)
+	return fmt.Sprintf("http://%s:80", f.guestIP)
+}
+
+// VsockUDSPath is the host Unix socket Firecracker exposes for vsock connect.
+func (f *FirecrackerWorker) VsockUDSPath() string {
+	return f.socketPath
 }
 
 // Client returns the HTTP client.
@@ -82,11 +87,19 @@ func (f *FirecrackerWorker) OnCrash(fn func(sessionID string)) {
 	// Not implemented for this minimal version
 }
 
-// Close kills the VM and cleans up resources.
+// Close kills the VM and cleans up resources. It blocks until the Firecracker
+// process has fully exited before tearing down storage, preventing "device busy"
+// errors on the devmapper thin volume.
 func (f *FirecrackerWorker) Close() error {
 	if f.cmd != nil && f.cmd.Process != nil {
 		_ = f.cmd.Process.Kill()
+		select {
+		case <-f.done:
+		case <-time.After(5 * time.Second):
+			slog.Warn("timed out waiting for firecracker process to exit", "vmID", f.id)
+		}
 	}
+
 	if err := os.Remove(f.socketPath); err != nil {
 		slog.Warn("failed to remove firecracker socket", "path", f.socketPath, "error", err)
 	}
@@ -104,14 +117,44 @@ func (f *FirecrackerWorker) Close() error {
 	return nil
 }
 
+// WarmImage ensures an image is cached without starting a VM.
+func (f *FirecrackerFactory) WarmImage(ctx context.Context, imageRef string) error {
+	return f.Storage.WarmImage(ctx, imageRef)
+}
+
 // Spawn starts a new Firecracker VM.
-func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], error) {
+func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config TenantConfig) (Worker[*http.Client], error) {
 	spawnStart := time.Now()
-	workerID := fmt.Sprintf("fc-%d", time.Now().UnixNano())
+	workerID := sessionID // Use sessionID universally
 	socketPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.sock", workerID))
 
 	t0 := time.Now()
-	rootfsPath, err := f.Storage.Snapshot(ctx, workerID)
+	// Ensure the image is warmed (pulled) before we try to extract config or snapshot
+	if err := f.Storage.WarmImage(ctx, config.Image); err != nil {
+		return nil, fmt.Errorf("failed to warm image: %w", err)
+	}
+
+	imgConfig, err := f.Storage.ExtractImageConfig(ctx, config.Image)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract image config: %w", err)
+	}
+
+	finalCmd := imgConfig.Cmd
+	if len(config.Command) > 0 {
+		finalCmd = config.Command
+	}
+	if len(imgConfig.Entrypoint) > 0 {
+		if len(config.Command) == 0 {
+			finalCmd = append(imgConfig.Entrypoint, finalCmd...)
+		} else {
+			finalCmd = append(imgConfig.Entrypoint, config.Command...)
+		}
+	}
+	if len(finalCmd) == 0 {
+		return nil, fmt.Errorf("no command to run: image %q has no Entrypoint or Cmd and none was provided in the request", config.Image)
+	}
+
+	rootfsPath, err := f.Storage.Snapshot(ctx, workerID, config.Image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rootfs snapshot: %w", err)
 	}
@@ -125,7 +168,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	log.Printf("[spawn:%s] inject guest     %v", workerID, time.Since(tInject))
 
 	// Ensure old socket is removed
-	if err := os.Remove(socketPath); err != nil {
+	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
 		slog.Warn("failed to remove legacy socket", "path", socketPath, "error", err)
 	}
 
@@ -139,7 +182,11 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	hostIP := "10.200.0.1"
 
 	t2 := time.Now()
-	tapName := "tap-" + workerID[len(workerID)-8:]
+	tapNameLen := len(workerID)
+	if tapNameLen > 8 {
+		tapNameLen = 8
+	}
+	tapName := "tap-" + workerID[len(workerID)-tapNameLen:]
 	_ = network.DeleteTap(tapName)
 	if err := network.CreatePointToPointTap(tapName, hostIP, guestIP); err != nil {
 		f.IPAM.Release(guestIP)
@@ -147,13 +194,15 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	}
 	log.Printf("[spawn:%s] TAP setup        %v", workerID, time.Since(t2))
 
+	macByte := fmt.Sprintf("%02x", time.Now().UnixNano()%256)
+
 	// Create a minimal config json
 	configPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.json", workerID))
 	initPath := storage.DefaultGuestAgentPath
 	configData := fmt.Sprintf(`{
 		"boot-source": {
 			"kernel_image_path": "%s",
-			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off quiet mitigations=off i8042.nokbd i8042.noaux tsc=reliable random.trust_cpu=on root=/dev/vda rw rootfstype=ext4 rootflags=noload,noinit_itable init=%s herd_rootfs=1 ip=%s gw=%s"
+			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off quiet mitigations=off i8042.nokbd i8042.noaux tsc=reliable random.trust_cpu=on random.trust_bootloader=on root=/dev/vda rw rootfstype=ext4 rootflags=noload,noinit_itable init=%s herd_rootfs=1 herd_ip=%s herd_gw=%s"
 		},
 		"drives": [
 			{
@@ -166,26 +215,29 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		"network-interfaces": [
 			{
 				"iface_id": "eth0",
-				"guest_mac": "AA:FC:00:00:00:0%s",
+				"guest_mac": "AA:FC:00:00:00:%s",
 				"host_dev_name": "%s"
 			}
 		],
 		"machine-config": {
 			"vcpu_count": 1,
-			"mem_size_mib": 256
+			"mem_size_mib": 512
 		},
 		"vsock": {
 			"guest_cid": 3,
 			"uds_path": "%s"
-		}
-	}`, f.KernelImagePath, initPath, guestIP, hostIP, rootfsPath, workerID[len(workerID)-1:], tapName, socketPath)
+		},
+		"entropy": {}
+	}`, f.KernelImagePath, initPath, guestIP, hostIP, rootfsPath, macByte, tapName, socketPath)
 
 	if err := os.WriteFile(configPath, []byte(configData), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write config: %w", err)
 	}
 
-	// `--no-api` tells Firecracker to autoboot the machine using the provided config immediately
-	cmd := exec.CommandContext(ctx, f.FirecrackerPath, "--no-api", "--config-file", configPath)
+	// The Firecracker process must outlive the HTTP request that spawned it, so use
+	// context.Background() instead of the request-scoped ctx. The request ctx is still
+	// used above for the spawn-time operations (image pull, snapshot, vsock wait).
+	cmd := exec.Command(f.FirecrackerPath, "--no-api", "--config-file", configPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -195,9 +247,10 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	}
 	log.Printf("[spawn:%s] cmd.Start        %v", workerID, time.Since(t3))
 
-	// Wait for the process in the background so cmd.ProcessState is populated on crash
+	done := make(chan struct{})
 	go func() {
 		_ = cmd.Wait()
+		close(done)
 	}()
 
 	// Loop to wait for the VM to boot and accept vsock connections.
@@ -225,14 +278,22 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 	logPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.log", workerID))
 	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
+	finalEnv := imgConfig.Env
+	for k, v := range config.Env {
+		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	// Stream the workload payload down the vsock pipe
 	go func() {
 		defer func() {
-		if cerr := logFile.Close(); cerr != nil {
-			slog.Warn("failed to close worker log file", "error", cerr)
+			if cerr := logFile.Close(); cerr != nil {
+				slog.Warn("failed to close worker log file", "error", cerr)
+			}
+		}()
+		payload := vsock.ExecPayload{
+			Command: finalCmd,
+			Env:     finalEnv,
 		}
-	}()
-		payload := vsock.ExecPayload{Command: f.Command}
 		if err := vsock.Execute(context.Background(), execConn, payload, io.MultiWriter(os.Stdout, logFile)); err != nil {
 			fmt.Printf("[host] Failed to execute payload on %s: %v\n", workerID, err)
 		}
@@ -259,5 +320,6 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context) (Worker[*http.Client], e
 		client:     agentClient,
 		storage:    f.Storage,
 		ipam:       f.IPAM,
+		done:       done,
 	}, nil
 }

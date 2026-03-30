@@ -44,13 +44,11 @@
 package proxy
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strings"
 
 	"github.com/herd-core/herd"
 	"github.com/herd-core/herd/internal/lifecycle"
@@ -127,14 +125,6 @@ func (rp *ReverseProxy[C]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if rp.lifecycleManager != nil {
 		rp.lifecycleManager.BeginRequest(sessionID)
-		isWebSocket := strings.ToLower(r.Header.Get("Upgrade")) == "websocket"
-		if !isWebSocket && rp.lifecycleManager.Config.DataTimeout > 0 {
-			var cancel context.CancelFunc
-			var ctx context.Context
-			ctx, cancel = context.WithTimeout(r.Context(), rp.lifecycleManager.Config.DataTimeout)
-			defer cancel()
-			r = r.WithContext(ctx)
-		}
 		defer func() {
 			rp.lifecycleManager.EndRequest(sessionID, r.Context().Err())
 		}()
@@ -155,7 +145,9 @@ func (rp *ReverseProxy[C]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		sess, err = rp.pool.Acquire(r.Context(), sessionID)
+		// Non-lookup proxy paths must supply TenantConfig via another mechanism,
+		// but typically we use LookupOnly for the herd proxy now.
+		sess, err = rp.pool.Acquire(r.Context(), sessionID, herd.TenantConfig{})
 		if err != nil {
 			log.Printf("[proxy] Acquire(%q) failed: %v", sessionID, err)
 			http.Error(w, fmt.Sprintf("herd: could not acquire worker: %v", err), http.StatusServiceUnavailable)

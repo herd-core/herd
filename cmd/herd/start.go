@@ -90,13 +90,7 @@ func runDaemon() {
 	}()
 
 	// Initialize Lifecycle Manager
-	lcConfig := lifecycle.Config{
-		AbsoluteTTL:    cfg.Resources.AbsoluteTTLDuration(),
-		IdleTTL:        cfg.Resources.IdleTTLDuration(),
-		HeartbeatGrace: cfg.Resources.HeartbeatGraceDuration(),
-		DataTimeout:    cfg.Resources.DataTimeoutDuration(),
-	}
-	lm := lifecycle.NewManager(lcConfig, pool)
+	lm := lifecycle.NewManager(pool)
 	go lm.StartReaper(ctx) // Run reaper in background
 
 	controlServer := &http.Server{
@@ -178,13 +172,6 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 
 	mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
 
-	// Pull + unpack the base image once at startup so the per-VM hot path
-	// (Snapshot) never touches the network.
-	const baseImage = "docker.io/library/alpine:latest"
-	if err := mgr.WarmImage(context.Background(), baseImage); err != nil {
-		return nil, fmt.Errorf("failed to warm base image: %w", err)
-	}
-
 	ipam, err := network.NewIPAM("10.200.0.0/16")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize IPAM: %w", err)
@@ -196,13 +183,10 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 		Storage:         mgr,
 		SocketPathDir:   "/tmp",
 		GuestAgentPath:  filepath.Join(cwd, "herd-guest-agent"),
-		Command:         cfg.Worker.Command,
 		IPAM:            ipam,
 	}
 
 	return herd.New(factory,
-		herd.WithAutoScale(cfg.Resources.TargetIdle, cfg.Resources.MaxWorkers),
-		herd.WithTTL(cfg.Resources.IdleTTLDuration()),
-		herd.WithHealthInterval(cfg.Resources.HealthIntervalDuration()),
+		herd.WithMaxWorkers(cfg.Resources.MaxGlobalVMs),
 	)
 }

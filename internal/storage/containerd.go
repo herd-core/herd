@@ -2,27 +2,31 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/leases"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/opencontainers/image-spec/identity"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sys/unix"
 )
 
 // Manager mediates between herd and containerd for rootfs provisioning.
 //
 // Lifecycle:
-//  1. Call WarmImage once at daemon startup to pull/cache the base image.
+//  1. Call WarmImage on demand to pull/cache an image.
 //  2. Call Snapshot per-VM to create a copy-on-write block device from the cached image.
 //  3. Call Teardown per-VM when the VM is destroyed.
 type Manager struct {
@@ -30,10 +34,8 @@ type Manager struct {
 	namespace   string
 	snapshotter string
 
-	// parentChainID is the content-addressable identifier of the fully-unpacked
-	// image layer chain. Set by WarmImage, consumed by Snapshot. This avoids
-	// resolving the image on every Spawn — a ~400ms registry round-trip.
-	parentChainID string
+	mu      sync.RWMutex
+	parents map[string]string
 }
 
 func NewManager(client *containerd.Client, namespace, snapshotter string) *Manager {
@@ -41,7 +43,48 @@ func NewManager(client *containerd.Client, namespace, snapshotter string) *Manag
 		client:      client,
 		namespace:   namespace,
 		snapshotter: snapshotter,
+		parents:     make(map[string]string),
 	}
+}
+
+// ImageConfig holds the default container execution parameters.
+type ImageConfig struct {
+	Entrypoint []string
+	Cmd        []string
+	Env        []string
+}
+
+// ExtractImageConfig asks containerd to parse the OCI image metadata and returns the default
+// Entrypoint, Cmd, and Env baked into the image.
+func (m *Manager) ExtractImageConfig(ctx context.Context, imageRef string) (*ImageConfig, error) {
+	imageRef = normalizeImageRef(imageRef)
+	nsCtx := namespaces.WithNamespace(ctx, m.namespace)
+
+	image, err := m.client.GetImage(nsCtx, imageRef)
+	if err != nil {
+		return nil, fmt.Errorf("get image %s: %w", imageRef, err)
+	}
+
+	desc, err := image.Config(nsCtx)
+	if err != nil {
+		return nil, fmt.Errorf("get image config desc %s: %w", imageRef, err)
+	}
+
+	blob, err := content.ReadBlob(nsCtx, m.client.ContentStore(), desc)
+	if err != nil {
+		return nil, fmt.Errorf("read image config blob: %w", err)
+	}
+
+	var ociImage ocispec.Image
+	if err := json.Unmarshal(blob, &ociImage); err != nil {
+		return nil, fmt.Errorf("unmarshal oci image: %w", err)
+	}
+
+	return &ImageConfig{
+		Entrypoint: ociImage.Config.Entrypoint,
+		Cmd:        ociImage.Config.Cmd,
+		Env:        ociImage.Config.Env,
+	}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -51,9 +94,8 @@ func NewManager(client *containerd.Client, namespace, snapshotter string) *Manag
 // WarmImage ensures the base image is present in the local content store
 // and unpacked for the configured snapshotter. It caches the parent chain ID
 // so that subsequent Snapshot calls never touch the network.
-//
-// Call this once at daemon startup before creating the pool.
 func (m *Manager) WarmImage(ctx context.Context, imageRef string) error {
+	imageRef = normalizeImageRef(imageRef)
 	nsCtx := namespaces.WithNamespace(ctx, m.namespace)
 
 	image, err := m.client.GetImage(nsCtx, imageRef)
@@ -83,9 +125,13 @@ func (m *Manager) WarmImage(ctx context.Context, imageRef string) error {
 	if err != nil {
 		return fmt.Errorf("read rootfs for %s: %w", imageRef, err)
 	}
-	m.parentChainID = identity.ChainID(rootFS).String()
+	
+	chainID := identity.ChainID(rootFS).String()
+	m.mu.Lock()
+	m.parents[imageRef] = chainID
+	m.mu.Unlock()
 
-	slog.Info("image warmed", "ref", imageRef, "parent", m.parentChainID)
+	slog.Info("image warmed", "ref", imageRef, "parent", chainID)
 	return nil
 }
 
@@ -98,9 +144,15 @@ func (m *Manager) WarmImage(ctx context.Context, imageRef string) error {
 //
 // It returns the host path to the block device (e.g. /dev/dm-X).
 // This is a pure local operation — no registry or network calls.
-func (m *Manager) Snapshot(ctx context.Context, vmID string) (string, error) {
-	if m.parentChainID == "" {
-		return "", fmt.Errorf("storage: Snapshot called before WarmImage")
+func (m *Manager) Snapshot(ctx context.Context, vmID, imageRef string) (string, error) {
+	imageRef = normalizeImageRef(imageRef)
+	
+	m.mu.RLock()
+	parentChainID, exists := m.parents[imageRef]
+	m.mu.RUnlock()
+
+	if !exists {
+		return "", fmt.Errorf("storage: Snapshot called before WarmImage for image %s", imageRef)
 	}
 
 	nsCtx := namespaces.WithNamespace(ctx, m.namespace)
@@ -117,7 +169,7 @@ func (m *Manager) Snapshot(ctx context.Context, vmID string) (string, error) {
 
 	_, statErr := snapService.Stat(leaseCtx, snapshotKey)
 	if errdefs.IsNotFound(statErr) {
-		mounts, err = snapService.Prepare(leaseCtx, snapshotKey, m.parentChainID, snapshots.WithLabels(map[string]string{
+		mounts, err = snapService.Prepare(leaseCtx, snapshotKey, parentChainID, snapshots.WithLabels(map[string]string{
 			"herd/vmID": vmID,
 		}))
 		if err != nil {
@@ -295,4 +347,16 @@ func extractBlockDeviceFromMounts(mounts []mount.Mount) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func normalizeImageRef(ref string) string {
+	parts := strings.Split(ref, "/")
+	if len(parts) == 1 {
+		return "docker.io/library/" + ref
+	}
+	// If the first part doesn't look like a domain (no dot, no colon, not localhost)
+	if !strings.ContainsAny(parts[0], ".:") && parts[0] != "localhost" {
+		return "docker.io/" + ref
+	}
+	return ref
 }
