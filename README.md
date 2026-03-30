@@ -1,86 +1,71 @@
-# Herd Core
+# Herd: The Go Edge Cloud Core
 
-**Herd** is a high-performance microVM orchestrator that pins incoming requests to specific background workers (microVMs) using session IDs.
+**Herd** is the core engine for an Application Delivery Plane. Unlike raw microVM orchestrators that just boot virtual motherboard instances, Herd provides a complete delivery stack: holding L7 connections, cold-booting microVMs in sub-500ms, and securely tunneling traffic from standard OCI/Docker images.
 
-Built on **Firecracker**, Herd provides hardware-level isolation for stateful workloads like browsers, LLMs, and REPL servers, transforming them into multi-tenant services with sub-500ms startup latency.
+## 🧱 The Engine Architecture
 
-## 🧱 Architecture
+Herd implements four critical layers that bridge the gap between "hardware" and "application":
 
-Herd operates a dual-plane architecture to separate management from data throughput:
+- **OCI Translation**: Automatically pulls Docker images via `containerd`, extracts `CMD`/`ENV`, and flattens them into Copy-on-Write rootfs snapshots.
+- **L7 "Wake-on-Request" Proxy**: A high-speed reverse proxy that intercepts HTTP requests, cold-boots the corresponding VM if needed, and tunnels the traffic inside.
+- **Automated IPAM**: Zero-config networking pool that manages subnets, TAP interfaces, and NAT routing.
+- **Guest Agent Execution**: Injects `herd-guest-agent` as PID 1 to handle internal OS setup and workload execution.
 
-- **Control Plane** (REST API): Manages session lifecycles, image warming, and log retrieval. It communicates with the host's `containerd` for storage and `firecracker` for the VM runtime.
-- **Data Plane** (HTTP Proxy): A high-speed reverse proxy that routes traffic to active microVMs based on the `X-Session-ID` header.
+## 🛰️ The "Brutal Difference"
 
-### The Core Invariant
-**1 Session ID → 1 Worker (MicroVM)**, for the lifetime of the session.
-
-## 🚀 Key Features
-
-- **Hardware Isolation**: Each session runs in its own Firecracker microVM, isolated by the Linux KVM hypervisor.
-- **Auto-Scaling & Idle Eviction**: Dynamically scales the VM fleet and reclaims resources based on configurable TTLs.
-- **Exec & Logs**: Built-in support for executing commands inside VMs via vsock and retrieving real-time logs.
-- **Container-Native Storage**: Leverages OCI images and `containerd` snapshots for rapid rootfs provisioning.
-- **Singleflight Acquisition**: Protects against thundering herd issues during concurrent session requests.
+| Feature | Pure Orchestrator (e.g., Raw Firecracker) | Herd (Fly.io Open Source Core) |
+| :--- | :--- | :--- |
+| **Input** | Custom Kernel + Raw `ext4` Disk Image | Standard Docker/OCI Image |
+| **Ingress** | None. You must install Traefik/Nginx | Built-in L7 Reverse Proxy |
+| **Lifecycle** | Turn On / Turn Off | Wake-on-HTTP-Request (Scale to Zero) |
+| **User Experience** | Systems Engineer (Hard) | Application Developer (Easy) |
 
 ## 🛠️ Installation & Running
 
-### Prerequisites
-- **Linux**: Required for KVM and Firecracker support.
-- **Firecracker**: Binaries must be installed on the host.
-- **Containerd**: Running daemon with access to `containerd.sock`.
-- **Kernel Image**: A `vmlinux.bin` file for booting microVMs.
+Herd requires **Linux with KVM** to run the Firecracker microVMs. It also requires `containerd` for storage.
 
-### Build
+### 1. Build
+
 ```bash
 go build -o herd ./cmd/herd
 ```
 
-### Configuration (`herd.yaml`)
-Herd requires a YAML configuration file to define its networking, storage, and resource limits.
+### 2. Bootstrap Host Storage
 
-```yaml
-network:
-  control_bind: "127.0.0.1:8001"
-  data_bind: "127.0.0.1:8080"
-
-storage:
-  state_dir: "/var/lib/herd"
-  namespace: "herd"
-  snapshotter_name: "devmapper"
-
-resources:
-  max_global_vms: 50
+```bash
+# Prepare the host (loop devices, devmapper, containerd config)
+sudo ./herd bootstrap --config herd.yaml
 ```
 
-### Run
+### 3. Start the Daemon
+
 ```bash
 sudo ./herd start --config herd.yaml
 ```
-*Note: Herd requires `sudo` for managing TAP devices, devmapper snapshots, and containerd leases.*
 
-## 🛠️ CLI Commands
-
-Herd provides a unified CLI for infrastructure and session management:
-
-- **`bootstrap`**: Prepare host loop devices and devmapper thin-pools.
-- **`start`**: Launch the orchestrator and proxy planes.
-- **`deploy`**: Request a new microVM session from the daemon.
-- **`exec`**: Interactive shell access to a running VM.
-- **`logs`**: Stream workload logs directly to your terminal.
-- **`teardown`**: Purge all host state and storage.
+*Note: Herd requires `sudo` for managing KVM, TAP devices, and devmapper snapshots.*
 
 ## 🔌 API Overview
 
 ### Control Plane (REST)
-- `POST /v1/sessions`: Acquire a new session (spawns a VM if needed).
-- `DELETE /v1/sessions/{id}`: Terminate a session and its VM.
-- `GET /v1/sessions/{id}/logs`: Retrieve VM logs.
-- `POST /v1/sessions/{id}/exec`: Execute a command inside a VM (upgrades to vsock stream).
-- `PUT /v1/sessions/{id}/heartbeat`: Extend session lifetime.
 
-### Data Plane (Proxy)
-- `ANY /*` with `X-Session-ID` header: Proxies traffic directly to the session's microVM.
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/v1/sessions` | Acquire a new session (wakes up the VM). |
+| `PUT` | `/v1/sessions/{id}/heartbeat` | Keep the session alive. |
+| `GET` | `/v1/sessions/{id}/logs` | Stream real-time logs from the VM. |
 
-## 📜 License
+### Data Plane (HTTP Proxy)
 
-Apache 2.0 License. See `LICENSE` for details.
+- **Port**: 8080 (Data Plane)
+- **Routing Header**: `X-Session-ID`
+- **Behavior**: Routes directly to the pinned VM. Supports cold-boot "Wake-on-Request" for known sessions.
+
+## ⚙️ Configuration Reference (`herd.yaml`)
+
+- `network.control_bind`: "127.0.0.1:8001"
+- `network.data_bind`: "127.0.0.1:8080"
+- `storage.state_dir`: "/var/lib/herd"
+- `storage.snapshotter_name`: "devmapper"
+
+For more details, see [CLI & Configuration Reference](./docs/daemon/cli.md).

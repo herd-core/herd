@@ -1,38 +1,32 @@
-# Welcome to Herd
+# Welcome to Herd: The Edge Cloud Core
 
-**Herd** is a high-performance microVM orchestrator designed for stateful workloads. It leverages **Firecracker** to spawn isolated, session-affine compute environments in milliseconds, transforming stateful binaries (browsers, LLMs, REPLs) into secure, multi-tenant services.
+**Herd** is a high-performance **Application Delivery Plane** for stateful workloads. Built on **Firecracker**, it automates the translation of standard Docker/OCI images into isolated, session-affine compute environments with built-in L7 ingress and zero-config networking.
 
-## Why Herd?
+## 🛸 From Orchestrator to Edge Cloud
 
-> "Kubernetes is too slow to spawn sessions. Redis-only maps are too complex to maintain. Containers aren't isolated enough."
+Herd isn't just an "engine block"—it's the whole vehicle. It bridges the gap between raw microVM hardware and the application developer experience.
 
-Herd provides:
-- ⚡ **Sub-500ms startup**: Faster than any container orchestrator.
-- 🔒 **Hardware Isolation**: Strong security via microVMs.
-- 🔌 **REST API**: Simple Control Plane for session lifecycle, exec, and logs.
+| Feature | Pure Orchestrator (e.g., Raw Firecracker) | Herd (Fly.io Open Source Core) |
+| :--- | :--- | :--- |
+| **Input** | Custom Kernel + Raw Disk | Standard OCI/Docker Image |
+| **Ingress** | None (You install Nginx/Traefik) | **Built-in L7 Proxy** |
+| **Lifecycle** | Turn On / Turn Off | **Wake-on-HTTP-Request** |
+| **Effort** | Systems Engineer (Hard) | Application Developer (Easy) |
 
-### The Core Invariant
-**1 Session ID → 1 Worker (MicroVM)**, for the lifetime of the session.
+## ✅ The Core Value: The Four Layers
 
-This invariant enables you to maintain in-memory state, local file systems, or GPU context without a complex coordination layer.
+1.  **OCI Translation**: Pull images, extract `CMD`/`ENV`, and snap rootfs volumes automatically.
+2.  **L7 Proxy Ingress**: Intercept traffic, cold-boot VMs, and tunnel TCP/HTTP connections.
+3.  **Automated IPAM**: Zero-config host-to-guest networking.
+4.  **Agent-Driven Execution**: Abstract the OS with a static `herd-guest-agent` as PID 1.
 
-## 🧱 Architecture Overview
+## 🧱 Key Documentation
 
-Herd operates on a dual-plane architecture:
+- [**The Brutal Difference**](../../README.md#the-herd-difference): Why Herd isn't just another KVM wrapper.
+- [**Architecture Deep Dive**](../../architecture.md): Understanding the four delivery layers.
+- [**Installation Guide**](./daemon/install.md): Bootstrapping the edge cloud.
+- [**CLI & Configuration Reference**](./daemon/cli.md): Mastering the `herd` binary.
 
-- **Control Plane** (REST API): Manages session lifecycles, image warming, and log retrieval.
-- **Data Plane** (HTTP Proxy): High-speed reverse proxy that routes traffic to VMs based on `X-Session-ID`.
+## 🚀 Get Started
 
-For a deep dive, see the [Architecture Documentation](../../architecture.md).
-
-## 🚀 Key Features
-
-- **Hardware Isolation**: Each session runs in its own Firecracker microVM.
-- **Auto-Scaling**: Dynamically scale your VM fleet based on demand.
-- **Idle Eviction**: Automatically reclaim resources for inactive sessions.
-- **Exec & Logs**: Built-in support for executing commands inside VMs and retrieving real-time logs.
-- **Container-Native**: Uses `containerd` and OCI images for rootfs provisioning.
-
-## 🛠️ Get Started
-
-Ready to dive in? Follow the [Installation Guide](./daemon/install.md) to set up your Herd daemon.
+Ready to transform your stateful apps? Start with the [Installation Guide](./daemon/install.md).
