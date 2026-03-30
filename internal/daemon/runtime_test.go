@@ -103,13 +103,13 @@ func (f *metricsFactory) Spawn(_ context.Context, _ string, _ herd.TenantConfig)
 }
 
 func newMetricsPool(t *testing.T) *herd.Pool[*http.Client] {
-       t.Helper()
-       p, err := herd.New[*http.Client](&metricsFactory{}, herd.WithMaxWorkers(1))
-       if err != nil {
-	       t.Fatalf("failed creating metrics pool: %v", err)
-       }
-       t.Cleanup(func() {
-	       _ = p.Shutdown(context.Background())
-       })
-       return p
+	t.Helper()
+	p, err := herd.New[*http.Client](&metricsFactory{}, herd.WithMaxWorkers(1))
+	if err != nil {
+		t.Fatalf("failed creating metrics pool: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = p.Shutdown(context.Background())
+	})
+	return p
 }

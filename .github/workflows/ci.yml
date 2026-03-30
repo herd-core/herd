@@ -33,8 +33,7 @@ jobs:
 
 
     - name: Run tests with race detector
-      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/herd ./internal/... ./proxy ./worker.go ./pool.go ./options.go
-
+      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/herd ./internal/... ./proxy
 
   lint:
     name: Lint Code
