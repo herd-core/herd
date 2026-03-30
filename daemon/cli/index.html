@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#cli-configuration-reference" class="md-skip">
+        <a href="#cli-command-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -234,6 +234,26 @@
   
   
   Introduction
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/firecracker-microvm-execution/" class="md-tabs__link">
+          
+  
+  
+  Firecracker microVM
 
         </a>
       </li>
@@ -455,7 +475,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../intro/quickstart/" class="md-nav__link">
+      <a href="../../intro/quickstart.md" class="md-nav__link">
         
   
   
@@ -513,7 +533,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Firecracker microVM
   
 
     
@@ -526,6 +546,149 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Firecracker microVM
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/firecracker-microvm-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/firecracker-storage-bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -618,10 +781,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -639,8 +802,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -710,10 +873,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -731,8 +894,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -837,44 +1000,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#command" class="md-nav__link">
+  <a href="#infrastructure-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Command
+        🛠️ Infrastructure Commands
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#flags" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Flags
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-options-herdyaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Options (herd.yaml)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration Options (herd.yaml)">
+    <nav class="md-nav" aria-label="🛠️ Infrastructure Commands">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
+  <a href="#herd-bootstrap" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reference
+        herd bootstrap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#herd-teardown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        herd teardown
       
     </span>
   </a>
@@ -887,32 +1039,88 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#startup-contract" class="md-nav__link">
+  <a href="#daemon-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Startup Contract
+        🛰️ Daemon Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🛰️ Daemon Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#herd-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        herd start
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#controldata-split" class="md-nav__link">
+  <a href="#session-worker-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Control/Data Split
+        🏗️ Session &amp; Worker Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏗️ Session &amp; Worker Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#herd-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        herd deploy
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#session-lifecycle-in-daemon-mode" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#herd-exec-vm-id" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Session Lifecycle in Daemon Mode
+        herd exec [vm-id]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#herd-logs-session-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        herd logs [session-id]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-reference-herdyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚙️ Configuration Reference (herd.yaml)
       
     </span>
   </a>
@@ -983,10 +1191,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1004,8 +1212,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1077,44 +1285,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#command" class="md-nav__link">
+  <a href="#infrastructure-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Command
+        🛠️ Infrastructure Commands
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#flags" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Flags
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-options-herdyaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Options (herd.yaml)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration Options (herd.yaml)">
+    <nav class="md-nav" aria-label="🛠️ Infrastructure Commands">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
+  <a href="#herd-bootstrap" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reference
+        herd bootstrap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#herd-teardown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        herd teardown
       
     </span>
   </a>
@@ -1127,32 +1324,88 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#startup-contract" class="md-nav__link">
+  <a href="#daemon-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Startup Contract
+        🛰️ Daemon Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🛰️ Daemon Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#herd-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        herd start
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#controldata-split" class="md-nav__link">
+  <a href="#session-worker-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Control/Data Split
+        🏗️ Session &amp; Worker Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏗️ Session &amp; Worker Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#herd-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        herd deploy
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#session-lifecycle-in-daemon-mode" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#herd-exec-vm-id" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Session Lifecycle in Daemon Mode
+        herd exec [vm-id]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#herd-logs-session-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        herd logs [session-id]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-reference-herdyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚙️ Configuration Reference (herd.yaml)
       
     </span>
   </a>
@@ -1179,129 +1432,128 @@
   
 
 
-<h1 id="cli-configuration-reference">CLI &amp; Configuration Reference</h1>
-<h2 id="command">Command</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>herd<span class="w"> </span>start<span class="w"> </span>--config<span class="w"> </span>/etc/herd/config.yaml
-</span></code></pre></div>
-<h2 id="flags">Flags</h2>
-<ul>
-<li><code>--config</code>: path to daemon YAML config (default: <code>/etc/herd/config.yaml</code>).</li>
-</ul>
-<p>The daemon is strict config-first. Unknown YAML keys and invalid values fail startup.</p>
-<h2 id="configuration-options-herdyaml">Configuration Options (<code>herd.yaml</code>)</h2>
-<p>Your <code>herd.yaml</code> file tells Herd how to spawn workers and expose them securely.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">network</span><span class="p">:</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">control_socket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/tmp/herd.sock</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">data_bind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">127.0.0.1:4000</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nt">worker</span><span class="p">:</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;python3&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;worker.py&quot;</span><span class="p p-Indicator">]</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">env</span><span class="p">:</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PYTHONUNBUFFERED=1</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="nt">health_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/health</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="nt">start_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">  </span><span class="nt">start_health_check_delay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1s</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="nt">resources</span><span class="p">:</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="nt">target_idle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">  </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span><span class="nt">memory_limit_mb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">  </span><span class="nt">cpu_limit_cores</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">  </span><span class="nt">pids_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
-</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">  </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10m</span>
-</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">  </span><span class="nt">health_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5s</span>
-</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">  </span><span class="nt">worker_reuse</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">  </span><span class="nt">insecure_sandbox</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
-</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="nt">telemetry</span><span class="p">:</span>
-</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">  </span><span class="nt">log_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">json</span>
-</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">  </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/metrics</span>
-</span></code></pre></div>
-<h3 id="reference">Reference</h3>
+<h1 id="cli-command-reference">CLI Command Reference</h1>
+<p>The Herd binary (<code>herd</code>) provides several commands for managing the lifecycle of the daemon, its storage, and microVM sessions.</p>
+<h2 id="infrastructure-commands">🛠️ Infrastructure Commands</h2>
+<p>These commands are used to prepare the host environment before starting the daemon.</p>
+<h3 id="herd-bootstrap"><code>herd bootstrap</code></h3>
+<p>Initializes the host system requirements for Firecracker microVMs.
+- <strong>Purpose</strong>: Creates sparse files for storage, binds them to loop devices, sets up the devmapper thin-pool, and configures <code>containerd</code> to use the thin-pool. It also initializes host NAT routing.
+- <strong>Flags</strong>:
+    - <code>--config</code>: Path to the YAML configuration file (default: <code>/etc/herd/config.yaml</code>).
+- <strong>Usage</strong>:
+  <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>./herd<span class="w"> </span>bootstrap<span class="w"> </span>--config<span class="w"> </span>herd.yaml
+</span></code></pre></div></p>
+<h3 id="herd-teardown"><code>herd teardown</code></h3>
+<p>Cleans up the host environment and removes all state.
+- <strong>Purpose</strong>: Stops the isolated <code>containerd</code> process, removes devmapper thin-pools, detaches loop devices, and deletes state directory artifacts.
+- <strong>Flags</strong>:
+    - <code>--config</code>: Path to the YAML configuration file (default: <code>/etc/herd/config.yaml</code>).
+- <strong>Usage</strong>:
+  <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sudo<span class="w"> </span>./herd<span class="w"> </span>teardown<span class="w"> </span>--config<span class="w"> </span>herd.yaml
+</span></code></pre></div></p>
+<hr />
+<h2 id="daemon-commands">🛰️ Daemon Commands</h2>
+<h3 id="herd-start"><code>herd start</code></h3>
+<p>Starts the Herd daemon, exposing the Control and Data planes.
+- <strong>Purpose</strong>: Initializes the worker pool, connects to <code>containerd</code>, and starts the REST Control Plane and HTTP Data Plane.
+- <strong>Flags</strong>:
+    - <code>--config</code>: Path to the YAML configuration file (default: <code>/etc/herd/config.yaml</code>).
+- <strong>Usage</strong>:
+  <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sudo<span class="w"> </span>./herd<span class="w"> </span>start<span class="w"> </span>--config<span class="w"> </span>herd.yaml
+</span></code></pre></div></p>
+<hr />
+<h2 id="session-worker-commands">🏗️ Session &amp; Worker Commands</h2>
+<p>These commands interact with a running Herd daemon.</p>
+<h3 id="herd-deploy"><code>herd deploy</code></h3>
+<p>Spawns a new microVM session via the Control Plane REST API.
+- <strong>Purpose</strong>: A CLI helper to quickly acquire a session without writing a custom client.
+- <strong>Flags</strong>:
+    - <code>--image</code>: The OCI image to deploy (default: <code>alpine:latest</code>).
+    - <code>--cmd</code>: Command to run inside the VM (comma-separated, e.g., <code>--cmd=/bin/sh,-c,"echo hello"</code>).
+    - <code>-e</code>, <code>--env</code>: Set environment variables (e.g., <code>-e KEY=VALUE</code>).
+    - <code>--timeout</code>: Idle timeout in seconds (default: <code>300</code>).
+    - <code>--config</code>: Path to the YAML config (used to find the <code>ControlBind</code> address).
+- <strong>Usage</strong>:
+  <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./herd<span class="w"> </span>deploy<span class="w"> </span>--image<span class="w"> </span>playwright/node<span class="w"> </span>--cmd<span class="o">=</span>npx,playwright,run-server
+</span></code></pre></div></p>
+<h3 id="herd-exec-vm-id"><code>herd exec [vm-id]</code></h3>
+<p>Drops you into an interactive shell inside a running microVM.
+- <strong>Purpose</strong>: Connects to the VM's internal vsock port 5001. Requires the VM ID (which is the Session ID).
+- <strong>Usage</strong>:
+  <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>./herd<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>sess-12345
+</span></code></pre></div></p>
+<h3 id="herd-logs-session-id"><code>herd logs [session-id]</code></h3>
+<p>Streams real-time logs from a specific microVM session.
+- <strong>Purpose</strong>: Fetches logs from the daemon's REST API and streams them to your terminal.
+- <strong>Flags</strong>:
+    - <code>--config</code>: Path to the YAML config (used to find the <code>ControlBind</code> address).
+- <strong>Usage</strong>:
+  <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>./herd<span class="w"> </span>logs<span class="w"> </span>sess-12345
+</span></code></pre></div></p>
+<hr />
+<h2 id="configuration-reference-herdyaml">⚙️ Configuration Reference (<code>herd.yaml</code>)</h2>
 <table>
 <thead>
 <tr>
-<th style="text-align: left;">Option</th>
+<th style="text-align: left;">Section</th>
+<th style="text-align: left;">Key</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><code>network.control_socket</code></td>
-<td style="text-align: left;">UDS socket path for the Control Plane (e.g., <code>/tmp/herd.sock</code>).</td>
+<td style="text-align: left;"><strong>network</strong></td>
+<td style="text-align: left;"><code>control_bind</code></td>
+<td style="text-align: left;">REST API address (e.g., <code>127.0.0.1:8001</code>).</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>network.data_bind</code></td>
-<td style="text-align: left;">IP:Port for the Data Plane HTTP proxy (e.g., <code>127.0.0.1:8080</code>).</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>data_bind</code></td>
+<td style="text-align: left;">Proxy address (e.g., <code>127.0.0.1:8080</code>).</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>worker.command</code></td>
-<td style="text-align: left;">The subprocess command and args to spawn (e.g., <code>["npx", "playwright", "run-server"]</code>).</td>
+<td style="text-align: left;"><strong>storage</strong></td>
+<td style="text-align: left;"><code>state_dir</code></td>
+<td style="text-align: left;">Directory for daemon state and <code>containerd</code> socket.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>worker.env</code></td>
-<td style="text-align: left;">Environment variables to inject (<code>FOO=bar</code>). Supports templating like <code>{{.Port}}</code>.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>namespace</code></td>
+<td style="text-align: left;"><code>containerd</code> namespace for isolation.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>worker.health_path</code></td>
-<td style="text-align: left;">HTTP path polled for liveness.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>snapshotter_name</code></td>
+<td style="text-align: left;"><code>containerd</code> snapshotter (e.g., <code>devmapper</code>).</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>worker.start_timeout</code></td>
-<td style="text-align: left;">Time allowed for worker to become healthy.</td>
+<td style="text-align: left;"><strong>resources</strong></td>
+<td style="text-align: left;"><code>max_global_vms</code></td>
+<td style="text-align: left;">Max concurrent microVMs.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>resources.target_idle</code> / <code>max_workers</code></td>
-<td style="text-align: left;">Sets the auto-scaling floor and ceiling for the process fleet.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>max_global_memory_mb</code></td>
+<td style="text-align: left;">Total memory limit for the fleet.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>resources.ttl</code></td>
-<td style="text-align: left;">Max idle time for a session before the worker is automatically evicted (e.g. <code>15m</code>).</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>cpu_limit_cores</code></td>
+<td style="text-align: left;">Total CPU cores limit.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>resources.worker_reuse</code></td>
-<td style="text-align: left;">Whether to recycle workers for new sessions or kill them when TTL expires.</td>
+<td style="text-align: left;"><strong>telemetry</strong></td>
+<td style="text-align: left;"><code>log_format</code></td>
+<td style="text-align: left;">Daemon log format (<code>json</code> or <code>text</code>).</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>resources.health_interval</code></td>
-<td style="text-align: left;">How often to poll worker health endpoints.</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>resources.memory_limit_mb</code></td>
-<td style="text-align: left;">(Linux) cgroups-based hard memory limit per worker.</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>resources.cpu_limit_cores</code></td>
-<td style="text-align: left;">(Linux) cgroups-based CPU slicing per worker.</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>resources.pids_limit</code></td>
-<td style="text-align: left;">(Linux) cgroups-based PID limits.</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>metrics_path</code></td>
+<td style="text-align: left;">Endpoint for Prometheus metrics (e.g., <code>/metrics</code>).</td>
 </tr>
 </tbody>
 </table>
-<h2 id="startup-contract">Startup Contract</h2>
-<p>On successful start, <code>herd start</code>:</p>
-<ol>
-<li>Validates runtime policy (Linux full guarantees, macOS reduced guarantees).</li>
-<li>Loads and validates config.</li>
-<li>Bootstraps worker pool from config.</li>
-<li>Starts control plane gRPC on Unix socket.</li>
-<li>Starts data plane HTTP server on local TCP bind.</li>
-</ol>
-<p>Any failure in these steps terminates startup immediately.</p>
-<h2 id="controldata-split">Control/Data Split</h2>
-<ul>
-<li>Control plane: gRPC on <code>network.control_socket</code> (Unix Domain Socket).</li>
-<li>Data plane: HTTP on <code>network.data_bind</code> (Reverse proxy to active workers).</li>
-</ul>
-<h2 id="session-lifecycle-in-daemon-mode">Session Lifecycle in Daemon Mode</h2>
-<ul>
-<li>Clients establish a control stream via <code>Acquire</code> over UDS.</li>
-<li>Daemon allocates one pinned session per stream.</li>
-<li>On stream close/error, daemon force-kills that session's worker.</li>
-</ul>
-<p>This behavior is intentional for stateful workload cleanup and crash containment.</p>
 
 
 

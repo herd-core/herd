@@ -12,13 +12,13 @@
         <meta name="author" content="HackStrix">
       
       
-        <link rel="canonical" href="https://herd-core.github.io/herd/go/workers/">
+        <link rel="canonical" href="https://herd-core.github.io/herd/architecture/firecracker-microvm-execution/">
       
       
-        <link rel="prev" href="../../architecture/singleflight/">
+        <link rel="prev" href="../..">
       
       
-        <link rel="next" href="../../daemon/install/">
+        <link rel="next" href="../firecracker-storage-bootstrap/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Worker Interfaces - Herd</title>
+        <title>Execution Architecture - Herd</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#worker-interfaces-factories" class="md-skip">
+        <a href="#firecracker-microvm-execution-architecture" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Worker Interfaces
+              Execution Architecture
             
           </span>
         </div>
@@ -245,11 +245,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../architecture/firecracker-microvm-execution/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -269,7 +271,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../architecture/dual-mode/" class="md-tabs__link">
+        <a href="../dual-mode/" class="md-tabs__link">
           
   
   
@@ -285,13 +287,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../go/workers/" class="md-tabs__link">
           
   
   
@@ -507,26 +507,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
             
   
   
@@ -544,7 +549,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -559,10 +564,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../architecture/firecracker-microvm-execution/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -578,6 +610,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-magic-initrd-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Magic: initrd Injection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command-control-multi-port-vsock-dialer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command &amp; Control: Multi-Port Vsock Dialer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-plane-dynamic-ipam-zero-waste-networking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Plane: Dynamic IPAM &amp; Zero-Waste Networking
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -590,7 +675,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/firecracker-storage-bootstrap/" class="md-nav__link">
+      <a href="../firecracker-storage-bootstrap/" class="md-nav__link">
         
   
   
@@ -705,7 +790,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/dual-mode/" class="md-nav__link">
+      <a href="../dual-mode/" class="md-nav__link">
         
   
   
@@ -733,7 +818,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/singleflight/" class="md-nav__link">
+      <a href="../singleflight/" class="md-nav__link">
         
   
   
@@ -765,31 +850,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -807,7 +887,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -822,37 +902,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Worker Interfaces
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../go/workers/" class="md-nav__link">
         
   
   
@@ -868,87 +921,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-workerc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🔧 1. Worker[C]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-workerfactoryc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🏗️ 2. WorkerFactory[C]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-firecrackerfactory-built-in" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🏭 3. FirecrackerFactory (Built-in)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🏭 3. FirecrackerFactory (Built-in)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#microvm-sandboxing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ⚙️ MicroVM Sandboxing
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1218,10 +1190,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-workerc" class="md-nav__link">
+  <a href="#the-magic-initrd-injection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🔧 1. Worker[C]
+        The Magic: initrd Injection
       
     </span>
   </a>
@@ -1229,10 +1201,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-workerfactoryc" class="md-nav__link">
+  <a href="#command-control-multi-port-vsock-dialer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🏗️ 2. WorkerFactory[C]
+        Command &amp; Control: Multi-Port Vsock Dialer
       
     </span>
   </a>
@@ -1240,41 +1212,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-firecrackerfactory-built-in" class="md-nav__link">
+  <a href="#data-plane-dynamic-ipam-zero-waste-networking" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🏭 3. FirecrackerFactory (Built-in)
+        Data Plane: Dynamic IPAM &amp; Zero-Waste Networking
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="🏭 3. FirecrackerFactory (Built-in)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#microvm-sandboxing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ⚙️ MicroVM Sandboxing
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1298,55 +1242,36 @@
   
 
 
-<h1 id="worker-interfaces-factories">Worker Interfaces &amp; Factories</h1>
-<p>Herd is built around two core interfaces defined in <a href="https://github.com/herd-core/herd/blob/main/worker.go"><code>worker.go</code></a> that manage the lifecycle and communication with stateful subprocesses.</p>
-<hr />
-<h2 id="1-workerc">🔧 1. Worker[C]</h2>
-<p>The <code>Worker[C]</code> interface represents a single running subprocess managed by the pool.</p>
-<p><code>C</code> is the typed client that your application uses to talk to the process (e.g., <code>*http.Client</code>, a gRPC client stub, or a custom struct).</p>
-<div class="language-go highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">type</span><span class="w"> </span><span class="nx">Worker</span><span class="p">[</span><span class="nx">C</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="c1">// ID returns a stable, unique identifier for this worker (e.g., &quot;worker-3&quot;).</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nx">ID</span><span class="p">()</span><span class="w"> </span><span class="kt">string</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="c1">// Address returns the internal network URI the worker is listening on.</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nx">Address</span><span class="p">()</span><span class="w"> </span><span class="kt">string</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="c1">// Client returns the typed connection to the worker process.</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nx">Client</span><span class="p">()</span><span class="w"> </span><span class="nx">C</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="c1">// Healthy performs a liveness check against the subprocess.</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="c1">// Returns nil if the worker is accepting requests.</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="nx">Healthy</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="c1">// OnCrash sets a callback triggered when the worker process exits unexpectedly.</span>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="nx">OnCrash</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">sessionID</span><span class="w"> </span><span class="kt">string</span><span class="p">))</span>
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="c1">// Close performs graceful shutdown of the worker process.</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">    </span><span class="nx">io</span><span class="p">.</span><span class="nx">Closer</span>
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="p">}</span>
-</span></code></pre></div>
-<hr />
-<h2 id="2-workerfactoryc">🏗️ 2. WorkerFactory[C]</h2>
-<p>The <code>WorkerFactory[C]</code> knows how to spawn a process and return a ready-to-use <code>Worker[C]</code>.</p>
-<div class="language-go highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">type</span><span class="w"> </span><span class="nx">WorkerFactory</span><span class="p">[</span><span class="nx">C</span><span class="w"> </span><span class="kt">any</span><span class="p">]</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="c1">// Spawn starts one new worker and blocks until it is healthy.</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nx">Spawn</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">Worker</span><span class="p">[</span><span class="nx">C</span><span class="p">],</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p">}</span>
-</span></code></pre></div>
-<p>Most users will <strong>not</strong> need to implement this interface directly. They will instead use the built-in <code>ProcessFactory</code>.</p>
-<hr />
-<h2 id="3-firecrackerfactory-built-in">🏭 3. FirecrackerFactory (Built-in)</h2>
-<p>The default implementation is <code>FirecrackerFactory</code>. It manages fully isolated microVMs via Firecracker.</p>
-<h3 id="basic-usage">Basic Usage</h3>
-<div class="language-go highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nx">factory</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">herd</span><span class="p">.</span><span class="nx">FirecrackerFactory</span><span class="p">{</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="nx">FirecrackerPath</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/usr/bin/firecracker&quot;</span><span class="p">,</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nx">KernelImagePath</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/opt/herd/vmlinux.bin&quot;</span><span class="p">,</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="nx">InitrdPath</span><span class="p">:</span><span class="w">      </span><span class="s">&quot;/opt/herd/initrd.img&quot;</span><span class="p">,</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nx">SocketPathDir</span><span class="p">:</span><span class="w">   </span><span class="s">&quot;/tmp/herd-vms&quot;</span><span class="p">,</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="p">}</span>
-</span></code></pre></div>
-<h3 id="microvm-sandboxing">⚙️ MicroVM Sandboxing</h3>
-<p>Herd inherently uses hardware-level virtualization through Firecracker, meaning complete network, CPU, and memory isolation without relying on OS-level cgroups or namespaces.</p>
+<h1 id="firecracker-microvm-execution-architecture">Firecracker MicroVM Execution Architecture</h1>
+<p>Herd employs a rigorous, hypervisor-backed execution model to guarantee that arbitrary user workloads run securely without sacrificing "Docker-like" transparency. </p>
+<p>Our architecture completely bypasses traditional SSH or HTTP orchestration agents in favor of a low-level <code>initrd</code> and <code>vsock</code> sequence.</p>
+<h2 id="the-magic-initrd-injection">The Magic: <code>initrd</code> Injection</h2>
+<p>If a system boots an unmodified Docker image (like <code>python:latest</code> or <code>ubuntu:latest</code>), the Linux kernel attempts to run <code>/sbin/init</code> as <code>PID 1</code>. In standard containers, this immediately panics as no such bootloader exists.</p>
+<p>Herd bypasses modifying user containers via <strong>Initialize RAM Disk (initrd) injection</strong>:
+1. We package a meticulously crafted, 100% statically compiled Go binary (<code>herd-guest-agent</code>) into an <code>initrd.cpio</code> ramdisk.
+2. When Firecracker boots, it loads this ramdisk straight into memory and blindly runs our agent as <code>PID 1</code>.
+3. The guest agent safely ignores the container image at boot. Instead, it reaps orphaned zombie processes, mounts virtual filesystems (<code>/proc</code>, <code>/dev</code>, <code>/sys</code>), and completely bootstraps the <code>.guest</code> networking layer using <code>netlink</code>.
+4. Finally, the agent mounts the <em>unmodified</em> user workload container drive (attached as <code>/dev/vda</code>) to a temporary directory and rigidly locks execution into it via a <code>chroot</code> bridge.</p>
+<p>This grants users a strictly isolated execution substrate without <em>ever</em> forcing them to bake an agent into their provided Docker images.</p>
+<h2 id="command-control-multi-port-vsock-dialer">Command &amp; Control: Multi-Port Vsock Dialer</h2>
+<p>Instead of running a heavy SSH daemon or proxying over a virtual HTTP network, Herd pipelines executions straight through Firecracker's <strong>AF_VSOCK</strong> interface.</p>
+<ol>
+<li><strong>Port 5000 (Control Plane):</strong> The <code>herd</code> host daemon dials the UDS and streams serialized JSON execution payloads through the hypervisor boundary. Output is dynamically streamed back to the host via standard <code>io.Copy</code>.</li>
+<li><strong>Port 5001 (Exec Bridge):</strong> Used for dynamic administration. Executing <code>herd exec &lt;vm-id&gt;</code> on the host dials 5001, which immediately triggers the <code>herd-guest-agent</code> to spawn <code>/bin/sh</code> inside the <code>chroot</code> with a pseudo-terminal (PTY) attached directly to the vsock.</li>
+</ol>
+<h2 id="data-plane-dynamic-ipam-zero-waste-networking">Data Plane: Dynamic IPAM &amp; Zero-Waste Networking</h2>
+<p>To ensure the microVM workloads have deterministic networking with absolute containment, Herd employs a dynamic IP Address Management (IPAM) engine.</p>
+<ul>
+<li><strong>Point-to-Point <code>/32</code> Routing:</strong> Unlike standard bridge networking which weakens isolation, Herd allocates a single <code>/32</code> IP from a continuous block (e.g. <code>10.200.0.0/16</code>) via <code>boot_args</code>.</li>
+<li><strong>Absolute Containment:</strong> The host assigns each VM a unique TAP device governed by a point-to-point (<code>peer</code>) linkage to the <code>172.16.0.1</code> or <code>10.200.0.1</code> gateway. Traffic can only leave the VM by hitting the host <code>iptables</code> FORWARD rules.</li>
+<li><strong>Outbound NAT:</strong> <code>MASQUERADE</code> iptables ensure standard internet connectivity.</li>
+<li><strong>Inbound Drops:</strong> We drop all traffic destined for internal RFC 1918 subnets, meaning a compromised MicroVM cannot scan your local LAN or talk to other neighboring MicroVMs.</li>
+</ul>
+<p>When an administrator runs <code>sudo herd bootstrap</code>:
+- The daemon detects the host's physical outbound networking interface.
+- It automatically flips the <code>net.ipv4.ip_forward=1</code> kernel switch.
+- It dynamically injects <code>MASQUERADE</code> and <code>FORWARD</code> state-tracking <code>iptables</code> constraints perfectly tailored to the <code>172.16.0.0/24</code> Firecracker subnet.</p>
+<p>When <code>sudo herd teardown</code> is executed, it surgically uninstalls these tracking rules without disturbing UFW or Docker network constraints.</p>
 
 
 

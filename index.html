@@ -16,7 +16,7 @@
       
       
       
-        <link rel="next" href="intro/quickstart/">
+        <link rel="next" href="architecture/firecracker-microvm-execution/">
       
       
         
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#what-is-herd" class="md-skip">
+        <a href="#welcome-to-herd" class="md-skip">
           Skip to content
         </a>
       
@@ -234,6 +234,26 @@
   
   
   Introduction
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="architecture/firecracker-microvm-execution/" class="md-tabs__link">
+          
+  
+  
+  Firecracker microVM
 
         </a>
       </li>
@@ -490,6 +510,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#why-herd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Herd?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why Herd?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#the-core-invariant" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -499,32 +531,20 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#daemon-mode-primary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🧱 Daemon Mode (Primary)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🧱 Daemon Mode (Primary)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-its-safe-the-dead-mans-switch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why It's Safe: The Dead-Man's Switch
-      
-    </span>
-  </a>
-  
-</li>
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧱 Architecture Overview
+      
+    </span>
+  </a>
   
 </li>
       
@@ -537,33 +557,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="🚀 Key Features">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#feature-comparison" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-started" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Feature Comparison
+        🛠️ Get Started
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#existing-oss-landscape" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Existing OSS Landscape
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -583,7 +586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="intro/quickstart/" class="md-nav__link">
+      <a href="intro/quickstart.md" class="md-nav__link">
         
   
   
@@ -641,7 +644,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Firecracker microVM
   
 
     
@@ -654,6 +657,149 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Firecracker microVM
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture/firecracker-microvm-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture/firecracker-storage-bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -746,10 +892,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -767,8 +913,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -833,10 +979,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -854,8 +1000,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -976,10 +1122,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -997,8 +1143,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1070,6 +1216,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#why-herd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Herd?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why Herd?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#the-core-invariant" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1079,32 +1237,20 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#daemon-mode-primary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🧱 Daemon Mode (Primary)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🧱 Daemon Mode (Primary)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-its-safe-the-dead-mans-switch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why It's Safe: The Dead-Man's Switch
-      
-    </span>
-  </a>
-  
-</li>
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧱 Architecture Overview
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1117,33 +1263,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="🚀 Key Features">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#feature-comparison" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-started" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Feature Comparison
+        🛠️ Get Started
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#existing-oss-landscape" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Existing OSS Landscape
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1167,145 +1296,36 @@
   
 
 
-<h1 id="what-is-herd">What is Herd?</h1>
+<h1 id="welcome-to-herd">Welcome to Herd</h1>
+<p><strong>Herd</strong> is a high-performance microVM orchestrator designed for stateful workloads. It leverages <strong>Firecracker</strong> to spawn isolated, session-affine compute environments in milliseconds, transforming stateful binaries (browsers, LLMs, REPLs) into secure, multi-tenant services.</p>
+<h2 id="why-herd">Why Herd?</h2>
 <blockquote>
-<p>"Kubernetes is too slow to spawn sessions. Redis-only maps are too complex to maintain."</p>
+<p>"Kubernetes is too slow to spawn sessions. Redis-only maps are too complex to maintain. Containers aren't isolated enough."</p>
 </blockquote>
-<p><strong>Herd</strong> is a daemon and process manager that pins incoming requests to specific background workers using session IDs.</p>
-<blockquote>
-<p>Build features, not infrastructure</p>
-</blockquote>
+<p>Herd provides:
+- ⚡ <strong>Sub-500ms startup</strong>: Faster than any container orchestrator.
+- 🔒 <strong>Hardware Isolation</strong>: Strong security via microVMs.
+- 🔌 <strong>REST API</strong>: Simple Control Plane for session lifecycle, exec, and logs.</p>
 <h3 id="the-core-invariant">The Core Invariant</h3>
-<p><strong>1 Session ID → 1 Worker</strong>, for the lifetime of the session.</p>
-<p>This invariant transforms stateful binaries (like Browsers, LLMs, or REPLs) into multi-tenant services. Because a session always hits the same process, you can maintain in-memory state, KV caches, or local file systems without a complex coordination layer.</p>
-<h2 id="daemon-mode-primary">🧱 Daemon Mode (Primary)</h2>
-<p>Herd is built to run as a standalone daemon, providing process isolation outside of your application's memory and crash domains. By running Herd as a daemon, it handles the lifetime of stateful binaries, handling lifecycle, process limits, routing, and reverse-proxying.</p>
-<p>Daemon transport split:
-- <strong>Control Plane</strong> (<code>network.control_socket</code>): Uses persistent UDS sockets as a dead-man's switch to guarantee workers are killed if your app crashes.
-- <strong>Data Plane</strong> (<code>network.data_bind</code>): Reverse-proxies heavy HTTP/WebSocket traffic with zero overhead.</p>
-<h3 id="why-its-safe-the-dead-mans-switch">Why It's Safe: The Dead-Man's Switch</h3>
-<p>On Linux, Herd leverages <code>Pdeathsig</code> to ensure that even if the Herd daemon itself is <code>kill -9</code>'d, the Linux kernel will instantly reap every child worker process. You never have to worry about orphaned browsers or lingering processes eating up host memory.</p>
+<p><strong>1 Session ID → 1 Worker (MicroVM)</strong>, for the lifetime of the session.</p>
+<p>This invariant enables you to maintain in-memory state, local file systems, or GPU context without a complex coordination layer.</p>
+<h2 id="architecture-overview">🧱 Architecture Overview</h2>
+<p>Herd operates on a dual-plane architecture:</p>
+<ul>
+<li><strong>Control Plane</strong> (REST API): Manages session lifecycles, image warming, and log retrieval.</li>
+<li><strong>Data Plane</strong> (HTTP Proxy): High-speed reverse proxy that routes traffic to VMs based on <code>X-Session-ID</code>.</li>
+</ul>
+<p>For a deep dive, see the <a href="../../architecture.md">Architecture Documentation</a>.</p>
 <h2 id="key-features">🚀 Key Features</h2>
 <ul>
-<li><strong>Session Affinity</strong>: Guaranteed routing of a session ID to its unique pinned worker.</li>
-<li><strong>Auto-Scaling</strong>: Dynamically scale workers between <code>min</code> and <code>max</code> bounds based on demand.</li>
-<li><strong>Idle Eviction (TTL)</strong>: Automatically reclaim workers that haven't been accessed within a configurable TTL.</li>
-<li><strong>Health Monitoring</strong>: Continuous liveness checks on every worker process; dead workers are automatically replaced.</li>
-<li><strong>Singleflight Acquisition</strong>: Protects against "thundering herd" issues where multiple concurrent requests for a new session ID try to spawn workers simultaneously.</li>
+<li><strong>Hardware Isolation</strong>: Each session runs in its own Firecracker microVM.</li>
+<li><strong>Auto-Scaling</strong>: Dynamically scale your VM fleet based on demand.</li>
+<li><strong>Idle Eviction</strong>: Automatically reclaim resources for inactive sessions.</li>
+<li><strong>Exec &amp; Logs</strong>: Built-in support for executing commands inside VMs and retrieving real-time logs.</li>
+<li><strong>Container-Native</strong>: Uses <code>containerd</code> and OCI images for rootfs provisioning.</li>
 </ul>
-<hr />
-<h3 id="feature-comparison">Feature Comparison</h3>
-<table>
-<thead>
-<tr>
-<th>Feature</th>
-<th><code>herd</code></th>
-<th>Kubernetes</th>
-<th>PM2</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Startup latency</td>
-<td>&lt;100ms</td>
-<td>2s – 10s</td>
-<td>500ms+</td>
-</tr>
-<tr>
-<td>Session affinity</td>
-<td>✅ Native (Session ID)</td>
-<td>⚠️ Complex (Sticky Sessions)</td>
-<td>❌ None</td>
-</tr>
-<tr>
-<td>Footprint</td>
-<td>Single binary, zero deps</td>
-<td>Massive control plane</td>
-<td>Node.js runtime required</td>
-</tr>
-<tr>
-<td>Programming model</td>
-<td>YAML config driven</td>
-<td>YAML / REST API</td>
-<td>CLI / JS config</td>
-</tr>
-<tr>
-<td>Crash + cleanup</td>
-<td>✅ OS-level guarantee</td>
-<td>⚠️ pod restart only</td>
-<td>⚠️ restart only</td>
-</tr>
-<tr>
-<td>Built-in HTTP proxy</td>
-<td>✅ Native</td>
-<td>❌ separate Ingress concern</td>
-<td>❌</td>
-</tr>
-</tbody>
-</table>
-<h3 id="existing-oss-landscape">Existing OSS Landscape</h3>
-<table>
-<thead>
-<tr>
-<th>Project</th>
-<th>Multi-process pool</th>
-<th>Named session routing</th>
-<th>Crash + cleanup</th>
-<th>License</th>
-<th>Language</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Browserless</td>
-<td>✅</td>
-<td>❌ WebSocket-sticky</td>
-<td>✅</td>
-<td>SSPL</td>
-<td>TypeScript</td>
-</tr>
-<tr>
-<td>puppeteer-cluster</td>
-<td>✅</td>
-<td>❌ stateless tasks</td>
-<td>✅</td>
-<td>MIT</td>
-<td>TypeScript</td>
-</tr>
-<tr>
-<td>PM2 / Supervisord</td>
-<td>✅</td>
-<td>❌ none</td>
-<td>⚠️</td>
-<td>MIT/BSD</td>
-<td>Python/JS</td>
-</tr>
-<tr>
-<td>Selenium Grid</td>
-<td>✅</td>
-<td>✅ WebDriver-specific</td>
-<td>✅</td>
-<td>Apache 2.0</td>
-<td>Java</td>
-</tr>
-<tr>
-<td>E2B infra</td>
-<td>✅ (VMs)</td>
-<td>✅</td>
-<td>✅</td>
-<td>Apache 2.0</td>
-<td>Go (cloud-only)</td>
-</tr>
-<tr>
-<td><strong>herd</strong></td>
-<td>✅</td>
-<td>✅ explicit ID routing</td>
-<td>✅</td>
-<td><strong>MIT</strong></td>
-<td><strong>Go</strong></td>
-</tr>
-</tbody>
-</table>
+<h2 id="get-started">🛠️ Get Started</h2>
+<p>Ready to dive in? Follow the <a href="daemon/install/">Installation Guide</a> to set up your Herd daemon.</p>
 
 
 

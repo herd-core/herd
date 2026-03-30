@@ -249,6 +249,26 @@
     
     
       <li class="md-tabs__item">
+        <a href="../../architecture/firecracker-microvm-execution/" class="md-tabs__link">
+          
+  
+  
+  Firecracker microVM
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
         <a href="../../architecture/dual-mode/" class="md-tabs__link">
           
   
@@ -455,7 +475,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../intro/quickstart/" class="md-nav__link">
+      <a href="../../intro/quickstart.md" class="md-nav__link">
         
   
   
@@ -513,7 +533,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Firecracker microVM
   
 
     
@@ -526,6 +546,149 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Firecracker microVM
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/firecracker-microvm-execution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/firecracker-storage-bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -618,10 +781,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -639,8 +802,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -710,10 +873,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -731,8 +894,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -865,43 +1028,49 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-uds" class="md-nav__link">
+  <a href="#infrastructure-sockets" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why UDS
+        Infrastructure Sockets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Infrastructure Sockets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#containerd-socket-containerdsock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Containerd Socket (containerd.sock)
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#socket-path" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#firecracker-sockets" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Socket Path
+        Firecracker Sockets
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#security-and-lifecycle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Security and Lifecycle
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#control-stream-semantics" class="md-nav__link">
+  <a href="#migration-note-control-plane" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Control Stream Semantics
+        Migration Note: Control Plane
       
     </span>
   </a>
@@ -944,10 +1113,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -965,8 +1134,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1038,43 +1207,49 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-uds" class="md-nav__link">
+  <a href="#infrastructure-sockets" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why UDS
+        Infrastructure Sockets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Infrastructure Sockets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#containerd-socket-containerdsock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Containerd Socket (containerd.sock)
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#socket-path" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#firecracker-sockets" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Socket Path
+        Firecracker Sockets
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#security-and-lifecycle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Security and Lifecycle
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#control-stream-semantics" class="md-nav__link">
+  <a href="#migration-note-control-plane" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Control Stream Semantics
+        Migration Note: Control Plane
       
     </span>
   </a>
@@ -1102,43 +1277,21 @@
 
 
 <h1 id="unix-domain-sockets">Unix Domain Sockets</h1>
-<p>Herd uses Unix Domain Sockets (UDS) for the local control plane in single-node daemon mode.</p>
-<h2 id="why-uds">Why UDS</h2>
-<ul>
-<li>Keeps control traffic local to the host.</li>
-<li>Avoids exposing control APIs over TCP.</li>
-<li>Simplifies local SDK connectivity and access controls.</li>
-</ul>
-<h2 id="socket-path">Socket Path</h2>
-<p>Configured via:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">network</span><span class="p">:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="nt">control_socket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/tmp/herd.sock</span>
-</span></code></pre></div>
-<p>Validation rules:</p>
-<ul>
-<li>Must be an absolute path.</li>
-<li>Must fit Unix socket path length limits.</li>
-</ul>
-<h2 id="security-and-lifecycle">Security and Lifecycle</h2>
-<p>At daemon startup:</p>
-<ol>
-<li>Any stale socket file is removed.</li>
-<li>Socket is re-created and bound.</li>
-<li>Permissions are set to <code>0600</code>.</li>
-</ol>
-<p>At daemon shutdown:</p>
-<ol>
-<li>gRPC server stops.</li>
-<li>Listener closes.</li>
-<li>Socket file is removed.</li>
-</ol>
-<h2 id="control-stream-semantics">Control Stream Semantics</h2>
-<p>The control stream owns session liveness.</p>
-<ul>
-<li>If stream closes normally (<code>io.EOF</code>), session worker is force-terminated.</li>
-<li>If stream breaks with error, session worker is force-terminated.</li>
-</ul>
-<p>This prevents leaked stateful subprocesses after local client crashes.</p>
+<p>In the current Firecracker-based architecture, Herd uses Unix Domain Sockets (UDS) primarily for its backend dependencies rather than the public Control Plane.</p>
+<h2 id="infrastructure-sockets">Infrastructure Sockets</h2>
+<h3 id="containerd-socket-containerdsock">Containerd Socket (<code>containerd.sock</code>)</h3>
+<p>Herd communicates with the <code>containerd</code> daemon over a UDS. This is used for:
+- Pulling and unpacking OCI images.
+- Managing leases for rootfs snapshots.
+- Subscribing to container events.</p>
+<p>The path to this socket is typically <code>/run/containerd/containerd.sock</code> or elsewhere depending on your distribution, and is configured in <code>herd.yaml</code> under <code>storage.state_dir</code>.</p>
+<h3 id="firecracker-sockets">Firecracker Sockets</h3>
+<p>For each spawned microVM, Herd creates a unique UDS on the host to manage the Firecracker process and vsock communication:
+- <strong>API Socket</strong>: Used for the initial Firecracker configuration (not used in <code>--no-api</code> mode).
+- <strong>Vsock Socket</strong>: Exposes the guest-to-host vsock connection as a UDS on the host. This is how the Data Plane and <code>exec</code> commands communicate with the <code>herd-guest-agent</code> inside the VM.</p>
+<h2 id="migration-note-control-plane">Migration Note: Control Plane</h2>
+<p>Previously, the Herd Control Plane was exposed as a gRPC service over a UDS. In the current version, the Control Plane has migrated to a <strong>RESTful API over TCP</strong> (defaulting to <code>127.0.0.1:8001</code>) to simplify client connectivity and observability.</p>
+<p>For more details on the new Control Plane, see the <a href="../cli/">CLI &amp; Configuration Reference</a>.</p>
 
 
 
