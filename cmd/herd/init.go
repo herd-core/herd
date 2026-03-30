@@ -243,7 +243,7 @@ func downloadFirecracker(outputPath string) error {
 
 func downloadGuestAgent(path string) error {
 	// Pull from a specific release instead of main for stability
-	url := fmt.Sprintf("https://github.com/herd-core/herd/releases/download/v%s/herd-guest-agent-linux-%s", config.Version, runtime.GOARCH)
+	url := fmt.Sprintf("https://github.com/herd-core/herd/releases/download/%s/herd-guest-agent-linux-%s", config.Version, runtime.GOARCH)
 
 	resp, err := http.Get(url)
 	if err != nil {
