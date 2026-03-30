@@ -347,7 +347,7 @@ func promptConfirm(reader *bufio.Reader, label string, defaultValue bool) bool {
 
 func downloadKernel(path string) error {
 	// Pull from a specific release instead of main for stability
-	url := fmt.Sprintf("https://github.com/herd-core/herd/releases/download/v%s/vmlinux-v6.1.bin", config.Version)
+	url := fmt.Sprintf("https://github.com/herd-core/herd/releases/download/%s/vmlinux-v6.1.bin", config.Version)
 	
 	resp, err := http.Get(url)
 	if err != nil {
