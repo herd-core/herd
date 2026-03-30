@@ -1,6 +1,9 @@
 # Installation (Daemon)
 
-The daemon mode runs as a standalone binary and is configured via a strict YAML file.
+The Herd daemon runs as a standalone binary and is configured via a strict YAML file. It requires root privileges to manage microVMs, networking, and storage.
+
+See also:
+- [Host Dependencies](../dependencies.md)
 
 ## Build
 
@@ -8,54 +11,52 @@ The daemon mode runs as a standalone binary and is configured via a strict YAML 
 go build -o herd ./cmd/herd
 ```
 
+## Prerequisites
+
+- **Firecracker**: Ensure the `firecracker` binary is available at the path specified in your config or a standard location.
+- **Containerd**: A running `containerd` instance is required for image management.
+- **Kernel Image**: A `vmlinux.bin` file is needed to boot the microVMs.
+- **KVM**: The host must support and have KVM enabled (`/dev/kvm`).
+
 ## Minimal Config
 
-Create a config file at `/etc/herd/config.yaml` (or any path and pass it with `--config`).
+Create a config file (e.g., `herd.yaml`). Note that there is no default; all required fields must be specified.
 
 ```yaml
 network:
-	control_socket: /tmp/herd.sock
-	data_bind: 127.0.0.1:4000
+  control_bind: "127.0.0.1:8001"
+  data_bind: "127.0.0.1:8080"
 
-worker:
-	command: ["python3", "worker.py"]
-	env:
-		- PYTHONUNBUFFERED=1
-	health_path: /health
-	start_timeout: 30s
-	start_health_check_delay: 1s
+storage:
+  state_dir: "/var/lib/herd"
+  namespace: "herd"
+  snapshotter_name: "devmapper"
 
 resources:
-	target_idle: 1
-	max_workers: 4
-	memory_limit_mb: 512
-	cpu_limit_cores: 1
-	ttl: 10m
-	health_interval: 5s
-	worker_reuse: true
+  max_global_vms: 50
+  max_global_memory_mb: 20480
+  cpu_limit_cores: 4
 
 telemetry:
-	log_format: json
-	metrics_path: /metrics
+  log_format: "json"
+  metrics_path: "/metrics"
 ```
 
 ## Run
 
 ```bash
-./herd start --config /etc/herd/config.yaml
+sudo ./herd start --config herd.yaml
 ```
-
-## Platform Guarantees
-
-- Linux: full guarantee mode, including parent-death kill behavior for child workers.
-- macOS: reduced-guarantee mode with explicit warnings; orphan prevention is best-effort.
-- Other platforms: startup fails fast.
 
 ## Why does Herd require root (`sudo`)?
 
-Herd inherently requires elevated privileges because it leverages hardware-level virtualization and advanced networking to isolate your workloads. Specifically:
+Herd requires elevated privileges to leverage hardware-level virtualization and advanced networking:
 
-- **Device Mapper & Block Storage (`CAP_SYS_ADMIN`)**: To provision rapid root filesystems for your MicroVMs, `herd` creates devicemapper thin-pool snapshots, loopback mounts, and filesystem images on the fly. Linux strictly requires root privileges to configure and mount these block devices.
-- **Network Namespaces & TAP Interfaces (`CAP_NET_ADMIN`)**: Firecracker instances require virtual tap interfaces to communicate with the host. Creating these tap devices, binding them to a bridge, setting up IP addresses, and configuring NAT routing requires elevated networking privileges.
-- **Containerd Socket Ownership**: The daemon communicates with containerd to pull and unpack container images. By default, the containerd UNIX socket is restricted so that only the root user can interact with its API.
+- **Block Storage (`CAP_SYS_ADMIN`)**: To provision root filesystems, Herd creates devmapper thin-pool snapshots and mounts them.
+- **Networking (`CAP_NET_ADMIN`)**: Creating TAP interfaces, binding them to bridges, and configuring NAT routing requires networking privileges.
+- **Containerd**: Interaction with the `containerd.sock` often requires root access by default.
 
+## Platform Guarantees
+
+- **Linux**: Full support for Firecracker, KVM, and high-performance networking.
+- **macOS/Other**: Not supported for Firecracker mode (requires KVM).
