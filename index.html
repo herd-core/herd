@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#welcome-to-herd" class="md-skip">
+        <a href="#welcome-to-herd-the-edge-cloud-core" class="md-skip">
           Skip to content
         </a>
       
@@ -510,38 +510,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-herd" class="md-nav__link">
+  <a href="#from-orchestrator-to-edge-cloud" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Herd?
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Why Herd?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#the-core-invariant" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The Core Invariant
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🧱 Architecture Overview
+        🛸 From Orchestrator to Edge Cloud
       
     </span>
   </a>
@@ -549,10 +521,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#key-features" class="md-nav__link">
+  <a href="#the-core-value-the-four-layers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🚀 Key Features
+        ✅ The Core Value: The Four Layers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧱 Key Documentation
       
     </span>
   </a>
@@ -563,7 +546,7 @@
   <a href="#get-started" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🛠️ Get Started
+        🚀 Get Started
       
     </span>
   </a>
@@ -1216,38 +1199,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-herd" class="md-nav__link">
+  <a href="#from-orchestrator-to-edge-cloud" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Herd?
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Why Herd?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#the-core-invariant" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The Core Invariant
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🧱 Architecture Overview
+        🛸 From Orchestrator to Edge Cloud
       
     </span>
   </a>
@@ -1255,10 +1210,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#key-features" class="md-nav__link">
+  <a href="#the-core-value-the-four-layers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🚀 Key Features
+        ✅ The Core Value: The Four Layers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧱 Key Documentation
       
     </span>
   </a>
@@ -1269,7 +1235,7 @@
   <a href="#get-started" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🛠️ Get Started
+        🚀 Get Started
       
     </span>
   </a>
@@ -1296,36 +1262,57 @@
   
 
 
-<h1 id="welcome-to-herd">Welcome to Herd</h1>
-<p><strong>Herd</strong> is a high-performance microVM orchestrator designed for stateful workloads. It leverages <strong>Firecracker</strong> to spawn isolated, session-affine compute environments in milliseconds, transforming stateful binaries (browsers, LLMs, REPLs) into secure, multi-tenant services.</p>
-<h2 id="why-herd">Why Herd?</h2>
-<blockquote>
-<p>"Kubernetes is too slow to spawn sessions. Redis-only maps are too complex to maintain. Containers aren't isolated enough."</p>
-</blockquote>
-<p>Herd provides:
-- ⚡ <strong>Sub-500ms startup</strong>: Faster than any container orchestrator.
-- 🔒 <strong>Hardware Isolation</strong>: Strong security via microVMs.
-- 🔌 <strong>REST API</strong>: Simple Control Plane for session lifecycle, exec, and logs.</p>
-<h3 id="the-core-invariant">The Core Invariant</h3>
-<p><strong>1 Session ID → 1 Worker (MicroVM)</strong>, for the lifetime of the session.</p>
-<p>This invariant enables you to maintain in-memory state, local file systems, or GPU context without a complex coordination layer.</p>
-<h2 id="architecture-overview">🧱 Architecture Overview</h2>
-<p>Herd operates on a dual-plane architecture:</p>
+<h1 id="welcome-to-herd-the-edge-cloud-core">Welcome to Herd: The Edge Cloud Core</h1>
+<p><strong>Herd</strong> is a high-performance <strong>Application Delivery Plane</strong> for stateful workloads. Built on <strong>Firecracker</strong>, it automates the translation of standard Docker/OCI images into isolated, session-affine compute environments with built-in L7 ingress and zero-config networking.</p>
+<h2 id="from-orchestrator-to-edge-cloud">🛸 From Orchestrator to Edge Cloud</h2>
+<p>Herd isn't just an "engine block"—it's the whole vehicle. It bridges the gap between raw microVM hardware and the application developer experience.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Pure Orchestrator (e.g., Raw Firecracker)</th>
+<th style="text-align: left;">Herd (Fly.io Open Source Core)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Input</strong></td>
+<td style="text-align: left;">Custom Kernel + Raw Disk</td>
+<td style="text-align: left;">Standard OCI/Docker Image</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Ingress</strong></td>
+<td style="text-align: left;">None (You install Nginx/Traefik)</td>
+<td style="text-align: left;"><strong>Built-in L7 Proxy</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Lifecycle</strong></td>
+<td style="text-align: left;">Turn On / Turn Off</td>
+<td style="text-align: left;"><strong>Wake-on-HTTP-Request</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Effort</strong></td>
+<td style="text-align: left;">Systems Engineer (Hard)</td>
+<td style="text-align: left;">Application Developer (Easy)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-core-value-the-four-layers">✅ The Core Value: The Four Layers</h2>
+<ol>
+<li><strong>OCI Translation</strong>: Pull images, extract <code>CMD</code>/<code>ENV</code>, and snap rootfs volumes automatically.</li>
+<li><strong>L7 Proxy Ingress</strong>: Intercept traffic, cold-boot VMs, and tunnel TCP/HTTP connections.</li>
+<li><strong>Automated IPAM</strong>: Zero-config host-to-guest networking.</li>
+<li><strong>Agent-Driven Execution</strong>: Abstract the OS with a static <code>herd-guest-agent</code> as PID 1.</li>
+</ol>
+<h2 id="key-documentation">🧱 Key Documentation</h2>
 <ul>
-<li><strong>Control Plane</strong> (REST API): Manages session lifecycles, image warming, and log retrieval.</li>
-<li><strong>Data Plane</strong> (HTTP Proxy): High-speed reverse proxy that routes traffic to VMs based on <code>X-Session-ID</code>.</li>
+<li><a href="../../README.md#the-herd-difference"><strong>The Brutal Difference</strong></a>: Why Herd isn't just another KVM wrapper.</li>
+<li><a href="../../architecture.md"><strong>Architecture Deep Dive</strong></a>: Understanding the four delivery layers.</li>
+<li><a href="daemon/install/"><strong>Installation Guide</strong></a>: Bootstrapping the edge cloud.</li>
+<li><a href="daemon/cli/"><strong>CLI &amp; Configuration Reference</strong></a>: Mastering the <code>herd</code> binary.</li>
 </ul>
-<p>For a deep dive, see the <a href="../../architecture.md">Architecture Documentation</a>.</p>
-<h2 id="key-features">🚀 Key Features</h2>
-<ul>
-<li><strong>Hardware Isolation</strong>: Each session runs in its own Firecracker microVM.</li>
-<li><strong>Auto-Scaling</strong>: Dynamically scale your VM fleet based on demand.</li>
-<li><strong>Idle Eviction</strong>: Automatically reclaim resources for inactive sessions.</li>
-<li><strong>Exec &amp; Logs</strong>: Built-in support for executing commands inside VMs and retrieving real-time logs.</li>
-<li><strong>Container-Native</strong>: Uses <code>containerd</code> and OCI images for rootfs provisioning.</li>
-</ul>
-<h2 id="get-started">🛠️ Get Started</h2>
-<p>Ready to dive in? Follow the <a href="daemon/install/">Installation Guide</a> to set up your Herd daemon.</p>
+<h2 id="get-started">🚀 Get Started</h2>
+<p>Ready to transform your stateful apps? Start with the <a href="daemon/install/">Installation Guide</a>.</p>
 
 
 
