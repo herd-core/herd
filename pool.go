@@ -13,40 +13,20 @@
 //
 // And one lock-free channel:
 //
-//	p.available chan Worker[C]             — free workers ready to be assigned
+//	p.tickets chan struct{}                — bounded concurrency tokens
 //
-// The singleflight guarantee for Acquire(ctx, sessionID):
+// The singleflight guarantee for Acquire(ctx, sessionID, config):
 //
 //  1. Lock → check sessions → if found: unlock, return (FAST PATH).
 //  2. Lock → check inflight → if pending: grab chan, unlock, wait on it,
 //     then restart from step 1 when chan closes.
 //  3. Lock → create inflight[sessionID] = make(chan struct{}) → unlock.
-//  4. Block on <-p.available (or ctx cancel).
-//  5. Call w.Healthy(ctx). If unhealthy: discard, close inflight chan, return error.
+//  4. Block on <-p.tickets (or ctx cancel).
+//  5. Call p.factory.Spawn(ctx, sessionID, config). If error: return ticket, close inflight, return error.
 //  6. Lock → sessions[sessionID]=w, delete inflight[sid], close(ch) → unlock.
 //     Closing ch broadcasts to all goroutines waiting in step 2.
 //  7. Return &Session[C]{…}
 //
-// Why a chan struct{} instead of sync.Mutex per session?
-//   - A mutex would only let one waiter in. We need ALL waiters to unblock when
-//     the acquiring goroutine completes (step 6 closes ch → zero-copy broadcast).
-//   - Closing a channel is safe to call exactly once and is always non-blocking.
-//
-// # Session.Release
-//
-// Session.Release removes the entry from p.sessions and pushes the worker back
-// onto p.available. It does NOT close or kill the worker — the binary keeps
-// running and will be assigned to the next caller.
-//
-// # Crash path
-//
-// processWorker.monitor() calls p.onCrash(sessionID) when it detects that the
-// subprocess exited while holding a session. onCrash:
-//  1. Removes the session from p.sessions.
-//  2. If there is a pending inflight chan for the same sessionID, closes it so
-//     any goroutine waiting in step 2 of Acquire unblocks (they will then get
-//     an error because Acquire finds neither a session nor a valid inflight).
-//  3. Calls the user-supplied crashHandler if set.
 package herd
 
 import (
@@ -54,7 +34,6 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/herd-core/herd/observer"
 )
@@ -63,30 +42,14 @@ import (
 // Session[C]
 // ---------------------------------------------------------------------------
 
-// Session is a scoped handle returned by Pool.Acquire.
-//
-// It binds one sessionID to one worker for the duration of the session.
-// Call Release when the session is done — this frees the worker so it can
-// be assigned to the next sessionID. Failing to call Release leaks a worker.
-//
-// A Session is NOT safe for concurrent use by multiple goroutines. Multiple
-// HTTP requests for the same sessionID should each call Acquire independently;
-// the pool guarantees they always receive the same underlying worker.
 type Session[C any] struct {
-	// ID is the sessionID that was passed to Pool.Acquire.
 	ID string
-
-	// Worker is the underlying worker pinned to this session.
-	// Use Worker.Client() to talk to the subprocess.
 	Worker Worker[C]
 
 	pool *Pool[C]
 	once sync.Once
 }
 
-// Release removes the session from the affinity map and returns the worker to
-// the available pool. After Release, the worker may be assigned to a different
-// sessionID. Calling Release more than once is a no-op.
 func (s *Session[C]) Release() {
 	s.once.Do(func() {
 		s.pool.release(s.ID, s.Worker)
@@ -97,27 +60,10 @@ func (s *Session[C]) Release() {
 // PoolStats
 // ---------------------------------------------------------------------------
 
-// PoolStats is a point-in-time snapshot of pool state for dashboards / alerts.
 type PoolStats struct {
-	// TotalWorkers is the number of workers currently registered in the pool
-	// (starting + healthy + busy). Does not count workers being scaled down.
 	TotalWorkers int
-
-	// AvailableWorkers is the number of idle workers ready to accept a new session.
-	AvailableWorkers int
-
-	// ActiveSessions is the number of sessionID → worker bindings currently live.
 	ActiveSessions int
-
-	// InflightAcquires is the number of Acquire calls currently in the "slow path"
-	// (waiting for a worker to become available). Useful for queue-depth alerting.
 	InflightAcquires int
-
-	// Node is a snapshot of host-level resource availability (memory, CPU idle).
-	// Populated by observer.PollNodeStats(); zero-valued on non-Linux platforms
-	// or if the poll fails.
-	//
-	// Note: on Linux, Stats() blocks for ~100 ms to measure CPU idle.
 	Node observer.NodeStats
 }
 
@@ -125,34 +71,24 @@ type PoolStats struct {
 // Pool[C]
 // ---------------------------------------------------------------------------
 
-// Pool manages a set of workers and routes requests by sessionID.
-// Create one with New[C].
 type Pool[C any] struct {
 	factory WorkerFactory[C]
 	cfg     config
 
 	mu          sync.Mutex
-	pendingAdds int
-	registry    SessionRegistry[C]       // sessionID → pinned worker
-	inflight    map[string]chan struct{} // sessionID → broadcast channel
+	registry    SessionRegistry[C]
+	inflight    map[string]chan struct{}
 
-	workers   []Worker[C]    // all known workers (for Stats / Shutdown)
-	available chan Worker[C] // free workers
+	workers []Worker[C]
+	tickets chan struct{}
 
-	done chan struct{} // closed when the pool is shutting down, all the background loops will listen for this
-
-	// pool context for canceling all the background loops
-	// must be canceled when the pool is shutting down
+	done chan struct{}
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-// New creates a pool backed by factory, applies opts, and starts min workers.
-// Returns an error if any of the initial workers fail to start.
 func New[C any](factory WorkerFactory[C], opts ...Option) (*Pool[C], error) {
 	cfg := defaultConfig()
-
-	// Using functional options pattern
 	for _, apply_options := range opts {
 		apply_options(&cfg)
 	}
@@ -165,198 +101,113 @@ func New[C any](factory WorkerFactory[C], opts ...Option) (*Pool[C], error) {
 		registry:  NewLocalRegistry[C](),
 		inflight:  make(map[string]chan struct{}),
 		workers:   make([]Worker[C], 0, cfg.max),
-		available: make(chan Worker[C], cfg.max),
+		tickets:   make(chan struct{}, cfg.max),
 		done:      make(chan struct{}),
 		ctx:       ctx,
 		cancel:    cancel,
 	}
 
-	// Start the target number of idle workers concurrently.
-	// All initial workers must be healthy before New returns.
-	if cfg.targetIdle > 0 {
-		var wg sync.WaitGroup
-		errs := make(chan error, cfg.targetIdle)
-
-		for i := 0; i < cfg.targetIdle; i++ {
-			wg.Add(1)
-			go func(idx int) {
-				defer wg.Done()
-				w, err := factory.Spawn(context.Background())
-				if err != nil {
-					errs <- fmt.Errorf("herd: New: failed to start initial worker %d: %w", idx, err)
-					return
-				}
-				p.wireWorker(w)
-			}(i)
-		}
-
-		wg.Wait()
-		close(errs)
-
-		if err, hasErr := <-errs; hasErr {
-			// Best-effort cleanup of already-started workers
-			p.mu.Lock()
-			started := make([]Worker[C], len(p.workers))
-			copy(started, p.workers)
-			p.mu.Unlock()
-
-			for _, w := range started {
-				_ = w.Close()
-			}
-			return nil, err
-		}
+	for i := 0; i < cfg.max; i++ {
+		p.tickets <- struct{}{}
 	}
-
-	// Background loops
-	// healthCheckLoop and TTL sweep are removed in favor of Centralized Lifecycle Manager
-
-	// TODO: check if we need crash monitoring loop here
 
 	return p, nil
 }
 
-// wireWorker registers w in the pool and wires its crash callback.
-// Must be called with p.mu NOT held.
 func (p *Pool[C]) wireWorker(w Worker[C]) {
-	// Wire crash callback if the underlying worker supports it
-	// (i.e. it is a *processWorker from ProcessFactory).
 	w.OnCrash(func(sessionID string) {
 		p.onCrash(sessionID)
 	})
 	p.mu.Lock()
 	p.workers = append(p.workers, w)
 	p.mu.Unlock()
+}
 
-	// Push onto available immediately — the worker is already healthy
-	p.available <- w
+func (p *Pool[C]) Factory() WorkerFactory[C] {
+	return p.factory
 }
 
 // ---------------------------------------------------------------------------
 // Acquire — the core primitive
 // ---------------------------------------------------------------------------
 
-// Acquire returns the Worker pinned to sessionID.
-//
-// If sessionID already has a worker, it is returned immediately (fast path).
-// If sessionID is new, a free worker is popped from the available channel,
-// health-checked, and pinned to the session.
-//
-// If another goroutine is currently acquiring the same sessionID, this call
-// blocks until that acquisition completes and then returns the same worker
-// (singleflight guarantee — no two goroutines can pin different workers to
-// the same sessionID simultaneously).
-//
-// Blocks until a worker is available or ctx is cancelled.
-func (p *Pool[C]) Acquire(ctx context.Context, sessionID string) (*Session[C], error) {
+func (p *Pool[C]) Acquire(ctx context.Context, sessionID string, config TenantConfig) (*Session[C], error) {
 	for {
 		var w Worker[C]
 		var err error
 		p.mu.Lock()
 
-		// ── FAST PATH ──────────────────────────────────────────────────────
-		// Session already pinned: return the existing worker immediately.
-		// Also update the last-accessed time so the TTL sweeper doesn't
-		// evict an actively-used session.
 		w, err = p.registry.Get(ctx, sessionID)
 		if err != nil {
 			p.mu.Unlock()
 			return nil, fmt.Errorf("herd: Acquire(%q): directory lookup failed: %w", sessionID, err)
 		}
 		if w != nil {
-			// Session found in registry — fast path
 			p.mu.Unlock()
 			return &Session[C]{ID: sessionID, Worker: w, pool: p}, nil
 		}
 
-		// ── SINGLEFLIGHT WAIT ──────────────────────────────────────────────
-		// Another goroutine is already acquiring this sessionID.
-		// Grab its broadcast channel, unlock, and wait for it to finish.
 		if ch, pending := p.inflight[sessionID]; pending {
 			p.mu.Unlock()
 			select {
 			case <-ch:
-				// The acquiring goroutine finished (it closed ch).
-				// Loop back to check sessions — we will hit the fast path
-				// if it succeeded, or find no entry if it crashed/errored.
 				continue
 			case <-ctx.Done():
 				return nil, fmt.Errorf("herd: Acquire(%q): context cancelled while waiting for inflight: %w", sessionID, ctx.Err())
 			}
 		}
 
-		// ── SLOW PATH ──────────────────────────────────────────────────────
-		// We are the first goroutine for this sessionID.
-		// Register an inflight channel so concurrent callers wait on us.
 		ch := make(chan struct{})
 		p.inflight[sessionID] = ch
 		p.mu.Unlock()
 
-		// Try to scale up if pool is exhausted but below ceiling.
-		p.maybeScaleUp()
-
-		// Block until a free worker arrives or we time out.
 		select {
-		case w = <-p.available:
+		case <-p.tickets:
 		case <-ctx.Done():
-			// We failed to get a worker before the context expired.
-			// Close the broadcast channel so any goroutines waiting on
-			// this sessionID unblock and return their own error.
 			p.mu.Lock()
 			delete(p.inflight, sessionID)
 			p.mu.Unlock()
 			close(ch)
-			return nil, fmt.Errorf("herd: Acquire(%q): timed out waiting for available worker: %w", sessionID, ctx.Err())
+			return nil, fmt.Errorf("herd: Acquire(%q): timed out waiting for capacity: %w", sessionID, ctx.Err())
 		}
 
-		// ── HEALTH CHECK ───────────────────────────────────────────────────
-		// Verify the worker is still alive before handing it to a session.
-		// This prevents giving a dead handle to the caller (and to any
-		// goroutines waiting on the inflight channel).
-		hCtx, hCancel := context.WithTimeout(ctx, 3*time.Second)
-		err = w.Healthy(hCtx)
-		hCancel()
-
+		// Unlock the singleflight so we do not block other concurrent requests while spawning.
+		// Wait, the singleflight lock is already released above! (p.mu.Unlock())
+		// Spawning is fully concurrent here (except gated by p.tickets channel).
+		w, err = p.factory.Spawn(ctx, sessionID, config)
 		if err != nil {
-			log.Printf("[pool] Acquire(%q): worker %s failed health check: %v — discarding", sessionID, w.ID(), err)
-			_ = w.Close()
-			p.removeWorker(w)
-			// Unblock any waiters — they will loop and receive the same error
+			p.tickets <- struct{}{}
 			p.mu.Lock()
 			delete(p.inflight, sessionID)
 			p.mu.Unlock()
 			close(ch)
-			return nil, fmt.Errorf("herd: Acquire(%q): worker %s unhealthy: %w", sessionID, w.ID(), err)
+			return nil, fmt.Errorf("herd: Acquire(%q): failed to spawn: %w", sessionID, err)
 		}
 
-		// Pin the worker to this session and broadcast.
+		p.wireWorker(w)
+
 		p.mu.Lock()
 		if err = p.registry.Put(ctx, sessionID, w); err != nil {
 			p.mu.Unlock()
 			close(ch)
+			// we have a worker but failed to pin, cleanup
+			_ = w.Close()
+			p.removeWorker(w)
+			p.tickets <- struct{}{}
 			return nil, fmt.Errorf("herd: Acquire(%q): failed to pin session: %w", sessionID, err)
 		}
 
 		delete(p.inflight, sessionID)
 		p.mu.Unlock()
 
-		close(ch) // broadcast: all goroutines blocked in SINGLEFLIGHT WAIT unblock
+		close(ch)
 
 		log.Printf("[pool] Acquire(%q): pinned to worker %s", sessionID, w.ID())
-
-		// Proactively trigger backfill immediately after consuming a worker
-		p.maybeScaleUp()
 
 		return &Session[C]{ID: sessionID, Worker: w, pool: p}, nil
 	}
 }
 
-// GetSession returns the Session pinned to sessionID if it exists.
-//
-// Unlike Acquire, this does NOT allocate a new worker from available or
-// singleflight slow paths. It is purely a lookup. It updates last-accessed
-// time and active connection counts just like Acquire's fast path.
-//
-// Returns (nil, nil) if no session exists for this ID.
 func (p *Pool[C]) GetSession(ctx context.Context, sessionID string) (*Session[C], error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -376,13 +227,9 @@ func (p *Pool[C]) GetSession(ctx context.Context, sessionID string) (*Session[C]
 // release — called by Session.Release
 // ---------------------------------------------------------------------------
 
-// release removes the session → worker binding, closes the worker,
-// and effectively disposes of it since we disabled worker reuse.
-// Internal; external callers use Session.Release().
 func (p *Pool[C]) release(sessionID string, w Worker[C]) {
 	p.mu.Lock()
 	_ = p.registry.Delete(context.Background(), sessionID)
-	// Validate the worker wasn't already evicted
 	isValid := false
 	for _, existing := range p.workers {
 		if existing.ID() == w.ID() {
@@ -397,19 +244,16 @@ func (p *Pool[C]) release(sessionID string, w Worker[C]) {
 		return
 	}
 
-	// Always close single-use workers instead of putting them back
 	if err := w.Close(); err != nil {
 		log.Printf("[pool] release(%q): worker %s close error: %v", sessionID, w.ID(), err)
 	}
 
 	p.removeWorker(w)
-	p.maybeScaleUp()
+	p.tickets <- struct{}{}
 
 	log.Printf("[pool] release(%q): worker %s terminated per single-use policy", sessionID, w.ID())
 }
 
-// KillWorker forcefully tears down the worker pinned to sessionID.
-// Implements lifecycle.WorkerReaper.
 func (p *Pool[C]) KillWorker(sessionID string, reason string) error {
 	p.mu.Lock()
 	w, err := p.registry.Get(context.Background(), sessionID)
@@ -430,7 +274,7 @@ func (p *Pool[C]) KillWorker(sessionID string, reason string) error {
 	}
 
 	p.removeWorker(w)
-	p.maybeScaleUp()
+	p.tickets <- struct{}{}
 
 	log.Printf("[pool] KillWorker(%q): worker %s terminated (%s)", sessionID, w.ID(), reason)
 	return nil
@@ -440,18 +284,12 @@ func (p *Pool[C]) KillWorker(sessionID string, reason string) error {
 // onCrash — called by processWorker.monitor on unexpected exit
 // ---------------------------------------------------------------------------
 
-// onCrash handles a worker process exiting unexpectedly while holding a session.
-// It cleans up the session map and any pending inflight channel for the same
-// sessionID, then calls the user-supplied crash handler.
 func (p *Pool[C]) onCrash(sessionID string) {
 	p.mu.Lock()
 	w, _ := p.registry.Get(context.Background(), sessionID)
 	hadSession := w != nil
 	_ = p.registry.Delete(context.Background(), sessionID)
 
-	// If another Acquire is in-flight for this sessionID, close its channel
-	// so the waiting goroutine unblocks and returns an error rather than
-	// hanging indefinitely.
 	if ch, pending := p.inflight[sessionID]; pending {
 		delete(p.inflight, sessionID)
 		close(ch)
@@ -461,73 +299,18 @@ func (p *Pool[C]) onCrash(sessionID string) {
 	if hadSession {
 		log.Printf("[pool] onCrash(%q): worker %s crashed — session lost", sessionID, w.ID())
 		p.removeWorker(w)
+		p.tickets <- struct{}{}
 	}
 
 	if p.cfg.crashHandler != nil {
 		p.cfg.crashHandler(sessionID)
 	}
-
-	// Replace the lost worker to keep the pool at min capacity
-	p.maybeScaleUp()
 }
 
 // ---------------------------------------------------------------------------
 // Scale helpers
 // ---------------------------------------------------------------------------
 
-// maybeScaleUp proactively spawns new background workers to maintain a buffer
-// of targetIdle idle workers. It uses the workers slice length + a pendingAdds
-// counter to avoid overshooting max under concurrent scale-up pressure.
-func (p *Pool[C]) maybeScaleUp() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	deficit := p.cfg.targetIdle - (len(p.available) + p.pendingAdds)
-	if deficit <= 0 {
-		return
-	}
-
-	total := len(p.workers) + p.pendingAdds
-	headroom := p.cfg.max - total
-	if deficit > headroom {
-		deficit = headroom
-	}
-
-	if deficit <= 0 {
-		return
-	}
-
-	p.pendingAdds += deficit
-	for i := 0; i < deficit; i++ {
-		go p.addWorker()
-	}
-}
-
-// addWorker spawns one new worker and registers it. Runs in its own goroutine.
-func (p *Pool[C]) addWorker() {
-	defer func() {
-		p.mu.Lock()
-		p.pendingAdds--
-		p.mu.Unlock()
-	}()
-
-	// if the factory spawn is over the network or some other external call it will hang and leak memory
-	// if it cant be resolved within 60 sec cancel the operation and reclaim resources
-	ctx, cancel := context.WithTimeout(p.ctx, 60*time.Second)
-	defer cancel()
-
-	w, err := p.factory.Spawn(ctx)
-	if err != nil {
-		log.Printf("[pool] scale-up failed: %v", err)
-		return
-	}
-	p.wireWorker(w)
-	log.Printf("[pool] scale-up: worker %s added", w.ID())
-}
-
-// removeWorker evicts w from the p.workers slice (called after a crash or
-// health-check failure). Linear scan is fine — pools are small (< 100 workers).
-// TODO: eventually have a lookup to avoid holding the lock while we remove the worker
 func (p *Pool[C]) removeWorker(w Worker[C]) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -540,55 +323,9 @@ func (p *Pool[C]) removeWorker(w Worker[C]) {
 }
 
 // ---------------------------------------------------------------------------
-// Background loops
-// ---------------------------------------------------------------------------
-
-// // healthCheckLoop periodically calls w.Healthy on every worker and kills
-// // unhealthy ones. The pool's monitor goroutine (via wireWorker) handles restart.
-// func (p *Pool[C]) healthCheckLoop() {
-// 	if p.cfg.healthInterval == 0 {
-// 		return
-// 	}
-// 	ticker := time.NewTicker(p.cfg.healthInterval)
-// 	defer ticker.Stop()
-
-// 	for {
-// 		select {
-// 		case <-ticker.C:
-// 			p.mu.Lock()
-// 			workersSnapshot := make([]Worker[C], len(p.workers))
-// 			copy(workersSnapshot, p.workers)
-// 			p.mu.Unlock()
-
-// 			for _, w := range workersSnapshot {
-// 				hCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-// 				err := w.Healthy(hCtx)
-// 				cancel()
-// 				if err != nil {
-// 					log.Printf("[pool] health-check: worker %s unhealthy (%v) — closing", w.ID(), err)
-// 					_ = w.Close()
-// 					p.removeWorker(w)
-// 					// If this worker was pinned to any session, it should be removed
-// 					// but our List doesn't map worker -> session easily.
-// 					// The next Acquire will fail health check and clean it up.
-// 					p.maybeScaleUp()
-// 				}
-// 			}
-// 		case <-p.done:
-// 			return
-// 		}
-// 	}
-// }
-
-// ---------------------------------------------------------------------------
 // Stats & Shutdown
 // ---------------------------------------------------------------------------
 
-// Stats returns a point-in-time snapshot of pool state.
-// Safe to call concurrently.
-//
-// On Linux this blocks for ~100 ms to measure CPU idle via /proc/stat.
-// Cache the result if you call Stats() in a hot path.
 func (p *Pool[C]) Stats() PoolStats {
 	nodeStats, _ := observer.PollNodeStats()
 
@@ -596,27 +333,15 @@ func (p *Pool[C]) Stats() PoolStats {
 	defer p.mu.Unlock()
 	return PoolStats{
 		TotalWorkers:     len(p.workers),
-		AvailableWorkers: len(p.available),
-		ActiveSessions:   p.registry.Len(), // Add Len() to registry or use alternative
+		ActiveSessions:   p.registry.Len(),
 		InflightAcquires: len(p.inflight),
 		Node:             nodeStats,
 	}
 }
 
-// Shutdown gracefully stops the pool.
-// It closes all background goroutines and then kills every worker.
-// In-flight Acquire calls will receive a context cancellation error if
-// the caller's ctx is tied to the application lifetime.
-//
-// Two signals are sent deliberately:
-//   - p.cancel() cancels p.ctx, which unblocks any in-flight addWorker
-//     goroutines that are blocking on factory.Spawn (they use a
-//     context.WithTimeout derived from p.ctx).
-//   - close(p.done) signals the healthCheckLoop and runTTLSweep goroutines
-//     to exit their ticker loops cleanly.
 func (p *Pool[C]) Shutdown(ctx context.Context) error {
-	p.cancel()    // kill in-flight factory.Spawn calls
-	close(p.done) // stop background health-check and TTL loops
+	p.cancel()
+	close(p.done)
 	p.mu.Lock()
 	workers := make([]Worker[C], len(p.workers))
 	copy(workers, p.workers)

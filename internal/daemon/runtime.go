@@ -74,9 +74,6 @@ func MetricsHandler(pool *herd.Pool[*http.Client]) http.Handler {
 			"# HELP herd_total_workers Total workers tracked by herd pool.\n"+
 				"# TYPE herd_total_workers gauge\n"+
 				"herd_total_workers %d\n"+
-				"# HELP herd_available_workers Workers currently idle and available.\n"+
-				"# TYPE herd_available_workers gauge\n"+
-				"herd_available_workers %d\n"+
 				"# HELP herd_active_sessions Active sticky sessions.\n"+
 				"# TYPE herd_active_sessions gauge\n"+
 				"herd_active_sessions %d\n"+
@@ -99,7 +96,6 @@ func MetricsHandler(pool *herd.Pool[*http.Client]) http.Handler {
 				"# TYPE herd_sessions_killed_total counter\n"+
 				"herd_sessions_killed_total %d\n",
 			stats.TotalWorkers,
-			stats.AvailableWorkers,
 			stats.ActiveSessions,
 			life.SessionsDraining,
 			stats.InflightAcquires,

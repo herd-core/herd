@@ -11,7 +11,7 @@
 //
 // # Usage
 //
-//	pool, _ := herd.New(herd.NewProcessFactory("./my-binary", "--port", "{{.Port}}"))
+//	pool, _ := herd.New(&herd.FirecrackerFactory{...})
 //
 //	proxy := proxy.NewReverseProxy(pool, func(r *http.Request) string {
 //	    return r.Header.Get("X-Session-ID")
@@ -44,13 +44,11 @@
 package proxy
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strings"
 
 	"github.com/herd-core/herd"
 	"github.com/herd-core/herd/internal/lifecycle"
@@ -63,7 +61,7 @@ import (
 // ReverseProxy is an http.Handler that acquires a session from pool, proxies
 // the request to the worker's address, and releases the session when done.
 //
-// C is the worker client type — for ProcessFactory this is *http.Client.
+// C is the worker client type — for FirecrackerFactory this is *http.Client.
 // ReverseProxy does not use C directly; it proxies via the worker's Address().
 type ReverseProxy[C any] struct {
 	pool             *herd.Pool[C]
@@ -127,14 +125,6 @@ func (rp *ReverseProxy[C]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if rp.lifecycleManager != nil {
 		rp.lifecycleManager.BeginRequest(sessionID)
-		isWebSocket := strings.ToLower(r.Header.Get("Upgrade")) == "websocket"
-		if !isWebSocket && rp.lifecycleManager.Config.DataTimeout > 0 {
-			var cancel context.CancelFunc
-			var ctx context.Context
-			ctx, cancel = context.WithTimeout(r.Context(), rp.lifecycleManager.Config.DataTimeout)
-			defer cancel()
-			r = r.WithContext(ctx)
-		}
 		defer func() {
 			rp.lifecycleManager.EndRequest(sessionID, r.Context().Err())
 		}()
@@ -155,7 +145,9 @@ func (rp *ReverseProxy[C]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		sess, err = rp.pool.Acquire(r.Context(), sessionID)
+		// Non-lookup proxy paths must supply TenantConfig via another mechanism,
+		// but typically we use LookupOnly for the herd proxy now.
+		sess, err = rp.pool.Acquire(r.Context(), sessionID, herd.TenantConfig{})
 		if err != nil {
 			log.Printf("[proxy] Acquire(%q) failed: %v", sessionID, err)
 			http.Error(w, fmt.Sprintf("herd: could not acquire worker: %v", err), http.StatusServiceUnavailable)

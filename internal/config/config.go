@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
-	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -17,49 +14,26 @@ import (
 // The daemon fails fast if any required field is missing or malformed.
 type Config struct {
 	Network   NetworkConfig   `yaml:"network"`
-	Worker    WorkerConfig    `yaml:"worker"`
+	Storage   StorageConfig   `yaml:"storage"`
 	Resources ResourceConfig  `yaml:"resources"`
 	Telemetry TelemetryConfig `yaml:"telemetry"`
 }
 
+type StorageConfig struct {
+	StateDir        string `yaml:"state_dir"`
+	SnapshotterName string `yaml:"snapshotter_name"`
+	Namespace       string `yaml:"namespace"`
+}
+
 type NetworkConfig struct {
-	ControlSocket string `yaml:"control_socket"`
-	DataBind      string `yaml:"data_bind"`
-}
-
-type WorkerConfig struct {
-	Command               []string `yaml:"command"`
-	Env                   []string `yaml:"env"`
-	HealthPath            string   `yaml:"health_path"`
-	StartTimeout          string   `yaml:"start_timeout"`
-	StartHealthCheckDelay string   `yaml:"start_health_check_delay"`
-}
-
-func (w WorkerConfig) StartTimeoutDuration() time.Duration {
-	d, _ := time.ParseDuration(w.StartTimeout)
-	return d
-}
-
-func (w WorkerConfig) StartHealthCheckDelayDuration() time.Duration {
-	d, _ := time.ParseDuration(w.StartHealthCheckDelay)
-	return d
+	ControlBind string `yaml:"control_bind"`
+	DataBind    string `yaml:"data_bind"`
 }
 
 type ResourceConfig struct {
-	TargetIdle     int     `yaml:"target_idle"`
-	MaxWorkers     int     `yaml:"max_workers"`
-	MemoryLimitMB  int64   `yaml:"memory_limit_mb"`
-	CPULimitCores  float64 `yaml:"cpu_limit_cores"`
-	PIDsLimit      int64   `yaml:"pids_limit"`
-	TTL            string  `yaml:"ttl"`             // Maps to IdleTTL
-	AbsoluteTTL    string  `yaml:"absolute_ttl"`    // Max session duration
-	HeartbeatGrace string  `yaml:"heartbeat_grace"` // Max time without ping
-	DataTimeout    string  `yaml:"data_timeout"`    // Max time for HTTP request
-	HealthInterval string  `yaml:"health_interval"`
-
-	// InsecureSandbox enables reduced sandboxing for local development.
-	// This should not be enabled in production.
-	InsecureSandbox bool `yaml:"insecure_sandbox"`
+	MaxGlobalVMs       int     `yaml:"max_global_vms"`
+	MaxGlobalMemoryMB  int64   `yaml:"max_global_memory_mb"`
+	CPULimitCores      float64 `yaml:"cpu_limit_cores"`
 }
 
 type TelemetryConfig struct {
@@ -67,33 +41,8 @@ type TelemetryConfig struct {
 	MetricsPath string `yaml:"metrics_path"`
 }
 
-func (r ResourceConfig) IdleTTLDuration() time.Duration {
-	d, _ := time.ParseDuration(r.TTL)
-	return d
-}
-
-func (r ResourceConfig) AbsoluteTTLDuration() time.Duration {
-	d, _ := time.ParseDuration(r.AbsoluteTTL)
-	return d
-}
-
-func (r ResourceConfig) HeartbeatGraceDuration() time.Duration {
-	d, _ := time.ParseDuration(r.HeartbeatGrace)
-	return d
-}
-
-func (r ResourceConfig) DataTimeoutDuration() time.Duration {
-	d, _ := time.ParseDuration(r.DataTimeout)
-	return d
-}
-
-func (r ResourceConfig) HealthIntervalDuration() time.Duration {
-	d, _ := time.ParseDuration(r.HealthInterval)
-	return d
-}
-
 func (r ResourceConfig) MemoryLimitBytes() int64 {
-	return r.MemoryLimitMB * 1024 * 1024
+	return r.MaxGlobalMemoryMB * 1024 * 1024
 }
 
 func Load(path string) (*Config, error) {
@@ -118,21 +67,6 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) applyDefaults() {
-	if c.Worker.HealthPath == "" {
-		c.Worker.HealthPath = "/health"
-	}
-	if c.Worker.StartTimeout == "" {
-		c.Worker.StartTimeout = "30s"
-	}
-	if c.Worker.StartHealthCheckDelay == "" {
-		c.Worker.StartHealthCheckDelay = "1s"
-	}
-	if c.Resources.HealthInterval == "" {
-		c.Resources.HealthInterval = "5s"
-	}
-	if c.Resources.TTL == "" {
-		c.Resources.TTL = "5m"
-	}
 	if c.Telemetry.LogFormat == "" {
 		c.Telemetry.LogFormat = "json"
 	}
@@ -142,14 +76,11 @@ func (c *Config) applyDefaults() {
 }
 
 func (c *Config) Validate() error {
-	if c.Network.ControlSocket == "" {
-		return fmt.Errorf("network.control_socket is required")
+	if c.Network.ControlBind == "" {
+		return fmt.Errorf("network.control_bind is required")
 	}
-	if !filepath.IsAbs(c.Network.ControlSocket) {
-		return fmt.Errorf("network.control_socket must be an absolute path")
-	}
-	if len(c.Network.ControlSocket) > 103 {
-		return fmt.Errorf("network.control_socket path is too long (>103 bytes for unix domain sockets)")
+	if err := validateDataBind(c.Network.ControlBind); err != nil {
+		return fmt.Errorf("network.control_bind invalid: %w", err)
 	}
 	if c.Network.DataBind == "" {
 		return fmt.Errorf("network.data_bind is required")
@@ -157,65 +88,19 @@ func (c *Config) Validate() error {
 	if err := validateDataBind(c.Network.DataBind); err != nil {
 		return fmt.Errorf("network.data_bind invalid: %w", err)
 	}
-	if len(c.Worker.Command) == 0 || c.Worker.Command[0] == "" {
-		return fmt.Errorf("worker.command must include at least one entry (binary)")
+	if c.Resources.MaxGlobalVMs < 1 {
+		return fmt.Errorf("resources.max_global_vms must be >= 1")
 	}
-	for i, arg := range c.Worker.Command {
-		if strings.TrimSpace(arg) == "" {
-			return fmt.Errorf("worker.command[%d] must not be empty", i)
-		}
-	}
-	if !strings.HasPrefix(c.Worker.HealthPath, "/") {
-		return fmt.Errorf("worker.health_path must start with '/'")
-	}
-	for i, envKV := range c.Worker.Env {
-		if strings.TrimSpace(envKV) == "" {
-			return fmt.Errorf("worker.env[%d] must not be empty", i)
-		}
-		eq := strings.Index(envKV, "=")
-		if eq <= 0 {
-			return fmt.Errorf("worker.env[%d] must be in KEY=VALUE format", i)
-		}
-	}
-	if c.Resources.TargetIdle < 1 {
-		return fmt.Errorf("resources.target_idle must be >= 1")
-	}
-	if c.Resources.MaxWorkers < c.Resources.TargetIdle {
-		return fmt.Errorf("resources.max_workers must be >= resources.target_idle")
-	}
-	if c.Resources.MemoryLimitMB < 1 {
-		return fmt.Errorf("resources.memory_limit_mb must be >= 1")
+	if c.Resources.MaxGlobalMemoryMB < 1 {
+		return fmt.Errorf("resources.max_global_memory_mb must be >= 1")
 	}
 	if c.Resources.CPULimitCores < 0 {
 		return fmt.Errorf("resources.cpu_limit_cores must be >= 0")
 	}
-	if c.Resources.PIDsLimit == 0 || c.Resources.PIDsLimit < -1 {
-		return fmt.Errorf("resources.pids_limit must be > 0 or -1")
-	}
-	if d, err := time.ParseDuration(c.Worker.StartTimeout); err != nil {
-		return fmt.Errorf("worker.start_timeout invalid duration: %w", err)
-	} else if d <= 0 {
-		return fmt.Errorf("worker.start_timeout must be > 0")
-	}
-	if d, err := time.ParseDuration(c.Worker.StartHealthCheckDelay); err != nil {
-		return fmt.Errorf("worker.start_health_check_delay invalid duration: %w", err)
-	} else if d < 0 {
-		return fmt.Errorf("worker.start_health_check_delay must be >= 0")
-	}
-	if d, err := time.ParseDuration(c.Resources.TTL); err != nil {
-		return fmt.Errorf("resources.ttl invalid duration: %w", err)
-	} else if d <= 0 {
-		return fmt.Errorf("resources.ttl must be > 0")
-	}
-	if d, err := time.ParseDuration(c.Resources.HealthInterval); err != nil {
-		return fmt.Errorf("resources.health_interval invalid duration: %w", err)
-	} else if d <= 0 {
-		return fmt.Errorf("resources.health_interval must be > 0")
-	}
 	if c.Telemetry.LogFormat != "json" && c.Telemetry.LogFormat != "text" {
 		return fmt.Errorf("telemetry.log_format must be one of: json, text")
 	}
-	if !strings.HasPrefix(c.Telemetry.MetricsPath, "/") {
+	if c.Telemetry.MetricsPath == "" || c.Telemetry.MetricsPath[0] != '/' {
 		return fmt.Errorf("telemetry.metrics_path must start with '/'")
 	}
 	return nil

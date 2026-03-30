@@ -4,7 +4,14 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
+"path/filepath"
+
+"fmt"
+	"github.com/containerd/containerd"
+	"github.com/herd-core/herd/internal/storage"
+
 	"os"
 	"os/signal"
 	"runtime"
@@ -16,9 +23,8 @@ import (
 	"github.com/herd-core/herd/internal/config"
 	"github.com/herd-core/herd/internal/daemon"
 	"github.com/herd-core/herd/internal/lifecycle"
-	pb "github.com/herd-core/herd/proto/herd/v1"
+	"github.com/herd-core/herd/internal/network"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -57,7 +63,7 @@ func runDaemon() {
 	eventLogger := daemon.NewEventLogger(cfg.Telemetry.LogFormat, log.Default())
 	eventLogger.Info("daemon_starting", map[string]any{
 		"config_path":      configPath,
-		"control_socket":   cfg.Network.ControlSocket,
+		"control_bind":     cfg.Network.ControlBind,
 		"data_bind":        cfg.Network.DataBind,
 		"metrics_path":     cfg.Telemetry.MetricsPath,
 		"telemetry_format": cfg.Telemetry.LogFormat,
@@ -73,7 +79,7 @@ func runDaemon() {
 		}
 	}()
 
-	controlLis, err := daemon.ListenUnixSocket(cfg.Network.ControlSocket)
+	controlLis, err := net.Listen("tcp", cfg.Network.ControlBind)
 	if err != nil {
 		log.Fatalf("failed to create control socket listener: %v", err)
 	}
@@ -81,23 +87,15 @@ func runDaemon() {
 		if err := controlLis.Close(); err != nil {
 			eventLogger.Error("control_listener_close_failed", map[string]any{"error": err})
 		}
-		if err := daemon.RemoveUnixSocket(cfg.Network.ControlSocket); err != nil {
-			eventLogger.Error("control_socket_cleanup_failed", map[string]any{"error": err})
-		}
 	}()
 
 	// Initialize Lifecycle Manager
-	lcConfig := lifecycle.Config{
-		AbsoluteTTL:    cfg.Resources.AbsoluteTTLDuration(),
-		IdleTTL:        cfg.Resources.IdleTTLDuration(),
-		HeartbeatGrace: cfg.Resources.HeartbeatGraceDuration(),
-		DataTimeout:    cfg.Resources.DataTimeoutDuration(),
-	}
-	lm := lifecycle.NewManager(lcConfig, pool)
+	lm := lifecycle.NewManager(pool)
 	go lm.StartReaper(ctx) // Run reaper in background
 
-	grpcServer := grpc.NewServer()
-	pb.RegisterHerdServiceServer(grpcServer, daemon.NewServer(pool, lm, "http://"+cfg.Network.DataBind, cfg.Resources.MaxWorkers, eventLogger))
+	controlServer := &http.Server{
+		Handler: daemon.NewControlPlaneHandler(pool, lm, "http://"+cfg.Network.DataBind, eventLogger),
+	}
 
 	httpServer := &http.Server{
 		Addr:    cfg.Network.DataBind,
@@ -107,8 +105,8 @@ func runDaemon() {
 	errCh := make(chan error, 2)
 
 	go func() {
-		eventLogger.Info("control_plane_listening", map[string]any{"address": "unix://" + cfg.Network.ControlSocket})
-		if err := grpcServer.Serve(controlLis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+		eventLogger.Info("control_plane_listening", map[string]any{"address": "http://" + cfg.Network.ControlBind})
+		if err := controlServer.Serve(controlLis); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
 	}()
@@ -139,7 +137,11 @@ func runDaemon() {
 	var once sync.Once
 	done := make(chan struct{})
 	go func() {
-		once.Do(grpcServer.GracefulStop)
+		once.Do(func() {
+			if err := controlServer.Shutdown(shutdownCtx); err != nil {
+				log.Printf("error: daemon control plane shutdown failed: %v", err)
+			}
+		})
 		close(done)
 	}()
 
@@ -147,38 +149,44 @@ func runDaemon() {
 	case <-done:
 	case <-shutdownCtx.Done():
 		eventLogger.Warn("control_plane_graceful_shutdown_timeout", map[string]any{})
-		grpcServer.Stop()
+		if err := controlServer.Close(); err != nil {
+			log.Printf("error: failed to close control server: %v", err)
+		}
 	}
 
 	eventLogger.Info("daemon_stopped", map[string]any{})
 }
 
 func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
-	factory := herd.NewProcessFactory(cfg.Worker.Command[0], cfg.Worker.Command[1:]...).
-		WithHealthPath(cfg.Worker.HealthPath).
-		WithStartTimeout(cfg.Worker.StartTimeoutDuration()).
-		WithStartHealthCheckDelay(cfg.Worker.StartHealthCheckDelayDuration())
+	cwd, _ := os.Getwd()
 
-	for _, envKV := range cfg.Worker.Env {
-		factory.WithEnv(envKV)
+	sockPath := filepath.Join(cfg.Storage.StateDir, "containerd.sock")
+	absSock, err := filepath.Abs(sockPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve containerd socket path: %w", err)
+	}
+	client, err := containerd.New(absSock)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to containerd at %s: %w", absSock, err)
 	}
 
-	if cfg.Resources.MemoryLimitBytes() > 0 {
-		factory.WithMemoryLimit(cfg.Resources.MemoryLimitBytes())
+	mgr := storage.NewManager(client, cfg.Storage.Namespace, cfg.Storage.SnapshotterName)
+
+	ipam, err := network.NewIPAM("10.200.0.0/16")
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize IPAM: %w", err)
 	}
-	if cfg.Resources.CPULimitCores > 0 {
-		factory.WithCPULimit(cfg.Resources.CPULimitCores)
-	}
-	if cfg.Resources.PIDsLimit != 0 {
-		factory.WithPIDsLimit(cfg.Resources.PIDsLimit)
-	}
-	if cfg.Resources.InsecureSandbox {
-		factory.WithInsecureSandbox()
+
+	factory := &herd.FirecrackerFactory{
+		FirecrackerPath: "/home/hackstrix/firecracker-v15.0/firecracker",
+		KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"),
+		Storage:         mgr,
+		SocketPathDir:   "/tmp",
+		GuestAgentPath:  filepath.Join(cwd, "herd-guest-agent"),
+		IPAM:            ipam,
 	}
 
 	return herd.New(factory,
-		herd.WithAutoScale(cfg.Resources.TargetIdle, cfg.Resources.MaxWorkers),
-		herd.WithTTL(cfg.Resources.IdleTTLDuration()),
-		herd.WithHealthInterval(cfg.Resources.HealthIntervalDuration()),
+		herd.WithMaxWorkers(cfg.Resources.MaxGlobalVMs),
 	)
 }

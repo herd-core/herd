@@ -79,7 +79,7 @@ Defined in [`proxy/proxy.go`](https://github.com/herd-core/herd/blob/main/proxy/
 **To isolate blast radius.** If a process or session crashes, only *one* user's session is affected. Subprocesses carried state in OS memory, open file descriptors, and GPU contexts that cannot be easily shared or checkpointed.
 
 ### Why Processes, Not Goroutines?
-**Because Herd manages external stateful binaries.** The processes it manages — such as Headless Chromium or Ollama — operate outside the Go runtime with their own memory and execution models.
+**Because Herd manages external stateful binaries.** The processes it manages operate outside the Go runtime with their own memory and execution models.
 
 ### Why the Built-in Proxy?
 **Because a pool without a router is just a map.** `NewReverseProxy` collapses the acquire-proxy-release boilerplate into a single `http.Handler` line so you focus purely on application logic.

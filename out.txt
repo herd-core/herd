@@ -1,0 +1,595 @@
+2026-03-27T21:49:34.402139450 [anonymous-instance:main] Running Firecracker v1.15.0
+2026-03-27T21:49:34.402150229 [anonymous-instance:main] Running Firecracker v1.15.0
+2026-03-27T21:49:34.414034101 [anonymous-instance:main] Artificially kick devices
+2026-03-27T21:49:34.414087369 [anonymous-instance:fc_vcpu 0] Received a VcpuEvent::Resume message with immediate_exit enabled. immediate_exit was disabled before proceeding
+2026-03-27T21:49:34.414109480 [anonymous-instance:main] Successfully started microvm that was configured from one single json
+2026-03-27T21:49:34.416054544 [anonymous-instance:main] Artificially kick devices
+2026-03-27T21:49:34.416099382 [anonymous-instance:fc_vcpu 0] Received a VcpuEvent::Resume message with immediate_exit enabled. immediate_exit was disabled before proceeding
+2026-03-27T21:49:34.416123853 [anonymous-instance:main] Successfully started microvm that was configured from one single json
+[    0.000000] Linux version 4.14.174 (@57edebb99db7) (gcc version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04)) #2 SMP Wed Jul 14 11:47:24 UTC 2021
+[    0.000000] Command line: console=ttyS0 reboot=k panic=1 pci=off pc[i = o f f0 .r0o0o0t0=0/0d] eLvi/nvudxa  vrewr sivoinr t4i.1o4_.m1m7i4 o(.@d5ev7iedceeb=b49K9d@b07x)c 0(g0c0c1 0v0er0s:i5on
+ 7.[5 .0   ( U0b.un0t0u0 070.50.]0 -x38u6b/ufnptuu1:~ 1S8u.0p4p)o)r t#2i nSgM PX SWAeVdE  Jfule a1t4u r11e: 407x:0240 1U:T C '2x08271 f
+lo[a  t i n0g. 00p0o0i0n0t]  rCeomgmiasntde lrisn'e:
+ con[s o l e= t0t.y0S00 0r0e0b0o]ot =xk8 6pa/nfipcu=:1  Spucpip=oofrft ipncgi =oXfSfA VrEoo tf=e/adteuvr/ev da0 xr0w0 2vi:r t'iSoS_mEm iroe.gdievsitceer=s4'K@0
+xc[00 0 1 0 000.:500
+00[ 0 0 ]  0x.80060/0f0p0u]: x 8S6u/pfppour: tSiunpgp orXtSiAnVgE  XSfAeVaEt uferaet u0rxe0 00x40:01 :' 'Ax8V7X f lroaetginigs tpoeirnst 're
+gis[t er s ' 0
+.0[0 0  0 000.]0 00x08060/]f xp8u6:/ fSpuu:p pSourptpionrtgi nXgS AXSVAEV Ef efeaattuurree  00xx02020:0 ':S S'EP rroegtiesctteirson' 
+Key[s    U s0e.r0 0r00e0g0i]s txe8r6s/'fp
+u: S[u p po r t0i.n0g0 X0S0A0V0E] f exa8t6u/ref p0ux:0 0x4:s t'aAtVeX _roefgfissetetr[s'2]
+: [  5 7 6 ,0 .0x0s0ta0t0e0]_ sxi8ze6s/[fp2u]::  S u2p5p6or
+ting[  X S A V0E. f0e0a0t0u0re0 ]0 xx28006:/ f'pPuro:t excsttiaont eK_eoyfsf sUeste[r9 ]r:eg i s8te3r2s,' xs
+ta[t e  _ s0i.z0e00s0[090]]:  x8 6 / f8pu
+: [x s t at e0_.0o0ff0s0e0t0[]2 ]x:8  65/7f6p,u x:s Etnataeb_lseidz exs[s2t]a:t e 2 5f6ea
+tu[r e s   00x.2000700,0 0c]o nx8t6e/xftp us: ixzset aitse _o8f4f0s ebty[9t]e:s ,  83u2s,i nxgs t'atceo_mspiazcest[e9d]':   f o r8ma
+t.[  
+  0[. 0 0 00 000.]0 0x8060/0f0p]u:  eE8n2ab0l:e dB IxsOtSa-tper foevaitduereds  p0hxy20s7i,c aclo ntReAxMt  msiazpe: 
+is 8[4 0  b y t0e.s0, 0u0s0i0n0g]  'BcIoOmSpa-cet8e2d0' :f o[rmmeatm. 0
+x0[0 0 0  000.0000000000000] 0e0802-00:x B0I0O0S0-0pr0o0v0i0d0ed0 9pfhbyfsfic]a lu sRaAbM lmeap
+:
+[ [       00..000000000000] ]B IBOISO-eS8-2e08:2 [0m:e m[ m0xe0m0 000x000000000000000000000-000x900f0c00000-000x00000090fb0f0f0]0 0us0a0bdlfef
+ff][   r e s0e.r0v00e0d00
+] B[I OS - e 8020.:00 0[m0e0m0 ]0 xB00I0O0S0-0e08002000:9 f[c0me0m- 00x0x0000000000000000000df0f1f0f0]0 0re0s-e0rxv0ed00
+000[0  0 0 70f.f00f0f0f0f0]]  uBIsOaSb-lee82
+0: [[m e m   0x0.000000000000000]0 1B0I0O00S0--e08x20000:0 0[0m0e0m07 f0fxf0ff0f0]0 0u0s0ab0leeec
+00[0 0  0 -00.x00000000000]0 0B0IOfSe-bef8f20f:f f[]m erm e0sxe0r0v0e0d00
+00e[ec 0 0 0 000.-00x00000000000]0 0NfXe bf(fEfxfefc] urtees erDviseadbl
+e)[   p r o0t.e0c0t00i0o0n]:  NXa c(tEixveceut
+e D[i sa b l e0). 0pr0o0t0ec0t0i]o nD: MaIc tniovet 
+pre[s e  n t0 .o0r00 0i0n0v]a DlMiId .no
+t pr[e s e nt  0o.r0 0i0nv0a0l0]i dH.yp
+er[v i  s o0r. 0d0e0t0e0c0t] eHdy:p eKrvViMso
+r d[et e c t e0d:. 0K0V00M00
+] [ts c :   0U.s0i0n00g0 0P]I Tt scca:l iUbsriantgi oPInT  vaclaluiebr
+ati[on   v a l0u.e0
+000[0 0 ]   e08.2000:00 0l0a]s te_8p20f:n  l=a st0_xp8f0n0 =0  0mxa8x00_0a rmcahx__aprfcnh _p=f n0 x=4 00x0400000000000000
+
+[[        00.0.000000000]0 0x]8 6x/8PA6T/:P ACTon:f iCgounraftiigounr a[t0io-7n] :[ 0W-B7  ]W:C  W BU C-  WUCC    WUBC -  WUP C  U CW- BW T  W P 
+ U[C -    W0T.0 0 00
+00][  fo u n d0 .S0MP0 0M0P0-0ta]b lfeo uatn d[ mSeMm P0 xM0P0-09tfacb00l-e0 x0a0t0 9[fmc0efm] 0
+x0[0 0  9 f0c.00000-000x00]0 0S9cfac0nfn]in
+g 1 [a r e as  0f.o0r0 l0o0w0 0m]em oSrcya nconrirnugp ti1o nar
+ea[s    f or0. 0l0o0w0 00m]e mUsoirnyg  cGoB rpraugpets ifoonr 
+dire[c t   m ap0p.i0n0g0
+000[ ]   U s0i.n00g0 0G0B0 ] pNaog eNsU fMoAr c odnifriegcurta tmiaopn pfionugnd
+
+[[        00..000000000000]]  FNaok NiUnMgA  ac onnofdieg autr a[tmiemo n0 xf0o00u0n0d00
+0000[0 0 00 0 -00.x000000000000000]7 ffFfafkfifn]g
+ a [ n o d e0 .0a0t0 0[0m0]e mN OD0Ex_0DA0T0A0(000)0 0a0l0lo0c0a0te0d0 0[-m0emx 000x0007f0d0e000000-70fxf0f7fffffff]ff
+]
+[ [       00..000000000000]] k vNmO-DcElo_cDkA:T AU(si0n)g  amlsrlso c4abt5e64dd0 1[ maenmd  40bx50674df0d0e0
+00[- 0 x 0 70f.0f0f0f0f0f0]] k
+vm-[cl o c k :0 .cp0u0 000, 0m0s]r  k0:v7mf-dcc0l0o1c,k :pr iUmsairny gc pmus rclso c4kb5
+64[d  0 1  0a.n00d0 040b05] 6c4ldo0c0kso
+urc[e :  k v m0-.cl0o0c0k0:0 m0a]s kk:v 0mx-fcflfoffcfkf:ff fcfpfuff f0f,  mmaxs_rc y0c:le7sf:d c00x10c1d,4 2pe4rdifmfabr,y  mcapxu_ icdlloec_kns:
+ 88[1 5 9 0 5901.408030 0ns00
+] [c l o c k0.s0o0u0r0c00e]:  Zkovnem -rcalnogcesk:: 
+ma[s k :   00.x0f0f0f00f0f]f f  fDfMfAf f f  f f f[ mmema x0_xc0y00c0l0e00s0:0 0000x110c0d0-402xe040d0f0f0b0,00 0m0afxf_ffifdfl]e_
+ns[:    8 801.509000050901]4  8 3D MnAs32 
+   [[ me m   00x.000000000000000]1 0Z0o00n0e0 -r0ax0n0g0e0s0:000
+07f[ff f f f ]0
+.00[ 0 0 0 00.]0 0 0 0D00M]A      N or m a[lm e  me m0pxty00
+00[0 0 0 0 00.000000100000]0 -M0oxva0b0l0e0 0zo0n0e0 0s0tafrftf ffforf ]ea
+ch [no d e  
+0.[0  0 0 000.000]0 0 0 0D] MEAa3r2l y  m e m[omrye mn o0dxe 0r0a0n0g0es00
+001[ 0 0 0 00.0000-0000x00]0 0 0 n0o0d0e0 0  70f:f f[fmefmf ]0x
+0000[0 0 0 0 0000.001000000-000x]00 0 0 0N0o00r0m0a0l9 e ff fe]mp
+ty[ 
+   0[. 0 0 0 0000.]0 0 0 n0o0d0e]   M 0o:v a[bmelme  0zxo00n0e0 0s0t0a0r0t01 0f0o0r00 -e0axc0h0 0n00o0d0e00
+7fff[f f f ] 
+0.[0 0 0 0 00.00]0 0E00a0r]l yI nmitemmeomr yse tnuopd eno drea n0g [emsem
+ 0x[00 0 0 0 0000.00000001000000]- 0x  00n0o0d0e0 0 0 007f:f f[fmfef]m 
+0x[0 0 0 0 000.00000000000]0 1I0nt0e0l- 0Mxul0t0iP0r0oc0e0s0so0r0 0Sp0e9ceiffifcfat]io
+n v1[. 4  
+ 0[.  0 0 000.00000]0 0 0 ] nMoPdTeA BL E :0 :O E[M mIeDm:  0FCx 0 0 0 0  00
+00[0 0  1 000.0000000-000x]0 M0P0T0A0B0LE0:0 0P7rfodfufcftf fID]: 
+000[0 00 0 0 000.0000
+00[0 0 ]   0I.n0i0t00m0e0m]  sMePTtAuBpL En: oAdPeI C0 a t[:m e0mx F0ExE0000000000
+00[0  0 0 00.00100000000]- 0Prxo0c0es0s0o0r 0#00 0(0Bo7oftfupf-fCfPUf)]
+
+[  [    0. 0 0000.0000] 0I0O0AP0I]C [0I]n: taeplic _Midu l2t, ivPerrsoicone s1s7,o rad dSrepsesc 0ixffiecc0a00t0i0o, nG SvI 10.-423
+
+[[       0 .000.0000000]0 P0r0oc]e sMsPorTsA:B L1E:
+ O[ E M   I0D.0:0 0F0C0 0]   s m p boo
+t: [A ll o w in0g. 010 C0P0Us0,0 0]  hoMtPpTlAuBg LCEP:U sP
+rod[u  c t  0I.D00:0 000000] 0P0M0: 0R0e0g0i0st0er
+ed [n o s a ve0 .m0e0m0o0ry0:0 ][ mMemP T0AxB0L00E0:0 0A0P0I-C0x 0a0t00:0 f0fxfF]E
+E00[ 0 0 0 0
+.000[0 0 0 ]  P0M.:0 0Re0g0i0s0t]er ePdr oncoseasvse omre m#o0ry :( B[omoemt u0px-0C00P9Uf)00
+0-0x[0 0 0 9 ff0f.f0]00
+00[0  ]   I0O.0A0P0I0C00[]0 ]P:M : aRpeigci_stiedr e2d, n ovsearvsei moenm o1ry7:,  [amdemd r0exs00s0 a000x0f0e-c0x0000000df0f,f fG]SI
+ 0-[2  3 
+ 0.[0 00  0 000]. 0P0M0:0 0R0e]g iPsrtoecreesds onrossa:v e1 me
+mor[y :  [ m e0m. 00x0000000e000]0 0s-m0px0b0o0oftff:f fA]l
+low[i  n g  01. 00C0P0U0s0,]  e08 2h0o:t [pmleumg  0xC0P8U0s000
+00-[0 x ee b f0f.ff0f0]0 0a0v0ai]l aPbMl:e  fRoerg iPCsIt edreevidc ensos
+av[e    m e0m.o0r00y0:0 0][ mBeomot i0nxg0 0pa0r0a0v0i0rt0u-a0lxi0ze0d0 0k0efrnfefl] o
+n KV[M  
+  [ 0 . 0 00.000000000]0 ]P Mcl:o cRkesgouirsctee:r eredf innoesda-jvief fimeesm:o rmyas:k :[ 0mxefmf f0ffxf0f0f0 9mfax0_0c0y-c0lexs0:0 009xfffffffff]ff
+f, [m a x _ i0d.le0_0n0s0:0 076]4 5P5M1:9 60R0e2g1i1s56t8e rnesd
+ no[s  a v e0 .m0e00m0o0r0y] :r a[nmdoemm:  0gxe0t0_0raa0n0d0o0m-_0bxyt0e0s0 dcaflflfefd] fr
+om [s ta r t _0k.e0r0n0el0+000]x 9P4M/:0x 4R8e6g iwistthe rcerndg _nionsita=v0e 
+me[m o r y 0:. 0[0m00e0m0 ] 0sxe0t0u0p_ep0e0r0c0p-u:0 xN0R0_0CPfUfSf:f1f28] n
+r_c[p um a s k0_.bi0t0s0:102080 ]nr _ec8p2u0_:id s[:m1e mnr _0nxo0d8e_0i0d0s0:010
+-0x[ e e b f0f.0f0f0f0]00 ]a vpeariclpaub:l eEm bfeodrd ePdC 4I1  dpeavgeisc/ecspu
+ s12[8 6 0 0  r08.109020 d0301014]4  Buo2o09t7i1n5g2 p
+ar[a  v i r0t.u00a0l0i0z0e] dK VkMe rsneetlup  oans yKncV MPF
+ for[  c p u  00.0
+00[0 00 ]   c0l.0o0c0k0s0o0u] rkcvem:- streeaflitinmeed: -cjpiuf f0,i emss:r  7mca1s5k0:4 00
+xff[f f f f f0f. 00m0a0x0_0]c yPcVl eqssp:i n0lxofckf fhfafsfh ftfa,b lme aexn_triidelse:_ 2n5s6:  (7or6d4e5r5:1 09,6 04009261 1by5t6e8s )n
+s
+[   [  0 .0 0 000.000]0 0Bu0il0t0 ]1  zroanenlidsotsm,: m obgileitty_ rgarnoudpoinmg _obn.y t eTsot acla lplaegde sf:r o3m2 13s7ta
+rt[_ k e  r0n.e0l0+0000x09]4 /Po0lxi4c8y6 z owniet:h D McAr3n2g
+_in[ i t = 00.0
+0000[0 ]   Ke r0n.e0l0 c0o0m0m0a]nd  sleitnue:p _cpoenrscoplue:= ttNyRS_0C PreUbSo:o1t=2k8  pnarni_cc=p1u mpcais=ko_fbfi ptcsi:=1o2f8f  rnoro_tc=/pdue_vi/dvsda: 1r wn rv_inrotidoe__imdmiso:.1de
+vice[= 4 K @ 0x0c.0000001000000:]5 
+per[ c p u :0 .E00m0b0e0d0]d ePdI D4 1ha spha gteabsl/ec peunt rsi1e2s8: 650102  r(o8r1d9e2r : d03,1 1404946  uby2t0e9s7)1
+52[ 
+   [0 . 0 00 00.000]0 0M0e0m0o]ry :K V1M1 1s0e1t6uK/p1 3a0s6y80nKc  aPvFai lfaobrl ec p(8u2 004K
+ ker[n e l  c o0d.e0,0 604050K0 ]rw dkavtam,- s1t4e80aKl triomdaet:a ,c p13u2 40K ,i nmits,r  277c921K5 0b4s0s, 
+196[6 4K   r es0e.r0v0ed0,0 000K] c mPaV- rqesseprivneld)oc
+k [h a s h 0 .t0a0b0l00e0 ]e nSLtUrBi: eHsW:a l2i5gn6= 6(4o, rOderrd:er =0,0 -340,9 6M inbOybtjeesc)ts=
+0, [C P Us = 10,. 0No0d0e0s0=10]
+ Bu[i l t   01. 0z0o4n00e0l]i sHtiser,a rmcohbicialli tRCyU  girmpoluepmienntga toinon..  
+To[t a l   0p.a0g0e40s0:0 ]3 2	1RC3U7 r
+est[r ic t i n0g. C0P0U0s0 0fr0o]m  PNoR_lCiPcUyS= 1z2o8n eto:  nDrM_Acp3u2_i
+ds=[1.  
+  [0  . 0 000.0000400]0 0K] eRrnCeUl:  Acdojmumstainndg  lgienoem:e trcyo fnosro lrec=u_tftaynSo0ut _rleebafo=o1t6=,k n rp_acnpiu_ci=d1s =p1c
+i=o[ f f   p0c.0i04=0o00f]f  NrR_oIoRtQ=S:/ d4e3v5/2,v dnar _rirwq sv:i r48t,i op_rmemaliloo.cdaetevdi cier=q4sK: @106xc
+00[0 1  0 000.:00540
+00][ C o n s o0le.:0 0c0o0l0ou0r]  dPuImDmy  hdaevsihc et a8b0lxe2 5e
+ntri[e s  :  05.10204 0(0o0r]d ecorn:s o0l,e  [4t0t9y6S 0]b yetneasbl)ed
+
+[    0.0[0  0 0 000.]0 0M4e00m0o]r yt:s c1: 1D1e0t1ec6tKed/ 133700608.107K0  aMvHza iplraobcelses o(r8
+204K k[e r n e l0 .0c0o4d0e00,]  6C4al5iKb rrawtidnagt ad,el a1y4 8l0ooKp  r(osdkiaptpae,d ) 1p3r2e4sKet  ivnailute,. .2 7749020K.3 4b sBso,go M1I9P6S6 4(Klp jr=e1s4e80r0v6e8d0,) 
+0K [ c m a -0r.es0e0r4v0e0d0)] 
+pi[d _ m a 0x.:0 0d0e00f0a]u lStL:U B32:7 6H8W amliinginm=u6m4:,  3O0r1de
+r=0-3, MinObjects=0, CPUs=[1  ,   N0.o0d0e4s3=813] 
+Sec[u r i ty  0F.r0a0me4w0o0r0k] i nHiiteiralairzcehdi
+cal R[C U   i m0.p0l0e5m5e33n]t aStiELoinn.ux
+: [  I n i t0i.a0l0i4zi0n0g0.] 
+	RCU restricting CPUs from NR_CPUS=128 to nr_[c p u _ 0i.d0s0=817.41]
+ De[n t ry   c0a.c0he0 4h0a0s0h ] taRbClUe :e nAtdrijeuss:t i16n3g8 4g e(oomredetrr:y  5f,o 1r3 1r0c7u2 _bfyatneos)ut
+_leaf=16, nr_cpu[_ i d s =01.01
+088[0 ]  I n o0d.e-0c0a4c0h0e0 h]a sNhR t_aIbRlQe Se:n t4ri3e5s2:,  8n1r9_2 i(roqrsde:r :4 84,,  6p5r5e3a6 lblyotceas)te
+d irq[s :    106.0
+1204[2 ]   M ou0n.t0-0ca4c0h00e] h aCosnhs otlaeb:le  ceonltoruiers :d u5m12m y( odredveri:c e0 ,8 04x02956 
+bytes[)  
+  0[. 0  0 40.000103]80 7co]n sMooulnet p[otitnytS-0c]a cehnea hbalsehd t
+able entries[:   51 2  0(.o0r0d4e0r0:0 0],  t4s0c96:  bDyettese)ct
+ed 3700.170 MHz processor
+[    0.004000] Calibrating delay loop (skipped) preset value.. 7400.34 BogoMIPS (lpj[= 1  4 800.0016918303)] L
+ast level iTLB entri[e s :  4 K0B. 051024,1 25M5B]  2p55i,d _4mMBa x1:2 7d
+efau[l t  :  03.202706080 9]m iLnaistm ulme:v el3 0d1TLB
+ entries: 4KB [5 12 ,   20MB. 020555,8 047M]B  1S2e7c, u1rGiBt 0y 
+Fr[a m e w 0o.r0k2 15i9n0i]t Sipaelcitrzee dV1 
+: Mitig[a t io n :0 .us0e0r7co1py2/9s]w apSgEsL ibanrurxi:er s  Iannidt _i_aulsiezr ipnogi.nte
+r sanitization
+[    0.024010] Spectre V2 : Mi[t ig a ti o0n.:0 F0u8l0l0 A0M]D  Dreetnptorliyn eca
+ch[e    h a0s.h0 2t5a3bl2e1 ]e nStrpieecst:r e1 6V32 8:4  S(peocrtdreer v:2  5/, S p1e3c1tr0e7R2S B bmyitteigsa)ti
+on: Filling RSB on co[n t e xt  0s.w0it1c2h29
+6] [I n o de 0-.c0a28c0h0e9 ] hSapsehct rtea bV2l e:  eEnnatbrliinegs :Re s8t1r9ic2t e(do Srpdeecrul:a ti4o,n  6fo5r5 3f6i rbmwyatrees )cal
+ls
+[ [       00..00219473538]3 ]S peMcoturen tV-2c :a cmhieti ghaatsiohn :t aEnbalbel inegn ctornidietsi:o na5l1 2I nd(iorredcte rB:ra nc0h,  Pr4e0d9i6c tiboynt eBasr)ri
+er
+[[        00..00312600093]8 ]S peMcouulnattipvoei Sntto-rcea Bcyhpea ssh:a sMhit itgaabtiloen :e Snpterciuleast:i v5e 1S2to r(eo rBdypears:s  d0i,s a4bl0e9d6  vibay tpersct)l 
+and seccomp
+[    0.022704] Last level iTLB entries: 4KB 512, 2MB 255, 4MB 127
+[    0.024009] Last level dTLB entries: 4KB 512, 2MB 255, 4MB 127, 1GB 0
+[    0.026028] Spectre V1 : Mitigation: usercopy/swapgs barriers and __user pointer sanitization
+[    0.028009] Spectre V2 : Mitigation: Full AMD retpoline
+[    0.029645] Spectre V2 : Spectre v2 / SpectreRSB mitigation: Filling RSB on context switch
+[    0.032008] Spectre V2 : Enabling Restricted Speculation for firmware calls
+[    0.034191] Spectre V2 : mitigation: Enabling conditional Indirect Branch Prediction Barrier
+[    0.036009] Speculative Store Bypass: Mitigation: Speculative Store Bypass disabled via prctl and seccomp
+[    0.069796] Freeing SMP alternatives memory: 28K
+[    0.081595] smpboot: Max logical packages: 1
+[    0.083609] x2apic enabled
+[    0.084010] Switched APIC routing to physical x2apic.
+[    0.088000] ..TIMER: vector=0x30 apic1=0 pin1=0 apic2=-1 pin2=-1
+[    0.088000] smpboot: CPU0: AMD EPYC (family[:   0 x 109.,0 7m7o6d4e5l:]  0Fxr2e1,e isntge ppSiMnPg :a l0txer0)na
+tives memory: 28K
+[    0.088000] Performance Events: 
+[    0.088000] core perfctr but no constraints; unknown hardware!
+[    0.088010] no PMU driver, software events only.
+[    0.090123] Hierarchical SRCU implementation.
+[    0.087684] s[m p b o o0t.:0 9M42a4x6 ]l osmgpi:c aBlri npgaicnkga ugpe sse:c o1nd
+ary CPUs ...
+[    0.095399] smp: Brought[  u p  1  0n.o0d88e8,4 19 ]C PxU2a
+pic[   e n a0b.0l9e6d011
+] smpboot: Total of 1 processors activated [( 7 4 00 .03.40 9B0og5o1MI9P]S )Sw
+itched APIC routing to physical x2apic.
+[    0.099512] devtmpfs: initialized
+[    0.100270] x86/mm: Memory block size: 128MB
+[    0.[0 9 5 9 408.] 1.0.2T4I6M9ER]:  clvoecckstoourr=c0e:x 3j0i fafipeisc:1 =m0a spki:n 10x=f0f fafpffifcf2 =m-ax1_ cpyicnl2es=:- 10x
+ffffffff,[  ma x _ i0d.l0e_9n6s0:0 076]4 5s0m4p1b78o5o1t0:0 00C0P Un0s:
+ AMD[   E P Y0C.1 0(4f0a1m3]i lfyu:t 0exx 1h9a,s hm toadbell:e  0ex2nt1r,i esst:e 2p5p6i n(go:rd e0rx:0 )2, 
+16384 bytes)
+[    0.096000] Performance Events: 
+[    [0 . 0  906.0100072]6 3c]or eNE Tp:e rRefgcitsrt ebruetd  npor cootnosctorlai nftasm;i ulnyk n1o6wn
+ hardware!
+[    0.096010] no PMU dr[iv e r ,  0s.o1f0t8wa9r33e]  cepvueidnltes:  ounsilnyg. g
+overnor ladder
+[ [     0 . 101.00199719] 3c6p]u iHdileer:a rucshiincga lg oSvReCrUn oirm pmleenmuen
+tation.
+[    0.102947] smp: Bringing up secondary CPUs ...
+[    0.104010] smp: Brought up 1 node, 1 CPU
+[    0.105265] smpboot: Total of 1 processors activated (7400.34 BogoMIPS)
+[    0.109577] devtmpfs: initialized
+[    0.110886] x86/mm: Memory block size: 128MB
+[    0.113153] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+[    0.116025] futex hash table entries: 256 (order: 2, 16384 bytes)
+[    0.121900] NET: Registered protocol family 16
+[    0.125483] cpuidle: using governor ladder
+[    0.12735[0 ]    0c.p14u08i05d]l Heug:e TLuBs irneggi sgtoerveedr n1.o0r0  mGeiBn upa
+ge size, pre-allocated 0 pages
+[    0.142962] HugeTLB registered 2.00 MiB page size, pre-allocated 0 pages
+[    0.144678] SCSI subsystem initialized
+[    0.145730] pps_core: LinuxPPS API ver. 1 registered
+[    0.146988] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+[    0.148023] PTP clock support registered
+[    0.149156] dmi: Firmware registration failed.
+[    0.150876] NetLabel: Initializing
+[    0.152011] NetLabel:  domain hash size = 128
+[    0.153622] NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+[    0.155749] NetLabel:  unlabeled traffic allowed by default
+[    0.156367] clocksource: Switched to clocksource kvm-clock
+[    0.158437] VFS: Disk quotas dquot_6.6.0
+[    0.159893] VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+[    0.168803] NET: Registered protocol family 2
+[    0.170839] TCP estab[l i s h 0e.d1 6h1a8s08h]  tHaugbelTeL Be nretgriisetse:r ed1 012.40 0( oGriBd epra:g e1 s,i z8e1,9 2pr eb-yatlelosc)at
+ed 0 [p ag e s 0
+.1[7 3 2 8 01.]1 6T3C8P4 0b] iHnudg ehTaLBs hr etgaibstleer ede n2t.r0i0e sMi:B  1p0a2ge4  s(iozred,e prr:e -2a,ll o1c6a3t8e4d  0b yptaegess)
+
+[    0.175543] TC[P :   H a0.s1h6 4t5a21b]l eSsC ScIo snufbisgyusrteemd  i(neistitaalbilziedsh
+ed 1[0 2 4   0bi.n1d6 5168072]4 )pp
+s_core: LinuxPPS API ver. 1 registered
+[  [   0 . 1 6072.7177]8 9p1ps0_]c oUrDeP:  Shoafsthw atraeb vleer .e n5t.r3.i6e s- :C o2p5y6r i(ghotr d2e0r0:5 -12,00 78 1R9o2do lbfyot eGsio)me
+tti [<g i o m e0t.ti1@8l0i9n9u1x.]i tU>DP
+-Li[t e   h 0a.s1h6 8t0a18b]l eP TeP nctlroiceks s:u p2p5o6r t( orredgiesrt:e r1ed, 
+8192[  b y t e0.s1)69
+257] [d m i :  F0i.r1m8w3a1r9e4 ]re gNiEsTt:r aRtieogni sftaielrede.d 
+protocol f[a  m i l0y. 11708
+51] NetLabel: Initializing
+[[        00..11781584876]3 ]N evtiLrabteilo:- m mdoimoa:i nR ehagsihs tseirzien g=  1d2e8vi
+ce [v  i r t0i.o17-2m0m1i0o] .N0e taLtab e0lx:c 0 0p0ro1t0o0c0o-ls0 x=c 0U0N0LA1BfEfLfE,D  CIIRPQS O5v4. C
+ALIPSO
+[  [     0 .01.81875370764]]  cNletoLcakbseolu:r  cuen:l atbeslce:d  mtarsafkf:i c0 xafllfofwfefdf fbyf fdfefffafulftff
+ max_cycles:[  0 x 6 a0a.1b7e5e70531d]4 2c,lo cmkasxo_uircdel:e _Snwsit:c h8e8d1 5t9o 08c5lo2c9k8s8o urncse 
+kvm-[cl o c k 0
+.1919[ 8 8 ]  0p.l1a7t5f7o5r1m]  rVtFcS_:c mDoiss:k  qrueogtiasst deqrueodt _6p.l6a.t0fo
+rm[  R T C  0.d1e7v5i7c51e]  (VnFoS:  PDNqPu odt-ecvaicchee  hfaosuhn dt)abl
+e entries: 512[  ( o r de0r. 109,4 9402996] b yStceasn)ni
+ng for low memory corruption every 60 seconds
+[    0.197356] audit: initializing netlink subsys (disabled)
+[    0.200166] Initialise syste[m   t r 0u.s1t8e2d8 0k0e]y NrEiTn:g sRe
+gis[t e r e d0 .pr2o0t1o7c9o1l ]f aKmeiyl y t2yp
+e blacklist registered
+[  [    0 .1 804.829003]2 T8C5P]  eastuadbilti:sh etdy hpaes=h2 0ta0b0l ea uedntirti(e1s7:7 14062448 1(7o4r.d8e2r6:: 11),:  8s1t9a2t eb=yitneist)ia
+lize[d   a u 0d.i1t8_7e14n8a]b lTeCdP =b0i nrde sha=s1h 
+table e[ n tr i e0s.:2 01062343 5(]o rdweorr:k i2n,g 1s6e3t8:4  btyitmeess)t
+amp_bi[t s =  306. 1m8a9x18_3o]r dTeCrP:= 1Ha5s hb utcakbleets_ ocrodnefrig=u0re
+d (established 1024 bind 1024)
+[    0.191766] UDP hash table entries: 256 (order: 1, 8192 bytes)
+[    0.193740] UDP-Lite hash table entries: 256 (order: 1, 8192 bytes)
+[    0.195849] NET: Registered protocol family 1
+[    0.198348] virtio-mmio: Registering device virtio-mmio.0 at 0xc0001000-0xc[0 0 0 1f f0f.,2 1IR8Q6 652.] 
+squash[f s :   v0e.rs2i0o0n9 44.10]  (c2l00o9c/k0s1/o3u1r)c ePh: itllsicp:  Lmouagshke:r 
+0xffffffffffffffff max_cycles: 0x6aabee03[d 4 2 , 0 .m2a2x1_3i40d]l eK_enys t:y p8e8 1a5sy9m0m8e5tr2i9c8 8r egnisst
+ered[
+   [   0 . 20.02329254096]]  pAlsyamtmfeotrrmic  rktecy_ pcamrosse:r  'rxe5g09i's treegristeerde dp
+lat[f o  r m0 .R2T23C6 5d4e]v iBcloec k( nloay ePrN PS CdSIe vgienceeri cf o(ubnsdg)) d
+river versi[o n   0 .40 .l2o0a6de5d1 1(]m ajSocra n25n2i)n
+g for lo[w    m e0m.o22r5y6 2c6]o rirou pstchieodnu leerv enroyo p6 r0e gissetecroendd s(de
+fault)
+[    [0 . 22 6 8032.]2 0io8 5s5c3he]d ualeurd icftq:  riegniisttieareldiz
+ing net[l in  k  0s.u2b27s9y2s5 ]( vdiirstaibo-lmemido) v
+irtio-mmio.0: Failed to enable 64-bit or[  32 - b i0t. D2M1A1.0 2 T3r]y iInng ittoi aclonitsien ues,y sbtuetm t htirsu msitghetd n okte wyorrikn.g
+s
+[   [  0 . 2 01.224340688]0 ]K eSye ritaylp:e 8 2b50l/a1c6k55l0i sdtri vreer,g i1s ptoerrtes,d I
+RQ s[ha r i n g0 .d2is1a3b7l2ed1]
+ audit: type=2000 audit(1774648174.832:1): state=initialized audit_enabled=0 res=1
+[    0.216494] workingset: timestamp_bits=36 max_order=15 bucket_order=0
+[    0.223381] squashfs: version 4.0 (2009/01/31) Phillip Lougher
+[    0.226325] Key type asymmetric registered
+[    0.227654] Asymmetric key parser 'x509' registered
+[    0.229214] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 252)
+[    0.231621] io scheduler noop registered (default)
+[    0.233208] io scheduler cfq registered
+[    0.234614] virtio-mmio virtio-mmio.0: Failed to enable 64-bit or 32-bit DMA.  Trying to continue, but this might not work.
+[    0.256[38 2 ]  s e0r.i2al38822540:8 ]t tySSe0r iaat lI:/ O8 02x530f/8 1(6i5rq5 0=  4d,r ibavseer_,ba u1d  p=o 1r1t5s2,0 0)I RiQs  sa hUa6r_i1n65g5 0dAi
+sabled
+[    0.261351] loop: module loaded
+[    0.263707] Loading iSCSI transport class v2.0-870.
+[    0.265961] iscsi: registered transport (tcp)
+[    0.267053] tun: Universal TUN/TAP device driver, 1.6
+2026-03-27T21:49:35.028099680 [anonymous-instance:fc_vcpu 0] Failed to trigger i8042 kbd interrupt (disabled by guest OS)
+[    0.277681] i8042: Failed to disable AUX port, but continuing anyway... Is this a SiS?
+[    0.279627] i8042: If AUX port is really absent please use the 'i8042.noaux' option
+2026-03-27T21:49:35.040919138 [anonymous-instance:fc_vcpu 0] Failed to trigger i8042 kbd interrupt (disabled by guest OS)
+[    0.265300] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a U6_16550A
+[    0.273022] loop: module loaded
+[    0.275750] Loading iSCSI transport class v2.0-870.
+[    0.277585] iscsi: registered transport (tcp)
+[    0.278976] tun: Universal TUN/TAP device driver, 1.6
+2026-03-27T21:49:35.058804019 [anonymous-instance:fc_vcpu 0] Failed to trigger i8042 kbd interrupt (disabled by guest OS)
+[    0.290740] i8042: Failed to disable AUX port, but continuing anyway... Is this a SiS?
+[    0.293315] i8042: If AUX port is really absent please use the 'i8042.noaux' option
+2026-03-27T21:49:35.073394045 [anonymous-instance:fc_vcpu 0] Failed to trigger i8042 kbd interrupt (disabled by guest OS)
+[    0.544512] serio: i8042 KBD port at 0x60,0x64 irq 1
+[    0.546128] hidraw: raw HID events driver (C) Jiri Kosina
+[    0.548012] nf_conntrack version 0.5.0 (1024 buckets, 4096 max)
+[    0.550142] ip_tables: (C) 2000-2006 Netfilter Core Team
+[    0.551961] Initializing XFRM netlink socket
+[    0.553492] NET: Registered protocol family 10
+[    0.557345] Segment Routing with IPv6
+[    0.558488] NET: Registered protocol family 17
+[    0.559886] Bridge firewalling registered
+[    0.561218] NET: Registered protocol family 40
+[    0.562771] registered taskstats version 1
+[    0.564241] Loading compiled-in X.509 certificates
+[    0.566564] Loaded X.509 cert 'Build time autogenerated kernel key: e98e9d271da5d0a322cc4d7bfaa8c2c4c3e46010'
+[    0.569860] Key type encrypted registered
+[    0.576566] serio: i8042 KBD port at 0x60,0x64 irq 1
+[    0.578397] hidraw: raw HID events driver (C) Jiri Kosina
+[    0.580283] nf_conntrack version 0.5.0 (1024 buckets, 4096 max)
+[    0.582398] ip_tables: (C) 2000-2006 Netfilter Core Team
+[    0.584159] Initializing XFRM netlink socket
+[    0.585585] NET: Registered protocol family 10
+[    0.588862] Segment Routing with IPv6
+[    0.589982] NET: Registered protocol family 17
+[    0.591509] Bridge firewalling registered
+[    0.592864] NET: Registered protocol family 40
+[    0.594493] registered taskstats version 1
+[    0.595805] Loading compiled-in X.509 certificates
+[    0.598219] Loaded X.509 cert 'Build time autogenerated kernel key: e98e9d271da5d0a322cc4d7bfaa8c2c4c3e46010'
+[    0.601656] Key type encrypted registered
+[    1.056792] input: AT Raw Set 2 keyboard as /devices/platform/i8042/serio0/input/input0
+[    1.060750] EXT4-fs (vda): warning: mounting fs with errors, running e2fsck is recommended
+[    1.063184] EXT4-fs (vda): recovery complete
+[    1.064319] EXT4-fs (vda): mounted filesystem with ordered data mode. Opts: (null)
+[    1.066383] VFS: Mounted root (ext4 filesystem) on device 254:0.
+[    1.068382] devtmpfs: mounted
+[    1.075399] Freeing unused kernel memory: 1324K
+[    1.080066] Write protecting the kernel read-only data: 12288k
+[    1.098115] Freeing unused kernel memory: 2016K
+[    1.104531] Freeing unused kernel memory: 568K
+2026-03-27T21:49:35.868868075 [anonymous-instance:fc_vcpu 0] Invalid MMIO read @ 0xd0000000:0x1: bus_error: MissingAddressRange
+SELinux:  Could not open policy file <= /etc/selinux/targeted/policy/policy.31:  No such file or directory
+[    1.134868] systemd[1]: Failed to insert module 'autofs4': No such file or directory
+[    1.120824] input: AT Raw Set 2 keyboard as[  /  d e1v.i1c4e0s3/7p8]l astysftoermmd/[i18]0: 4s2y/ssteermid o203/7in rpuuntn/iinngp uint 0sy
+stem mode. (+PAM +AUDIT +SELINUX +IMA +APPARMOR +SMACK +SYSVI[N I T  + U1T.M1P2 +4L5I8B1C]R YEPXTSTET4U-Pf s+G C(RvYdPaT) +:G NwUaTrLSn i+nAgC:L  +mXoZu n+tLiZn4g  +fSsEC CwOiMtPh  e+BrLrKoIDr s+,E LrFUuTnInLiSn +gK MeO2D f-sIcDkN 2i s+ IrDNe c-PoCmRmEe2n ddeefdaul
+t-hierarchy=hyb[r i d ) 
+1.127[3 5 7]   1E.X1T4549-f5s3]  (svysdtae)m:d [r1]e:c oDveetercyt ecdo mvpirlteutaeliz
+ati[o n  k v m1..1
+28786] EXT[4  - f s1 .(1v4d75a8)8]:  smyosutntemedd[ 1]f:i lDeestyecstteed ma rwchiitthe coturrdee rxe8d6- 6d4a.ta
+ mode. Opts: (null)
+[    1.131181] VFS: Mounted root (ext4 filesystem) on device 254:0.
+[    1
+.13W3el6c1om4e t]o  [1dmUbeunvtut m18p.0f4.s5 :LT Sm[0mo!un
+ted
+
+[    1.153135] systemd[1]: Set hostname to <ubuntu-fc-uvm>.
+[    1.142639] Freeing unused kernel memory: 1324K
+[    1.148116] Write protecting the kernel read-only data: 12288k
+[    1.174760] Freeing unused kernel memory: 2016K
+[    1.183436] Freeing unused kernel memory: 568K
+2026-03-27T21:49:35.967991246 [anonymous-instance:fc_vcpu 0] Invalid MMIO read @ 0xd0000000:0x1: bus_error: MissingAddressRange
+[    1.212014] random: fast init done
+SELinux:  Could not open policy file <= /etc/selin[u x/ t ar g1et.e2d/3p0o487l] icsyy/psotliecmy.d3[1:1 ] N:o  s/uecht cfi/lse yosr tdeirmedct/osryystem
+/serial-getty@ttyS0.service.d/autologin.conf:3: Ignoring unknown escape sequences: "-p -- \u"
+[    1.215453] systemd[1]: Failed to insert module 'autofs4': No such file or [d  i r e1c.t2o3r5y78
+1] random: systemd: uninitialized urandom read (16 bytes read)
+[    1.237556] systemd[1]: Reached target Remote File Systems.
+[[0;32m  OK  [0m][    R 1ea.ch2ed 2tar1ge1t 7Re8mo]te  Fsiyles Stysetemms.d[1]: sy
+stemd [2 3  7  1r.u2n4n0i46n9g]  irnan dsoyms:t esyms tmeomdd:e .u n(i+niPtAiMa l+iAzUedD IuTr a+ndSoEmL IrNeUadX  (+1I6M bAy t+eAsP rPeAaRdM)O
+R +S[M A  C K1 .+2S42Y12S0V]I NsIysTt e+mUdT[1M]P:  +SLtaIrBtCeRd YFPoTrSwEaTrUd PP a+sGsCwRorYdP TR e+quGeNsUtTsL Sto  +WAaClLl  D+iXrZe ct+oLrZy4  W+atScEh.CC
+OMP +[BLKID[ 0;+32Em L OFK U T[0ImLS +]K MOD S-taIrtDedN F2or war+d PIasDswNor d -RePquCesRtsE t2o  Wadlle Dfiraecutorly tWa-tchh.ierarch
+y=hybr[i  d ) 1
+.245618[]   r a nd1o.m22: 7s5y3s2t]em ds:y sutneimndit[i1a]l:i zeDde tuercantdeodm  vrieratdu (a1l6i zbaytteiso nr ekavdm).
+
+[[       1 .12.4272790436] 7s]y sstyesmdt[e1m]d:[ 1Cr]:ea tDeedt eslcitceed  Sayrstcheimt eSclitcuree. x
+86-[64.
+[0;32m  OK  [0m] Created slice System Slice.
+[    1.250839] systemd[1]: Listening on Journal Audit Socket.
+[[0;32m  OK  [
+0mWe]lc ome to [L1miUsbteunnintgu  o1n8 .J0o4u.r5n aLl TAuSdit[ S0ocmk!et.
+
+[ 
+   1.253969] systemd[[ 1 ]:   L1i.s2t3e6n12i5ng]  ons yJsoturenmda[l 1S]o: ckSeett. h
+ost[name t[0o;3 2m<  uOKb  u[n0mtu-fc]- uvm>.Li
+stening on Journal Socket.
+         Mounting Kernel Debug File System...
+         Mounting Huge Pages File System...
+[[0;32m  OK  [0m] Listening on Journal Socket (/dev/log).
+         Starting Load Kernel Modules...
+[[0;32m  OK  [0m] Listening on udev Kernel Socket.
+[[0;32m  OK  [0m] Created slice system-serial\x2dgetty.slice.
+         Starting Journal Service...
+[[0;32m  OK  [0m] Reached target Swap.
+         Starting Create Static Device Nodes in /dev...
+         Mounting POSIX Message Queue File System...
+[[0;32m  OK  [0m] Started Dispatch Password Requests to Console Directory Watch.
+[[0;32m  OK  [0m] Reached target Local Encrypted Volumes.
+[[0;32m  OK  [0m] Reached target Paths.
+[[0;32m  OK  [0m] Listening on /dev/initctl Compatibility Named Pipe.
+[[0;32m  OK  [0m] Listening on udev Control Socket.
+[[0;32m  OK  [0m] Reached target Sockets.
+         Starting Remount Root and Kernel File Systems...
+         Starting udev Coldplug all Devices...
+[[0;32m  OK  [0m] Created slice system-getty.slice.
+[    1.288094] random: fast init done
+[[0;32m  OK  [0m] Reached target Slices.
+[[0;1;33mUNSUPP[0m] Starting of Arbitrary Executable Fi…tem Automount Point not supported.
+[[0;32m  OK  [0m] Started Journal Service.
+[[0;32m  OK  [0m] Mounted Kernel Debug File System.
+[[0;32m  OK  [0m] Mounted Huge Pages File System.
+[[0;32m  OK  [0m] Started Load Kernel Modules.
+[[0;32m  OK  [0m] [  St ar te1d .Cr3eat0e 7St8at8ic5 D]ev icse yNosdets ein m/ddev[.1]: /e
+tc/systemd[/syst[e0;m32/m s OeK r i[0aml-ge]t ty@tMotunyteSd 0PO.SIsXe Mrevsisagce eQu.eude /Fialeu Stysotelmo.gin.con
+f:3: Ignoring [unknow[n0; 32em s OKc  a[p0me seq] uenceStsar:te d "Re-mopun t -Ro-ot  a\nd uKe"rnel
+ File Systems.
+         Starting Load/Save Random Seed...[ 
+   1.314034] rand[om: sy[s0;3t2me  mOKd  :[ 0munin]i tialiRezacehedd  taurgreta Lnocdalo Fmil e rSyestaemds  ((Pre1).6 byte
+s read)
+[    1.316191] systemd[1]: Started Dispatch Password Requests to Console Directory Watch.
+[[0;32m  OK  [0m] Started Dispatch Password Requests to Console Directory Watch.
+[    1.320577] random: systemd: uninitialized urandom r[ead (16[0 ;3b2my  tOKe  s[ 0mread]) 
+Re[a ch e d  t1a.rg3et2 2L7oc2al2 F]il e sSyystsemts.emd[1]: 
+Reached target Swap.
+[[0;32m  OK  [0m] Reached target Swap.
+[    1.325376] systemd[1]: Starting of Arbitrary Executable File Formats File System Automount Point not supported.
+[[0;1;33mUNSUPP[0m] Starting of Arbitrary Executable Fi…tem Automount Point not supported.
+[    1.330818] random: systemd: uninitialized urandom read (16 bytes read)
+[    1.332963] systemd[1]: Started Forward Password Requests to Wall Directory Watch.
+[[0;32m  OK  [0m] Sta rt e  d   F o r ward PasswoSrdt arRteiqnuge sutdesv  tKoe rnWeall lD eDviirceec tMoarny aWgaetr.c.h..
+
+[    1.337188] systemd[1]: Reached target Paths.
+[[0;32m  OK  [0m] Reached target Paths.
+[[0;32m  OK  [0m] Created slice System Slice.
+[[0;32m  OK  [0m] Created slice system-getty.slice.
+[[0;32m  OK  [0m] Listening on udev Kernel Socket.
+[[0;32m  OK  [0m        ]  SLtairsttienngi nAgp ployn  K/edrenevl/ iVnairitacbltels ..C.ompatibility
+ Named Pipe.
+[[0;32m  OK  [0m] Created slice system-serial\x2dgetty.slice.
+[[0;32m  OK  [0m] Listening on Journal Socket (/dev/log).
+[[0;32m  OK  [0m] Listening on Journal Audit Socket.
+[[0;32m  OK  [0m] Listening on Journal Socket.
+         Starting Journal Service...
+         Mounting POSIX Message Queue File System...
+         Starting Flush Journal to  Pe r s i s t e n t Storage...Starting Re
+mount Root and Kernel File Systems...
+         Starting Load Kernel Modules...
+         Mounting Huge Pages File System...
+[[0;32m  OK  [0m] Listening on udev Control Socket.
+[[0;32m  OK  [0m] Reached target Sockets.
+[[0;32m  OK  [0m] Reached target Local Encrypted Volumes.
+         Starting udev Coldplug all Devices...[
+[0;32m  OK[  [0m[]0 ;32m  OKS  tar[t0emd Load/Save] R andom Seed.Reached tar
+get Remote File Systems.
+         Starting Create Static Device Nodes in /dev...
+[[0;32m  OK  [0m] Started Apply Kernel Variables.
+[[0;32m  OK  [0m] Reached target Slices.
+[[0;32m  OK  [0m] Started udev Coldplug all Devices.
+[[0;32m  OK  [0m] Started udev Kernel Device Manager.
+         Mounting Kernel Debug File System...
+[[0;32m  OK  [0m] Started Flush Journal to Persistent Storage.
+         Starting Create Volatile Files and Directories...
+[[0;32m  OK  [0m] Started Journal Service.
+[[0;32m  OK  [0m] Mounted POSIX Message Queue [Fi l e  S ys1t.em4.39422] EX
+T4-fs error (device vda[): htre[e0_;3d2im r bOKl o c[k0m_to_tr]e e:1022:S itanrotedde R e#mo3u6nt5 0Ro6o:t  abndl oKecrkne l2 F1ile4 S5ys5te5ms.: comm sy
+stemd-tmpfile: bad entry[ in direct[o0r;y3:2 m i nOoKd e  [o0umt of b]o unds -S toafrftesde Lto=ad0 ,Ke rinenlo Mdodeu=le5s2.0970, rec
+_len=84, name_le[n=0, siz[e0;=312m0 2 O4K  
+[0m] Mounted Huge Pages File System.
+[[0;32m  OK  [0m] Started Create Static Device Nodes in /dev.
+[[0;32m  OK  [0m] Mounted Kernel Debug File System.[    1.
+449411] EXT4-fs error (device vda): ext 4_  e m  p t  y_dir:2S7t3ar9t:in gi Anpopldye K e#rn3e6l 5V0ar6i:ab lbesl.o..ck 214555:
+ comm systemd-tmpfile: bad entry in directory: inode out of bounds - offset=0, inode=520970, rec_len=84, name_len=0, size=1024
+[[0;32m  OK  [0m] Found device /dev/ttyS0.
+         Starting Load/Save Random Seed...
+[[0;32m  OK  [0m] Started Create Volatile Files and Directories.
+         Starting Update UTMP about System Boot/Shutdown...
+         Starting udev Kernel Device Manager...
+[[0;32m  OK  [0m] Started Update UTMP about System Boot/Shutdown.
+[[0;32m  OK  [0m] Reached target Local File Systems (Pre).
+[[0;32m  OK  [0m][ Reac[he0d; 3t2amrg e tO KS ys te[m0m Initializat]io n.Rea
+ched target Local File Systems.
+[[0;32m  OK  [0m] Started Daily apt download activities.
+[[0;32m  OK  [0m] Started Daily apt upgrade and clean activities.
+[[0;32m  OK  [0m] Started Daily Cleanup of Temporary Directories.
+[[0;32m  OK  [0m] Reached target Basic System.
+         Starti ng    F  l u  sh JourSntaarlti ntg og etPtey rons ittsyt2-etntyt6  iSft dobrusa ganed. l.o.gind are not availab
+le...
+[[0;32m  OK  [0m] Started udev Coldplug all Devices.
+[[0;32m  OK  [0m] Started Apply Kernel Variables.
+[[0;32m  OK  [0m] St ar t e d   L o  ad/Save SRatnadrotmi ngS ePeedr.mit User Sessions
+...
+[[0;32m  OK  [0m] Started udev Kernel Device Manager.
+         Starting OpenBSD Secure Shell server...
+[[0;32m  OK  [0m] Started Flush Journal to Pe[rsistent Storag[e0.;32m  OK  [0m
+] Started Message of the Day.
+         S[tarting Creat[e0 ;V3o2lma t OiKl e  F[i0lmes and D]i rectorieSst.a.r.ted Discard unused 
+blocks once a week.
+[[0;32m  OK  [0m] Reached target Timers.
+         Starting fcnet.service...
+[    1.515254] EXT4-fs error (device vda): htree_dirblock_to_tree:1022: inode #36506: block 214555: comm systemd-tmpfile: bad entry in directory: inode out of bounds - offset=0, inode=520970, rec_len=84, name_len=0, size=1024
+[[0;32m  OK  [0m] Started Permit User Sessions.
+[    1.527900] EXT4-fs error (device vda): ext4_empty_dir:2739: inode #36506: block 214555: comm systemd-tmpfile: bad entry in directory: inode out of bounds - offset=0, inode=520970, rec_len=84, name_len=0, size=1024
+[[0;32m  OK  [0m] Found device /dev/ttyS0.
+[[0;32m  OK  [0m] Started Create Volatile Files and Directories.
+         Starting Update UTMP about S[ystem Boot[/0S;h3u2tm d oOwKn . ..[0m] 
+Started getty on tty2-tty6 if dbus and logind are not available.
+[[0;32m  OK  [0m] Started Getty on tty6.
+[[[0;32m  OK[ 0 ;3[20mm  OK  [0m] ]St arted UpdSattea rtUeTdM PGe tatbyo uotn  Sttyyst5e.m Boot/Shutd
+own.
+[[0;32m  OK  [0m] Started Getty on tty4.
+[[0;32m  OK  [0m[] [0;32m  ORKe  ach[0emd target Sy]st em InitiaSlitzaartteido nG.etty on tty3.
+
+[[0;32m  OK  [0m] Reached target Basic System.
+[[0;32m  OK  [0m][ Star[t0e;d3 2Gme t tOyK  o n t[t0ym2.] 
+Started Daily apt download activities.
+[[0;32m  OK  [0m] Started Se[rial Getty on t[ty0S;03.2m  OK  [0
+m] Started D[aily apt up[g0r;a3d2em  a nOKd   c[l0eman activ]i ties.Started 
+Getty on tty1.
+[[0;32m  OK  [0m] Reached target Login Prompts.
+[[0;32m  OK  [0m] Started fcnet.service.
+         Starting getty on tty2-tty6 if dbus and logind are not available...
+[[0;32m  OK  [0m] Started Daily Cleanup of Temporary Directories.
+[[0;32m  OK  [0m] Started OpenBSD Secure Shell server.
+[[0;32m  OK  [0m] Reached target Multi-User System.
+[[0;32m  OK  [0m] Reached target Graphical Interface.
+         Starting Update UTMP about System Runlevel Changes...
+         Starting fcnet.service...
+[[0;32m  OK  [0m] Started Update UTMP about System Runlevel Changes.
+
+Ubuntu 18         Starting OpenBSD Secure Shell server...
+.04.5 LTS ubuntu-fc-uvm ttyS0
+
+ubuntu-fc-uvm login: root (automatic login)
+
+         Starting Permit User Sessions...
+[[0;32m  OK  [0m] Started Discard unused blocks once a week.
+[[0;32m  OK  [0m] Started Message of the Day.
+[[0;32m  OK  [0m] Reached target Timers.
+[[0;32m  OK  [0m] Started Permit User Sessions.
+Last login: Fri Mar 27 21:44:09 UTC 2026 on ttyS0
+[[0;32m  OK  [0m] Started getty on tty2-tty6 if dbus and logind are not available.
+[[0;32m  OK  [0mWelcome ]to  Ubuntu 18.S04t.a5r LtTeSd  (fGcNnUe/Lti.nsuexr v4.i1c4e..174 x86_64)
+
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+[This system ha[s 0b;e3e2n mm i nOiKm iz ed[ 0bmy removing p]ac kages and coSntteanrt ted tGheattt ya roen tty6.
+not requi
+red on a system that users do not log into.
+[
+[0;3T2mo  r eOsKt or e [t0hmis content],  you can run Sthtea r'tuenmdi nGiemtitzye ' ocno mtmtayn5d..
+
+[[0;32m  OK  [0m] Started Getty on tty4.
+[[0;32m  OK  [0m] Started Getty on tty3.
+[[0;32m  OK  [0m] Started Getty on tty2.
+[[0;32m  OK  [0m] Started Getty on tty1.root@ubuntu
+-fc-uvm:~# [[0;32m  OK  [0m] Started Serial Getty on ttyS0.
+[[0;32m  OK  [0m] Reached target Login Prompts.
+[[0;32m  OK  [0m] Started OpenBSD Secure Shell server.
+[[0;32m  OK  [0m] Reached target Multi-User System.
+[[0;32m  OK  [0m] Reached target Graphical Interface.
+         Starting Update UTMP about System Runlevel Changes...
+[[0;32m  OK  [0m] Started Update UTMP about System Runlevel Changes.
+
+Ubuntu 18.04.5 LTS ubuntu-fc-uvm ttyS0
+
+ubuntu-fc-uvm login: root (automatic login)
+
+Last login: Fri Mar 27 21:44:09 UTC 2026 on ttyS0
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.14.174 x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+This system has been minimized by removing packages and content that are
+not required on a system that users do not log into.
+
+To restore this content, you can run the 'unminimize' command.
+root@ubuntu-fc-uvm:~# 

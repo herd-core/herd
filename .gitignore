@@ -10,7 +10,6 @@ examples/ollama/ollama
 
 venv
 
-herd
 
 __pycache__/
 *.pyc
