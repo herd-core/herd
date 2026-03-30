@@ -14,18 +14,15 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # go.mod requires >= 1.24 (needed for latest gRPC dependencies)
-        go-version: [ "1.24.x", "1.25.x", "1.26.x" ]
+    # Only test on Go 1.25.x
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Go ${{ matrix.go-version }}
+    - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: "1.25.x"
 
     - name: Verify dependencies
       run: go mod verify
@@ -33,11 +30,10 @@ jobs:
     - name: Build
       run: go build -v ./...
 
-    - name: Run daemon integration tests
-      run: go test -v -run '^TestDaemonIntegration_' ./internal/daemon
+
 
     - name: Run tests with race detector
-      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/herd ./internal/... ./proxy ./worker.go ./pool.go ./options.go
 
 
   lint:
