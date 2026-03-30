@@ -98,18 +98,18 @@ func (w *metricsWorker) Close() error                  { return nil }
 
 type metricsFactory struct{}
 
-func (f *metricsFactory) Spawn(context.Context) (herd.Worker[*http.Client], error) {
+func (f *metricsFactory) Spawn(_ context.Context, _ string, _ herd.TenantConfig) (herd.Worker[*http.Client], error) {
 	return &metricsWorker{id: "m1"}, nil
 }
 
 func newMetricsPool(t *testing.T) *herd.Pool[*http.Client] {
-	t.Helper()
-	p, err := herd.New[*http.Client](&metricsFactory{}, herd.WithAutoScale(1, 1))
-	if err != nil {
-		t.Fatalf("failed creating metrics pool: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = p.Shutdown(context.Background())
-	})
-	return p
+       t.Helper()
+       p, err := herd.New[*http.Client](&metricsFactory{}, herd.WithMaxWorkers(1))
+       if err != nil {
+	       t.Fatalf("failed creating metrics pool: %v", err)
+       }
+       t.Cleanup(func() {
+	       _ = p.Shutdown(context.Background())
+       })
+       return p
 }

@@ -77,7 +77,7 @@ func (f *stubFactory) Spawn(_ context.Context, _ string, _ TenantConfig) (Worker
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.index >= len(f.workers) {
-		 return nil, fmt.Errorf("stub: no more workers to spawn")
+		return nil, fmt.Errorf("stub: no more workers to spawn")
 	}
 	w := f.workers[f.index]
 	f.index++
@@ -92,18 +92,18 @@ func (f *stubFactory) Spawn(_ context.Context, _ string, _ TenantConfig) (Worker
 // in the available channel. This avoids the need for a real binary or health
 // endpoint while still exercising the full Acquire / Release logic.
 func newTestPool(t *testing.T, workers ...*stubWorker) *Pool[*stubClient] {
-       t.Helper()
-       factory := newStubFactory(workers...)
-       opts := WithMaxWorkers(len(workers))
-       p, err := New[*stubClient](factory, opts)
-       if err != nil {
-	       t.Fatalf("failed to create test pool: %v", err)
-       }
-       // Pre-populate the pool's workers slice for test visibility
-       for _, w := range workers {
-	       p.workers = append(p.workers, w)
-       }
-       return p
+	t.Helper()
+	factory := newStubFactory(workers...)
+	opts := WithMaxWorkers(len(workers))
+	p, err := New[*stubClient](factory, opts)
+	if err != nil {
+		t.Fatalf("failed to create test pool: %v", err)
+	}
+	// Pre-populate the pool's workers slice for test visibility
+	for _, w := range workers {
+		p.workers = append(p.workers, w)
+	}
+	return p
 }
 
 // ---------------------------------------------------------------------------
@@ -129,7 +129,7 @@ func TestSameSessionSingleflight(t *testing.T) {
 		i := i
 		go func() {
 			defer wg.Done()
-			   sess, err := pool.Acquire(ctx, "session-x", TenantConfig{})
+			sess, err := pool.Acquire(ctx, "session-x", TenantConfig{})
 			if err != nil {
 				t.Errorf("goroutine %d: Acquire returned unexpected error: %v", i, err)
 				return
@@ -155,7 +155,7 @@ func TestSameSessionSingleflight(t *testing.T) {
 	t.Logf("All %d goroutines received worker %q", goroutines, firstID)
 
 	// The second worker must still be in the available pool (untouched)
-	       // No direct available worker count; just check session pinning
+	// No direct available worker count; just check session pinning
 	// Verify one session is pinned
 	if n := pool.registry.Len(); n != 1 {
 		t.Errorf("expected 1 session pinned, got %d", n)
@@ -185,10 +185,10 @@ func TestKillSession_ForceTerminatesWorker(t *testing.T) {
 		t.Fatal("expected worker to be closed after KillSession")
 	}
 
-	       stats := pool.Stats()
-	       if stats.ActiveSessions != 0 {
-		       t.Fatalf("expected 0 active sessions after KillSession, got %d", stats.ActiveSessions)
-	       }
+	stats := pool.Stats()
+	if stats.ActiveSessions != 0 {
+		t.Fatalf("expected 0 active sessions after KillSession, got %d", stats.ActiveSessions)
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -213,7 +213,7 @@ func TestDifferentSessionsIsolated(t *testing.T) {
 		i, sid := i, sid
 		go func() {
 			defer wg.Done()
-			   sess, err := pool.Acquire(ctx, sid, TenantConfig{})
+			sess, err := pool.Acquire(ctx, sid, TenantConfig{})
 			if err != nil {
 				t.Errorf("Acquire(%q): %v", sid, err)
 				return
@@ -238,7 +238,7 @@ func TestDifferentSessionsIsolated(t *testing.T) {
 	t.Logf("Sessions isolated: %v", seen)
 
 	// No workers should be available (all 3 are pinned)
-	       // No direct available worker count; just check session pinning
+	// No direct available worker count; just check session pinning
 	// Verify 3 sessions are pinned
 	if n := pool.registry.Len(); n != 3 {
 		t.Errorf("expected 3 sessions pinned, got %d", n)
@@ -264,7 +264,7 @@ func TestCrashDuringAcquire(t *testing.T) {
 	t.Logf("Acquire correctly returned error: %v", err)
 
 	// The dead worker must NOT be back in the available channel (it was discarded)
-	       // No direct available worker count; just check session pinning
+	// No direct available worker count; just check session pinning
 
 	// The session must not exist in the map
 	w_dead, _ := pool.registry.Get(context.Background(), "session-y")
@@ -282,5 +282,5 @@ func TestReleaseDestroysWorkerAndBackfills(t *testing.T) {
 	w2 := &stubWorker{id: "worker-2"}
 
 	// Create factory explicitly so we can consume w1 manually, leaving w2 for the backfill
-	       // This test is obsolete with the new pool API and is removed.
+	// This test is obsolete with the new pool API and is removed.
 }
