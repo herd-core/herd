@@ -18,6 +18,10 @@ resources:
 telemetry:
   log_format: json
   metrics_path: /metrics
+binaries:
+  firecracker_path: /usr/local/bin/firecracker
+  kernel_image_path: /home/user/.herd/resources/vmlinux-v6.1.bin
+  guest_agent_path: /home/user/.herd/bin/herd-guest-agent
 `
 
 func TestLoad_ValidConfig(t *testing.T) {

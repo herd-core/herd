@@ -81,7 +81,14 @@ func (f *stubFactory) Spawn(_ context.Context, _ string, _ TenantConfig) (Worker
 	}
 	w := f.workers[f.index]
 	f.index++
+	if w.healthErr != nil {
+		return nil, w.healthErr
+	}
 	return w, nil
+}
+
+func (f *stubFactory) WarmImage(_ context.Context, _ string) error {
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -278,9 +285,5 @@ func TestCrashDuringAcquire(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestReleaseDestroysWorkerAndBackfills(t *testing.T) {
-	w1 := &stubWorker{id: "worker-1"}
-	w2 := &stubWorker{id: "worker-2"}
-
-	// Create factory explicitly so we can consume w1 manually, leaving w2 for the backfill
 	// This test is obsolete with the new pool API and is removed.
 }
