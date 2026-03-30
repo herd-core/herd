@@ -10,13 +10,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Version is the current version of herd.
+const Version = "v0.5.0"
+
 // Config is the strict daemon bootstrap contract.
 // The daemon fails fast if any required field is missing or malformed.
 type Config struct {
 	Network   NetworkConfig   `yaml:"network"`
 	Storage   StorageConfig   `yaml:"storage"`
 	Resources ResourceConfig  `yaml:"resources"`
+	Binaries  BinaryConfig    `yaml:"binaries"`
 	Telemetry TelemetryConfig `yaml:"telemetry"`
+}
+
+type BinaryConfig struct {
+	FirecrackerPath string `yaml:"firecracker_path"`
+	KernelImagePath string `yaml:"kernel_image_path"`
+	GuestAgentPath  string `yaml:"guest_agent_path"`
 }
 
 type StorageConfig struct {
@@ -99,6 +109,15 @@ func (c *Config) Validate() error {
 	}
 	if c.Telemetry.LogFormat != "json" && c.Telemetry.LogFormat != "text" {
 		return fmt.Errorf("telemetry.log_format must be one of: json, text")
+	}
+	if c.Binaries.FirecrackerPath == "" {
+		return fmt.Errorf("binaries.firecracker_path is required")
+	}
+	if c.Binaries.KernelImagePath == "" {
+		return fmt.Errorf("binaries.kernel_image_path is required")
+	}
+	if c.Binaries.GuestAgentPath == "" {
+		return fmt.Errorf("binaries.guest_agent_path is required")
 	}
 	if c.Telemetry.MetricsPath == "" || c.Telemetry.MetricsPath[0] != '/' {
 		return fmt.Errorf("telemetry.metrics_path must start with '/'")

@@ -42,7 +42,13 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	startCmd.Flags().StringVar(&configPath, "config", "/etc/herd/config.yaml", "Path to daemon configuration file")
+	
+	defaultConfig := "/etc/herd/herd.yaml"
+	if home, err := os.UserHomeDir(); err == nil {
+		defaultConfig = filepath.Join(home, ".herd", "herd.yaml")
+	}
+	
+	startCmd.Flags().StringVar(&configPath, "config", defaultConfig, "Path to daemon configuration file")
 }
 
 func runDaemon() {
@@ -158,7 +164,6 @@ func runDaemon() {
 }
 
 func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
-	cwd, _ := os.Getwd()
 
 	sockPath := filepath.Join(cfg.Storage.StateDir, "containerd.sock")
 	absSock, err := filepath.Abs(sockPath)
@@ -178,11 +183,11 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 	}
 
 	factory := &herd.FirecrackerFactory{
-		FirecrackerPath: "/home/hackstrix/firecracker-v15.0/firecracker",
-		KernelImagePath: filepath.Join(cwd, "../assets/vmlinux.bin"),
+		FirecrackerPath: cfg.Binaries.FirecrackerPath,
+		KernelImagePath: cfg.Binaries.KernelImagePath,
 		Storage:         mgr,
 		SocketPathDir:   "/tmp",
-		GuestAgentPath:  filepath.Join(cwd, "herd-guest-agent"),
+		GuestAgentPath:  cfg.Binaries.GuestAgentPath,
 		IPAM:            ipam,
 	}
 
