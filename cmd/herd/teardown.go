@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	teardownConfigPath string
+	// uses global configPath
 )
 
 var teardownCmd = &cobra.Command{
@@ -24,13 +24,12 @@ var teardownCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(teardownCmd)
-	teardownCmd.Flags().StringVar(&teardownConfigPath, "config", "/etc/herd/config.yaml", "Path to daemon configuration file")
 }
 
 func runTeardown() {
-	cfg, err := config.Load(teardownConfigPath)
+	cfg, err := config.Load(configPath)
 	if err != nil {
-		log.Fatalf("failed to load config %q: %v", teardownConfigPath, err)
+		log.Fatalf("failed to load config %q: %v", configPath, err)
 	}
 
 	if err := storage.Teardown(cfg.Storage.StateDir); err != nil {

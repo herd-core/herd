@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -44,7 +43,7 @@ func runInit() {
 	fmt.Printf("🚀 Welcome to herd initialization (version %s)!\n", config.Version)
 	fmt.Println("This process will help you configure herd and set up the required environment.")
 	fmt.Println()
-	homeDir, err := getTargetHomeDir()
+	homeDir, err := config.GetTargetHomeDir()
 	if err != nil {
 		log.Fatalf("failed to determine home directory: %v", err)
 	}
@@ -144,14 +143,7 @@ func runInit() {
 		},
 	}
 
-	configDir := "/etc/herd"
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		// Fallback to user-specific config if /etc/herd is not writable
-		configDir = filepath.Join(herdDir, "config")
-		_ = os.MkdirAll(configDir, 0755)
-	}
-	configFilePath := filepath.Join(configDir, "herd.yaml")
-
+	configFilePath := filepath.Join(herdDir, "herd.yaml")
 	data, err := yaml.Marshal(&cfg)
 	if err != nil {
 		log.Fatalf("failed to marshal config: %v", err)
@@ -172,17 +164,6 @@ func runInit() {
 
 	fmt.Println("\n🎉 herd initialization completed successfully!")
 	fmt.Println("You can now start the daemon with: sudo ./herd start --config " + configFilePath)
-}
-
-func getTargetHomeDir() (string, error) {
-	if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
-		u, err := user.Lookup(sudoUser)
-		if err != nil {
-			return "", err
-		}
-		return u.HomeDir, nil
-	}
-	return os.UserHomeDir()
 }
 
 func downloadFirecracker(outputPath string) error {

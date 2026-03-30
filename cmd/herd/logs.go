@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	logsConfig string
+	// uses global configPath
 )
 
 var logsCmd = &cobra.Command{
@@ -22,9 +22,9 @@ var logsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		sessionID := args[0]
 		
-		cfg, err := config.Load(logsConfig)
+		cfg, err := config.Load(configPath)
 		if err != nil {
-			log.Fatalf("failed to load config %q: %v", logsConfig, err)
+			log.Fatalf("failed to load config %q: %v", configPath, err)
 		}
 		
 		url := fmt.Sprintf("http://%s/v1/sessions/%s/logs", cfg.Network.ControlBind, sessionID)
@@ -52,5 +52,4 @@ var logsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(logsCmd)
-	logsCmd.Flags().StringVar(&logsConfig, "config", "/etc/herd/config.yaml", "Path to daemon configuration file")
 }

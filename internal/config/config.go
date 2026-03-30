@@ -5,13 +5,26 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/user"
 	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
 
 // Version is the current version of herd.
+// Version is the current version of herd.
 const Version = "v0.5.0"
+
+// GetTargetHomeDir returns the home directory of the original user if running under sudo,
+// falling back to the current user's home directory.
+func GetTargetHomeDir() (string, error) {
+	if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
+		if u, err := user.Lookup(sudoUser); err == nil {
+			return u.HomeDir, nil
+		}
+	}
+	return os.UserHomeDir()
+}
 
 // Config is the strict daemon bootstrap contract.
 // The daemon fails fast if any required field is missing or malformed.

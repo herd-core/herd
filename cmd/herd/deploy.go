@@ -17,7 +17,6 @@ import (
 var (
 	deployImage   string
 	deployTimeout int
-	deployConfig  string
 	deployCommand []string
 	deployEnv     []string
 )
@@ -27,9 +26,9 @@ var deployCmd = &cobra.Command{
 	Short: "Deploy a new MicroVM session",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Parse config to find control_bind
-		cfg, err := config.Load(deployConfig)
+		cfg, err := config.Load(configPath)
 		if err != nil {
-			log.Fatalf("failed to load config %q: %v", deployConfig, err)
+			log.Fatalf("failed to load config %q: %v", configPath, err)
 		}
 		
 		req := map[string]any{
@@ -85,5 +84,4 @@ func init() {
 	deployCmd.Flags().StringSliceVar(&deployCommand, "cmd", nil, "Command to run inside the VM (e.g. --cmd=/bin/sh,-c,\"echo hello\")")
 	deployCmd.Flags().StringArrayVarP(&deployEnv, "env", "e", nil, "Set environment variables (e.g. -e POSTGRES_PASSWORD=secret)")
 	deployCmd.Flags().IntVar(&deployTimeout, "timeout", 300, "Idle timeout in seconds")
-	deployCmd.Flags().StringVar(&deployConfig, "config", "/etc/herd/config.yaml", "Path to daemon configuration file")
 }

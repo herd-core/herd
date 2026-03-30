@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	configPath string
+	// uses global configPath
 )
 
 var startCmd = &cobra.Command{
@@ -42,13 +42,6 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	
-	defaultConfig := "/etc/herd/herd.yaml"
-	if home, err := os.UserHomeDir(); err == nil {
-		defaultConfig = filepath.Join(home, ".herd", "herd.yaml")
-	}
-	
-	startCmd.Flags().StringVar(&configPath, "config", defaultConfig, "Path to daemon configuration file")
 }
 
 func runDaemon() {
