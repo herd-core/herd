@@ -17,6 +17,7 @@ import (
 var (
 	deployImage   string
 	deployTimeout int
+	absoluteDeployTimeout int
 	deployCommand []string
 	deployEnv     []string
 )
@@ -34,6 +35,7 @@ var deployCmd = &cobra.Command{
 		req := map[string]any{
 			"image":                deployImage,
 			"idle_timeout_seconds": deployTimeout,
+			"ttl_seconds": absoluteDeployTimeout,
 		}
 		if len(deployCommand) > 0 {
 			req["command"] = deployCommand
@@ -83,5 +85,6 @@ func init() {
 	deployCmd.Flags().StringVar(&deployImage, "image", "docker.io/library/alpine:latest", "Image to deploy")
 	deployCmd.Flags().StringSliceVar(&deployCommand, "cmd", nil, "Command to run inside the VM (e.g. --cmd=/bin/sh,-c,\"echo hello\")")
 	deployCmd.Flags().StringArrayVarP(&deployEnv, "env", "e", nil, "Set environment variables (e.g. -e POSTGRES_PASSWORD=secret)")
-	deployCmd.Flags().IntVar(&deployTimeout, "timeout", 300, "Idle timeout in seconds")
+	deployCmd.Flags().IntVar(&deployTimeout, "timeout", 0, "Idle timeout in seconds")
+	deployCmd.Flags().IntVar(&absoluteDeployTimeout, "absolute-timeout", 0, "Absolute timeout in seconds")
 }
