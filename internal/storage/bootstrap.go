@@ -61,8 +61,8 @@ func Bootstrap(stateDir string) (err error) {
 	metaFilePath := filepath.Join(devMapperDir, "metadata")
 
 	// 1. Create sparse files
-	createdDataFile, err := createSparseFile(dataFilePath, 2*1024*1024*1024)
-	if err != nil { // 2GB
+	createdDataFile, err := createSparseFile(dataFilePath, 20*1024*1024*1024)
+	if err != nil { 
 		return err
 	}
 	if createdDataFile {
@@ -73,8 +73,8 @@ func Bootstrap(stateDir string) (err error) {
 		})
 	}
 
-	createdMetaFile, err := createSparseFile(metaFilePath, 1*1024*1024*1024)
-	if err != nil { // 1GB
+	createdMetaFile, err := createSparseFile(metaFilePath, 2*1024*1024*1024)
+	if err != nil {
 		return err
 	}
 	if createdMetaFile {
@@ -177,7 +177,7 @@ state = "%s"
   [plugins."io.containerd.snapshotter.v1.devmapper"]
     pool_name = "%s"
     root_path = "%s"
-    base_image_size = "10GB"
+    base_image_size = "5GB"
     discard_blocks = true
 `, filepath.Join(ctrdDir, "root"), filepath.Join(ctrdDir, "state"), sockPath, poolName, devMapperDir)
 
