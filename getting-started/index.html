@@ -468,10 +468,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-installation" class="md-nav__link">
+  <a href="#1-system-dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        📦 1. Installation
+        📦 1. System Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 2. Installation
       
     </span>
   </a>
@@ -638,10 +649,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-installation" class="md-nav__link">
+  <a href="#1-system-dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        📦 1. Installation
+        📦 1. System Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 2. Installation
       
     </span>
   </a>
@@ -710,9 +732,14 @@
 <li><strong>Root Access</strong>: Most <code>herd</code> commands require <code>sudo</code>.</li>
 </ul>
 <hr />
-<h2 id="1-installation">📦 1. Installation</h2>
+<h2 id="1-system-dependencies">📦 1. System Dependencies</h2>
+<p>Before installing Herd, ensure your system has <code>containerd</code> and <code>iptables</code> installed:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>apt<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>containerd<span class="w"> </span>iptables
+</span></code></pre></div>
+<hr />
+<h2 id="2-installation">📦 2. Installation</h2>
 <p>The fastest way to get Herd up and running is with our official installation script:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-sSL<span class="w"> </span>https://raw.githubusercontent.com/herd-core/herd/main/scripts/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-sSL<span class="w"> </span>https://raw.githubusercontent.com/herd-core/herd/main/scripts/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
 </span></code></pre></div>
 <p>This script will download:
 - The <code>herd</code> CLI binary.
@@ -721,7 +748,7 @@
 <hr />
 <h2 id="2-initialization">🚀 2. Initialization</h2>
 <p>Before you can spawn microVMs, Herd needs to prepare your host system's storage and networking. Run the interactive <code>init</code> command:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sudo<span class="w"> </span>herd<span class="w"> </span>init
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sudo<span class="w"> </span>herd<span class="w"> </span>init
 </span></code></pre></div>
 <p><strong>What this does</strong>:
 - Sets up the <code>devmapper</code> thin-pool for high-speed rootfs snapshotting.
@@ -731,13 +758,13 @@
 <hr />
 <h2 id="3-start-the-daemon">🛰️ 3. Start the Daemon</h2>
 <p>Once initialized, start the Herd daemon to begin managing traffic and sessions:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sudo<span class="w"> </span>herd<span class="w"> </span>start
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>sudo<span class="w"> </span>herd<span class="w"> </span>start
 </span></code></pre></div>
 <p>This command launches the <strong>Control Plane</strong> (REST API) and the <strong>Data Plane</strong> (HTTP Reverse Proxy).</p>
 <hr />
 <h2 id="4-your-first-deployment">🏗️ 4. Your First Deployment</h2>
 <p>Deploy a standard OCI image directly into a Firecracker microVM:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>herd<span class="w"> </span>deploy<span class="w"> </span>--image<span class="w"> </span>nginx:latest
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>herd<span class="w"> </span>deploy<span class="w"> </span>--image<span class="w"> </span>nginx:latest
 </span></code></pre></div>
 <p>Herd will automatically:
 1.  Pull the image via <code>containerd</code>.
