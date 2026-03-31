@@ -2,7 +2,7 @@
 set -e
 
 REPO="herd-core/herd"
-VERSION="v0.5.0" # Matches internal/config.Version
+VERSION="v0.5.1" # Matches internal/config.Version
 
 # Detect Arch
 ARCH=$(uname -m)
