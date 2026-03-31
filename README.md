@@ -22,9 +22,15 @@ Herd implements four critical layers that bridge the gap between "hardware" and 
 
 ## 🛠️ Installation & Running
 
-Herd requires **Linux with KVM** to run the Firecracker microVMs. It also requires `containerd` for storage.
-
 ### 1. Prerequisites
+
+- **Host OS**: Linux (A recent kernel with KVM support).
+- **Virtualization**: Hardware virtualization (VT-x or AMD-V) must be enabled in the BIOS/UEFI.
+- **KVM Access**: The `/dev/kvm` device must exist and be accessible.
+    ```bash
+    ls -l /dev/kvm
+    ```
+- **Root Access**: Most `herd` commands require `sudo`.
 
 Before installing Herd, ensure your system has `containerd` and `iptables` installed:
 

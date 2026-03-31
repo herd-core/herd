@@ -163,7 +163,7 @@ func runInit() {
 	}
 
 	fmt.Println("\n🎉 herd initialization completed successfully!")
-	fmt.Println("You can now start the daemon with: sudo ./herd start --config " + configFilePath)
+	fmt.Println("You can now start the daemon with: sudo herd start")
 }
 
 func downloadFirecracker(outputPath string) error {

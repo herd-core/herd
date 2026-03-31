@@ -4,8 +4,12 @@ This guide will walk you through installing Herd, initializing your host environ
 
 ## 🛠️ Prerequisites
 
-- **Host OS**: Linux (A recent kernel with KVM support is required).
-- **Virtualization**: KVM must be available and accessible.
+- **Host OS**: Linux (A recent kernel with KVM support).
+- **Virtualization**: Hardware virtualization (VT-x or AMD-V) must be enabled in the BIOS/UEFI.
+- **KVM Access**: The `/dev/kvm` device must exist and be accessible.
+    ```bash
+    ls -l /dev/kvm
+    ```
 - **Root Access**: Most `herd` commands require `sudo`.
 
 ---
