@@ -7,7 +7,7 @@
 Herd implements four critical layers that bridge the gap between "hardware" and "application":
 
 - **OCI Translation**: Automatically pulls Docker images via `containerd`, extracts `CMD`/`ENV`, and flattens them into Copy-on-Write rootfs snapshots.
-- **L7 "Wake-on-Request" Proxy**: A high-speed reverse proxy that intercepts HTTP requests, cold-boots the corresponding VM if needed, and tunnels the traffic inside.
+- **L7 "Wake-on-Request" Proxy**: A high-speed reverse proxy that intercepts HTTP requests, cold-boots the corresponding VM (if needed [WIP]), and tunnels the traffic inside.
 - **Automated IPAM**: Zero-config networking pool that manages subnets, TAP interfaces, and NAT routing.
 - **Guest Agent Execution**: Injects `herd-guest-agent` as PID 1 to handle internal OS setup and workload execution.
 
@@ -17,7 +17,7 @@ Herd implements four critical layers that bridge the gap between "hardware" and 
 | :--- | :--- | :--- |
 | **Input** | Custom Kernel + Raw `ext4` Disk Image | Standard Docker/OCI Image |
 | **Ingress** | None. You must install Traefik/Nginx | Built-in L7 Reverse Proxy |
-| **Lifecycle** | Turn On / Turn Off | Wake-on-HTTP-Request (Scale to Zero) |
+| **Lifecycle** | Turn On / Turn Off | Wake-on-HTTP-Request (Scale to Zero) [WIP] |
 | **User Experience** | Systems Engineer (Hard) | Application Developer (Easy) |
 
 ## 🛠️ Installation & Running

@@ -1,6 +1,6 @@
 site_name: Herd
-site_description: High-performance, cross-language process pooling and orchestration.
-site_author: HackStrix
+site_description: The Edge Cloud Core - An open-source Application Delivery Plane for Firecracker MicroVMs.
+site_author: Herd Core Team
 site_url: https://herd-core.github.io/herd/
 
 repo_name: herd-core/herd
@@ -49,29 +49,8 @@ markdown_extensions:
       alternate_style: true
 
 nav:
-  - Introduction:
-      - What is Herd?: index.md
-      - Quickstart: intro/quickstart.md
-  - Firecracker microVM:
-      - Execution Architecture: architecture/firecracker-microvm-execution.md
-      - Storage Bootstrap: architecture/firecracker-storage-bootstrap.md
-      - Dependencies: dependencies.md
-      # Add more Firecracker-specific topics here as needed
-  - Architecture:
-      - Dual-Mode Design: architecture/dual-mode.md
-      - Singleflight & Locks: architecture/singleflight.md
-      # - Connection Tracking: architecture/tracking.md
-  - Native Go Library:
-      # - Installation: go/install.md
-      # - The Pool Engine: go/pool.md
-      - Worker Interfaces: go/workers.md
-  - gRPC Daemon:
-      - Installation: daemon/install.md
-      - CLI Reference: daemon/cli.md
-      - Unix Domain Sockets: daemon/uds.md
-  - Language SDKs:
-      - Python: sdks/python.md
-      # - Elixir: sdks/elixir.md
-#  - Deployment:
-#    - Kubernetes Sidecar: deployment/kubernetes.md
-#    - Host OS Execution: deployment/bare-metal.md
+  - Introduction: index.md
+  - Getting Started: getting-started.md
+  - Architecture: architecture.md
+  - CLI Reference: cli.md
+  - Configuration: configuration.md

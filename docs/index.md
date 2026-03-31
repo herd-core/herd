@@ -1,49 +1,27 @@
-# Welcome to Herd: The Edge Cloud Core
+# Welcome to Herd: The Application Delivery Plane
 
-**Herd** is a high-performance **Application Delivery Plane** for stateful workloads. Built on **Firecracker**, it automates the translation of standard Docker/OCI images into isolated, session-affine compute environments with built-in L7 ingress and zero-config networking.
+**Herd** is a high-performance **Application Delivery Plane** designed to bridge the gap between low-level microVM hardware and the modern application developer experience. 
 
-## 🛸 From Orchestrator to Edge Cloud
+Built on **Firecracker**, Herd automates the process of translating standard Docker/OCI images into isolated, session-affine compute environments, complete with built-in L7 ingress and zero-config networking.
 
-Herd isn't just an "engine block"—it's the whole vehicle. It bridges the gap between raw microVM hardware and the application developer experience.
+---
 
-| Feature | Pure Orchestrator (e.g., Raw Firecracker) | Herd (Fly.io Open Source Core) |
-| :--- | :--- | :--- |
-| **Input** | Custom Kernel + Raw Disk | Standard OCI/Docker Image |
-| **Ingress** | None (You install Nginx/Traefik) | **Built-in L7 Proxy** |
-| **Lifecycle** | Turn On / Turn Off | **Wake-on-HTTP-Request** |
-| **Effort** | Systems Engineer (Hard) | Application Developer (Easy) |
+## ⚡ The Four Delivery Layers
 
-## ✅ The Core Value: The Four Layers
+Herd's architecture is built on four critical operational layers that guarantee speed, security, and ease of use:
 
-1.  **OCI Translation**: Pull images, extract `CMD`/`ENV`, and snap rootfs volumes automatically.
-2.  **L7 Proxy Ingress**: Intercept traffic, cold-boot VMs, and tunnel TCP/HTTP connections.
-3.  **Automated IPAM**: Zero-config host-to-guest networking.
-4.  **Agent-Driven Execution**: Abstract the OS with a static `herd-guest-agent` as PID 1.
+1.  **OCI Translation**: Pulls images via `containerd`, extracts execution metadata (`CMD`, `ENV`), and automatically provisions Copy-on-Write rootfs snapshots.
+2.  **L7 "Wake-on-Request" Proxy**: A high-speed reverse proxy that intercepts HTTP requests, cold-boots the corresponding microVM in sub-500ms (if needed), and tunnels traffic securely into the guest.
+3.  **Automated IPAM**: A zero-config networking engine that manages PTP TAP interfaces, deterministic internal IP allocation, and host-side NAT routing.
+4.  **Guest Agent Execution**: Injects a meticulously crafted, static `herd-guest-agent` as PID 1, which bootstraps internal microVM networking and manages the user workload execution.
 
-## 🚀 Quick Start
+---
 
-Get Herd up and running in minutes:
+## 🚀 Navigation
 
-1.  **Install**:
-    ```bash
-    curl -sSL https://raw.githubusercontent.com/herd-core/herd/main/scripts/install.sh | bash
-    ```
-2.  **Initialize**:
-    ```bash
-    sudo herd init
-    ```
-3.  **Start**:
-    ```bash
-    sudo herd start
-    ```
-4.  **Deploy**:
-    ```bash
-    herd deploy --image nginx:latest
-    ```
+Get started with Herd today:
 
-## 🧱 Key Documentation
-
-- [**The Brutal Difference**](../../README.md#the-herd-difference): Why Herd isn't just another KVM wrapper.
-- [**Architecture Deep Dive**](../../architecture.md): Understanding the four delivery layers.
-- [**Installation Guide**](./daemon/install.md): Bootstrapping the edge cloud.
-- [**CLI & Configuration Reference**](./daemon/cli.md): Mastering the `herd` binary.
+- [**Getting Started**](./getting-started.md): Installation and your first deployment.
+- [**Architecture Deep Dive**](./architecture.md): Understanding the magic beneath the hood.
+- [**CLI Reference**](./cli.md): Mastering the `herd` command suite.
+- [**Configuration**](./configuration.md): Deep dive into `herd.yaml`.
