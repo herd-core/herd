@@ -56,3 +56,11 @@ Open an interactive shell inside a running microVM.
 ### `herd logs`
 Stream logs from a specific microVM session.
 - **Usage**: `herd logs <session-id>`
+
+### `herd status`
+List all active microVM sessions and their current state.
+- **Usage**: `herd status`
+
+### `herd stop`
+Shut down a specific microVM session and release resources.
+- **Usage**: `herd stop <session-id>`

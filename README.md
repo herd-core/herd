@@ -72,6 +72,8 @@ herd deploy --image nginx:latest
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/v1/sessions` | Acquire a new session (wakes up the VM). |
+| `GET` | `/v1/sessions` | List all active sessions. |
+| `DELETE` | `/v1/sessions/{id}` | Kill a running session. |
 | `PUT` | `/v1/sessions/{id}/heartbeat` | Keep the session alive. |
 | `GET` | `/v1/sessions/{id}/logs` | Stream real-time logs from the VM. |
 
@@ -88,4 +90,4 @@ herd deploy --image nginx:latest
 - `storage.state_dir`: "/var/lib/herd"
 - `storage.snapshotter_name`: "devmapper"
 
-For more details, see [CLI & Configuration Reference](./docs/daemon/cli.md).
+For more details, see [CLI & Configuration Reference](./docs/cli.md).
