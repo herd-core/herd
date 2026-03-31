@@ -24,23 +24,29 @@ Herd implements four critical layers that bridge the gap between "hardware" and 
 
 Herd requires **Linux with KVM** to run the Firecracker microVMs. It also requires `containerd` for storage.
 
-### 1. Build
+### 1. Quick Install
 
 ```bash
-go build -o herd ./cmd/herd
+curl -sSL https://raw.githubusercontent.com/herd-core/herd/main/scripts/install.sh | bash
 ```
 
-### 2. Bootstrap Host Storage
+### 2. Initialize Host
 
 ```bash
 # Prepare the host (loop devices, devmapper, containerd config)
-sudo ./herd bootstrap --config herd.yaml
+sudo herd init
 ```
 
 ### 3. Start the Daemon
 
 ```bash
-sudo ./herd start --config herd.yaml
+sudo herd start
+```
+
+### 4. Deploy a MicroVM
+
+```bash
+herd deploy --image nginx:latest
 ```
 
 *Note: Herd requires `sudo` for managing KVM, TAP devices, and devmapper snapshots.*

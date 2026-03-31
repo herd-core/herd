@@ -8,12 +8,12 @@ This flow is for daemon mode where worker root filesystems are backed by device-
 
 ## High-Level Lifecycle
 
-1. Run herd bootstrap.
-2. Start containerd with the generated config.
-3. Run herd start.
+1. Run `herd init`.
+2. `herd init` automatically starts `containerd` with the generated config (or guides you to).
+3. Run `herd start`.
 4. Workers pull and snapshot OCI images.
 5. Firecracker boots with the extracted block device.
-6. Run herd teardown when done.
+6. Run `herd teardown` when done.
 
 ## Bootstrap Internals
 
@@ -101,15 +101,14 @@ Implementation reference: internal/storage/containerd.go and firecracker_factory
 Example using test configuration values:
 
 ```bash
-./herd bootstrap --config testdata/herd.yaml
-sudo containerd --config /tmp/herd-storage/config.toml
-sudo ./herd start --config testdata/herd.yaml
+sudo herd init
+sudo herd start
 ```
 
 Explicit teardown:
 
 ```bash
-./herd teardown --config testdata/herd.yaml
+sudo herd teardown
 ```
 
 ## Common Failure Modes

@@ -20,13 +20,30 @@ Herd isn't just an "engine block"—it's the whole vehicle. It bridges the gap b
 3.  **Automated IPAM**: Zero-config host-to-guest networking.
 4.  **Agent-Driven Execution**: Abstract the OS with a static `herd-guest-agent` as PID 1.
 
+## 🚀 Quick Start
+
+Get Herd up and running in minutes:
+
+1.  **Install**:
+    ```bash
+    curl -sSL https://raw.githubusercontent.com/herd-core/herd/main/scripts/install.sh | bash
+    ```
+2.  **Initialize**:
+    ```bash
+    sudo herd init
+    ```
+3.  **Start**:
+    ```bash
+    sudo herd start
+    ```
+4.  **Deploy**:
+    ```bash
+    herd deploy --image nginx:latest
+    ```
+
 ## 🧱 Key Documentation
 
 - [**The Brutal Difference**](../../README.md#the-herd-difference): Why Herd isn't just another KVM wrapper.
 - [**Architecture Deep Dive**](../../architecture.md): Understanding the four delivery layers.
 - [**Installation Guide**](./daemon/install.md): Bootstrapping the edge cloud.
 - [**CLI & Configuration Reference**](./daemon/cli.md): Mastering the `herd` binary.
-
-## 🚀 Get Started
-
-Ready to transform your stateful apps? Start with the [Installation Guide](./daemon/install.md).

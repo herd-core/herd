@@ -6,14 +6,12 @@ The Herd binary (`herd`) provides several commands for managing the lifecycle of
 
 These commands are used to prepare the host environment before starting the daemon.
 
-### `herd bootstrap`
+### `herd init`
 Initializes the host system requirements for Firecracker microVMs.
-- **Purpose**: Creates sparse files for storage, binds them to loop devices, sets up the devmapper thin-pool, and configures `containerd` to use the thin-pool. It also initializes host NAT routing.
-- **Flags**:
-    - `--config`: Path to the YAML configuration file (default: `/etc/herd/config.yaml`).
+- **Purpose**: Interactive setup that downloads binaries, configures sparse files for storage, binds them to loop devices, sets up the devmapper thin-pool, and configures `containerd`. It also initializes host NAT routing.
 - **Usage**:
   ```bash
-  sudo ./herd bootstrap --config herd.yaml
+  sudo herd init
   ```
 
 ### `herd teardown`
@@ -23,7 +21,7 @@ Cleans up the host environment and removes all state.
     - `--config`: Path to the YAML configuration file (default: `/etc/herd/config.yaml`).
 - **Usage**:
   ```bash
-  sudo ./herd teardown --config herd.yaml
+  sudo herd teardown
   ```
 
 ---
@@ -37,7 +35,7 @@ Starts the Herd daemon, exposing the Control and Data planes.
     - `--config`: Path to the YAML configuration file (default: `/etc/herd/config.yaml`).
 - **Usage**:
   ```bash
-  sudo ./herd start --config herd.yaml
+  sudo herd start
   ```
 
 ---
@@ -57,7 +55,7 @@ Spawns a new microVM session via the Control Plane REST API.
     - `--config`: Path to the YAML config (used to find the `ControlBind` address).
 - **Usage**:
   ```bash
-  ./herd deploy --image playwright/node --cmd=npx,playwright,run-server
+  herd deploy --image nginx:latest
   ```
 
 ### `herd exec [vm-id]`
@@ -65,7 +63,7 @@ Drops you into an interactive shell inside a running microVM.
 - **Purpose**: Connects to the VM's internal vsock port 5001. Requires the VM ID (which is the Session ID).
 - **Usage**:
   ```bash
-  ./herd exec sess-12345
+  herd exec sess-12345
   ```
 
 ### `herd logs [session-id]`
@@ -75,7 +73,7 @@ Streams real-time logs from a specific microVM session.
     - `--config`: Path to the YAML config (used to find the `ControlBind` address).
 - **Usage**:
   ```bash
-  ./herd logs sess-12345
+  herd logs sess-12345
   ```
 
 ---

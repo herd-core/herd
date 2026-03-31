@@ -29,7 +29,7 @@ To ensure the microVM workloads have deterministic networking with absolute cont
 - **Outbound NAT:** `MASQUERADE` iptables ensure standard internet connectivity.
 - **Inbound Drops:** We drop all traffic destined for internal RFC 1918 subnets, meaning a compromised MicroVM cannot scan your local LAN or talk to other neighboring MicroVMs.
 
-When an administrator runs `sudo herd bootstrap`:
+When an administrator runs `sudo herd init`:
 - The daemon detects the host's physical outbound networking interface.
 - It automatically flips the `net.ipv4.ip_forward=1` kernel switch.
 - It dynamically injects `MASQUERADE` and `FORWARD` state-tracking `iptables` constraints perfectly tailored to the `172.16.0.0/24` Firecracker subnet.

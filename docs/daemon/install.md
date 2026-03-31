@@ -5,47 +5,28 @@ The Herd daemon runs as a standalone binary and is configured via a strict YAML 
 See also:
 - [Host Dependencies](../dependencies.md)
 
-## Build
+## Install
+
+The easiest way to install Herd is via the official installation script:
 
 ```bash
-go build -o herd ./cmd/herd
+curl -sSL https://raw.githubusercontent.com/herd-core/herd/main/scripts/install.sh | bash
 ```
 
-## Prerequisites
+This will download the `herd` binary, `firecracker`, and the `herd-guest-agent` into your environment.
 
-- **Firecracker**: Ensure the `firecracker` binary is available at the path specified in your config or a standard location.
-- **Containerd**: A running `containerd` instance is required for image management.
-- **Kernel Image**: A `vmlinux.bin` file is needed to boot the microVMs.
-- **KVM**: The host must support and have KVM enabled (`/dev/kvm`).
+## Initialize
 
-## Minimal Config
+Before running the daemon, you must initialize the host environment (storage, networking, and kernel).
 
-Create a config file (e.g., `herd.yaml`). Note that there is no default; all required fields must be specified.
-
-```yaml
-network:
-  control_bind: "127.0.0.1:8001"
-  data_bind: "127.0.0.1:8080"
-
-storage:
-  state_dir: "/var/lib/herd"
-  namespace: "herd"
-  snapshotter_name: "devmapper"
-
-resources:
-  max_global_vms: 50
-  max_global_memory_mb: 20480
-  cpu_limit_cores: 4
-
-telemetry:
-  log_format: "json"
-  metrics_path: "/metrics"
+```bash
+sudo herd init
 ```
 
 ## Run
 
 ```bash
-sudo ./herd start --config herd.yaml
+sudo herd start
 ```
 
 ## Why does Herd require root (`sudo`)?

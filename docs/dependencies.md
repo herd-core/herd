@@ -8,7 +8,7 @@ See also:
 
 ## Dependency Map by Phase
 
-| Dependency | bootstrap | start | worker spawn | teardown | Purpose |
+| Dependency | init | start | worker spawn | teardown | Purpose |
 | :--- | :---: | :---: | :---: | :---: | :--- |
 | dmsetup | yes | no | no | yes | Create and remove devmapper thin-pool |
 | losetup | yes | no | no | yes | Attach and detach sparse-file-backed loop devices |
@@ -21,7 +21,7 @@ See also:
 
 ```mermaid
 flowchart LR
-	A[herd bootstrap] --> B[losetup]
+	A[herd init] --> B[losetup]
 	A --> C[dmsetup create herd-thinpool]
 	A --> D[stateDir/config.toml]
 
@@ -129,4 +129,4 @@ command -v losetup
 command -v blockdev
 ```
 
-If any command is missing, install that dependency before running bootstrap.
+If any command is missing, install that dependency before running `herd init`.
