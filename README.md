@@ -24,7 +24,15 @@ Herd implements four critical layers that bridge the gap between "hardware" and 
 
 Herd requires **Linux with KVM** to run the Firecracker microVMs. It also requires `containerd` for storage.
 
-### 1. Quick Install
+### 1. Prerequisites
+
+Before installing Herd, ensure your system has `containerd` and `iptables` installed:
+
+```bash
+sudo apt update && sudo apt install -y containerd iptables
+```
+
+### 2. Quick Install
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/herd-core/herd/main/scripts/install.sh | bash

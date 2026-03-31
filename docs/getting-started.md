@@ -10,7 +10,17 @@ This guide will walk you through installing Herd, initializing your host environ
 
 ---
 
-## 📦 1. Installation
+## 📦 1. System Dependencies
+
+Before installing Herd, ensure your system has `containerd` and `iptables` installed:
+
+```bash
+sudo apt update && sudo apt install -y containerd iptables
+```
+
+---
+
+## 📦 2. Installation
 
 The fastest way to get Herd up and running is with our official installation script:
 
