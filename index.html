@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="High-performance, cross-language process pooling and orchestration.">
+        <meta name="description" content="The Edge Cloud Core - An open-source Application Delivery Plane for Firecracker MicroVMs.">
       
       
-        <meta name="author" content="HackStrix">
+        <meta name="author" content="Herd Core Team">
       
       
         <link rel="canonical" href="https://herd-core.github.io/herd/">
       
       
       
-        <link rel="next" href="architecture/firecracker-microvm-execution/">
+        <link rel="next" href="getting-started/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>What is Herd? - Herd</title>
+        <title>Herd</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#welcome-to-herd-the-edge-cloud-core" class="md-skip">
+        <a href="#welcome-to-herd-the-application-delivery-plane" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              What is Herd?
+              Introduction
             
           </span>
         </div>
@@ -226,18 +226,17 @@
     
   
   
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="." class="md-tabs__link">
-          
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="." class="md-tabs__link">
+        
   
+  
+    
   
   Introduction
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -246,18 +245,17 @@
   
   
   
-    
-    
-      <li class="md-tabs__item">
-        <a href="architecture/firecracker-microvm-execution/" class="md-tabs__link">
-          
+    <li class="md-tabs__item">
+      <a href="getting-started/" class="md-tabs__link">
+        
   
   
-  Firecracker microVM
+    
+  
+  Getting Started
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -266,18 +264,17 @@
   
   
   
-    
-    
-      <li class="md-tabs__item">
-        <a href="architecture/dual-mode/" class="md-tabs__link">
-          
+    <li class="md-tabs__item">
+      <a href="architecture/" class="md-tabs__link">
+        
   
+  
+    
   
   Architecture
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -286,18 +283,17 @@
   
   
   
-    
-    
-      <li class="md-tabs__item">
-        <a href="go/workers/" class="md-tabs__link">
-          
+    <li class="md-tabs__item">
+      <a href="cli/" class="md-tabs__link">
+        
   
   
-  Native Go Library
+    
+  
+  CLI Reference
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -306,38 +302,17 @@
   
   
   
-    
-    
-      <li class="md-tabs__item">
-        <a href="daemon/install/" class="md-tabs__link">
-          
-  
-  
-  gRPC Daemon
-
-        </a>
-      </li>
-    
-  
-
-      
+    <li class="md-tabs__item">
+      <a href="configuration/" class="md-tabs__link">
         
   
   
-  
-  
     
-    
-      <li class="md-tabs__item">
-        <a href="sdks/python/" class="md-tabs__link">
-          
   
-  
-  Language SDKs
+  Configuration
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -394,63 +369,6 @@
   
   
   
-    
-    
-    
-    
-      
-        
-        
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Introduction
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_1">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Introduction
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-    
-  
-  
-  
     <li class="md-nav__item md-nav__item--active">
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
@@ -466,7 +384,7 @@
   <span class="md-ellipsis">
     
   
-    What is Herd?
+    Introduction
   
 
     
@@ -484,7 +402,7 @@
   <span class="md-ellipsis">
     
   
-    What is Herd?
+    Introduction
   
 
     
@@ -510,10 +428,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#from-orchestrator-to-edge-cloud" class="md-nav__link">
+  <a href="#the-four-delivery-layers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🛸 From Orchestrator to Edge Cloud
+        ⚡ The Four Delivery Layers
       
     </span>
   </a>
@@ -521,32 +439,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-core-value-the-four-layers" class="md-nav__link">
+  <a href="#navigation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ✅ The Core Value: The Four Layers
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🧱 Key Documentation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#get-started" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🚀 Get Started
+        🚀 Navigation
       
     </span>
   </a>
@@ -560,23 +456,22 @@
     </li>
   
 
-              
-            
-              
-                
+    
+      
+      
   
   
   
   
     <li class="md-nav__item">
-      <a href="intro/quickstart.md" class="md-nav__link">
+      <a href="getting-started/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Quickstart
+    Getting Started
   
 
     
@@ -588,183 +483,16 @@
     </li>
   
 
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
     
       
       
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Firecracker microVM
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Firecracker microVM
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
   
   
   
   
     <li class="md-nav__item">
-      <a href="architecture/firecracker-microvm-execution/" class="md-nav__link">
+      <a href="architecture/" class="md-nav__link">
         
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Execution Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="architecture/firecracker-storage-bootstrap/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Storage Bootstrap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="dependencies/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dependencies
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
-        
-          
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
-            
   
   
   <span class="md-ellipsis">
@@ -778,258 +506,19 @@
   
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Architecture
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="architecture/dual-mode/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dual-Mode Design
-  
-
-    
-  </span>
-  
-  
-
       </a>
     </li>
   
 
-              
-            
-              
-                
+    
+      
+      
   
   
   
   
     <li class="md-nav__item">
-      <a href="architecture/singleflight/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Singleflight & Locks
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Native Go Library
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Native Go Library
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="go/workers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Worker Interfaces
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    gRPC Daemon
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    gRPC Daemon
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="daemon/install/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Installation
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="daemon/cli/" class="md-nav__link">
+      <a href="cli/" class="md-nav__link">
         
   
   
@@ -1048,23 +537,22 @@
     </li>
   
 
-              
-            
-              
-                
+    
+      
+      
   
   
   
   
     <li class="md-nav__item">
-      <a href="daemon/uds/" class="md-nav__link">
+      <a href="configuration/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Unix Domain Sockets
+    Configuration
   
 
     
@@ -1073,101 +561,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
-        
-          
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Language SDKs
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Language SDKs
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="sdks/python/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Python
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
     </li>
   
 
@@ -1199,10 +592,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#from-orchestrator-to-edge-cloud" class="md-nav__link">
+  <a href="#the-four-delivery-layers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🛸 From Orchestrator to Edge Cloud
+        ⚡ The Four Delivery Layers
       
     </span>
   </a>
@@ -1210,32 +603,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-core-value-the-four-layers" class="md-nav__link">
+  <a href="#navigation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ✅ The Core Value: The Four Layers
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🧱 Key Documentation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#get-started" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🚀 Get Started
+        🚀 Navigation
       
     </span>
   </a>
@@ -1262,57 +633,27 @@
   
 
 
-<h1 id="welcome-to-herd-the-edge-cloud-core">Welcome to Herd: The Edge Cloud Core</h1>
-<p><strong>Herd</strong> is a high-performance <strong>Application Delivery Plane</strong> for stateful workloads. Built on <strong>Firecracker</strong>, it automates the translation of standard Docker/OCI images into isolated, session-affine compute environments with built-in L7 ingress and zero-config networking.</p>
-<h2 id="from-orchestrator-to-edge-cloud">🛸 From Orchestrator to Edge Cloud</h2>
-<p>Herd isn't just an "engine block"—it's the whole vehicle. It bridges the gap between raw microVM hardware and the application developer experience.</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">Feature</th>
-<th style="text-align: left;">Pure Orchestrator (e.g., Raw Firecracker)</th>
-<th style="text-align: left;">Herd (Fly.io Open Source Core)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;"><strong>Input</strong></td>
-<td style="text-align: left;">Custom Kernel + Raw Disk</td>
-<td style="text-align: left;">Standard OCI/Docker Image</td>
-</tr>
-<tr>
-<td style="text-align: left;"><strong>Ingress</strong></td>
-<td style="text-align: left;">None (You install Nginx/Traefik)</td>
-<td style="text-align: left;"><strong>Built-in L7 Proxy</strong></td>
-</tr>
-<tr>
-<td style="text-align: left;"><strong>Lifecycle</strong></td>
-<td style="text-align: left;">Turn On / Turn Off</td>
-<td style="text-align: left;"><strong>Wake-on-HTTP-Request</strong></td>
-</tr>
-<tr>
-<td style="text-align: left;"><strong>Effort</strong></td>
-<td style="text-align: left;">Systems Engineer (Hard)</td>
-<td style="text-align: left;">Application Developer (Easy)</td>
-</tr>
-</tbody>
-</table>
-<h2 id="the-core-value-the-four-layers">✅ The Core Value: The Four Layers</h2>
+<h1 id="welcome-to-herd-the-application-delivery-plane">Welcome to Herd: The Application Delivery Plane</h1>
+<p><strong>Herd</strong> is a high-performance <strong>Application Delivery Plane</strong> designed to bridge the gap between low-level microVM hardware and the modern application developer experience. </p>
+<p>Built on <strong>Firecracker</strong>, Herd automates the process of translating standard Docker/OCI images into isolated, session-affine compute environments, complete with built-in L7 ingress and zero-config networking.</p>
+<hr />
+<h2 id="the-four-delivery-layers">⚡ The Four Delivery Layers</h2>
+<p>Herd's architecture is built on four critical operational layers that guarantee speed, security, and ease of use:</p>
 <ol>
-<li><strong>OCI Translation</strong>: Pull images, extract <code>CMD</code>/<code>ENV</code>, and snap rootfs volumes automatically.</li>
-<li><strong>L7 Proxy Ingress</strong>: Intercept traffic, cold-boot VMs, and tunnel TCP/HTTP connections.</li>
-<li><strong>Automated IPAM</strong>: Zero-config host-to-guest networking.</li>
-<li><strong>Agent-Driven Execution</strong>: Abstract the OS with a static <code>herd-guest-agent</code> as PID 1.</li>
+<li><strong>OCI Translation</strong>: Pulls images via <code>containerd</code>, extracts execution metadata (<code>CMD</code>, <code>ENV</code>), and automatically provisions Copy-on-Write rootfs snapshots.</li>
+<li><strong>L7 "Wake-on-Request" Proxy</strong>: A high-speed reverse proxy that intercepts HTTP requests, cold-boots the corresponding microVM in sub-500ms (if needed), and tunnels traffic securely into the guest.</li>
+<li><strong>Automated IPAM</strong>: A zero-config networking engine that manages PTP TAP interfaces, deterministic internal IP allocation, and host-side NAT routing.</li>
+<li><strong>Guest Agent Execution</strong>: Injects a meticulously crafted, static <code>herd-guest-agent</code> as PID 1, which bootstraps internal microVM networking and manages the user workload execution.</li>
 </ol>
-<h2 id="key-documentation">🧱 Key Documentation</h2>
+<hr />
+<h2 id="navigation">🚀 Navigation</h2>
+<p>Get started with Herd today:</p>
 <ul>
-<li><a href="../../README.md#the-herd-difference"><strong>The Brutal Difference</strong></a>: Why Herd isn't just another KVM wrapper.</li>
-<li><a href="../../architecture.md"><strong>Architecture Deep Dive</strong></a>: Understanding the four delivery layers.</li>
-<li><a href="daemon/install/"><strong>Installation Guide</strong></a>: Bootstrapping the edge cloud.</li>
-<li><a href="daemon/cli/"><strong>CLI &amp; Configuration Reference</strong></a>: Mastering the <code>herd</code> binary.</li>
+<li><a href="getting-started/"><strong>Getting Started</strong></a>: Installation and your first deployment.</li>
+<li><a href="architecture/"><strong>Architecture Deep Dive</strong></a>: Understanding the magic beneath the hood.</li>
+<li><a href="cli/"><strong>CLI Reference</strong></a>: Mastering the <code>herd</code> command suite.</li>
+<li><a href="configuration/"><strong>Configuration</strong></a>: Deep dive into <code>herd.yaml</code>.</li>
 </ul>
-<h2 id="get-started">🚀 Get Started</h2>
-<p>Ready to transform your stateful apps? Start with the <a href="daemon/install/">Installation Guide</a>.</p>
 
 
 

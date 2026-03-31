@@ -6,33 +6,37 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="High-performance, cross-language process pooling and orchestration.">
+        <meta name="description" content="The Edge Cloud Core - An open-source Application Delivery Plane for Firecracker MicroVMs.">
       
       
-        <meta name="author" content="HackStrix">
+        <meta name="author" content="Herd Core Team">
       
       
-        <link rel="canonical" href="https://herd-core.github.io/herd/go/pool/">
+        <link rel="canonical" href="https://herd-core.github.io/herd/architecture/">
       
       
+        <link rel="prev" href="../getting-started/">
+      
+      
+        <link rel="next" href="../cli/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>The Pool Engine - Herd</title>
+        <title>Architecture - Herd</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -51,7 +55,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#the-pool-engine" class="md-skip">
+        <a href="#architecture-the-four-layers" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +94,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Herd" class="md-header__button md-logo" aria-label="Herd" data-md-component="logo">
+    <a href=".." title="Herd" class="md-header__button md-logo" aria-label="Herd" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -110,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              The Pool Engine
+              Architecture
             
           </span>
         </div>
@@ -222,18 +226,17 @@
   
   
   
-    
-    
-      <li class="md-tabs__item">
-        <a href="../.." class="md-tabs__link">
-          
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
   
+  
+    
   
   Introduction
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -242,18 +245,17 @@
   
   
   
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../architecture/firecracker-microvm-execution/" class="md-tabs__link">
-          
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
   
   
-  Firecracker microVM
+    
+  
+  Getting Started
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -261,19 +263,20 @@
   
   
   
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
   
     
-    
-      <li class="md-tabs__item">
-        <a href="../../architecture/dual-mode/" class="md-tabs__link">
-          
-  
   
   Architecture
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -282,18 +285,17 @@
   
   
   
-    
-    
-      <li class="md-tabs__item">
-        <a href="../workers/" class="md-tabs__link">
-          
+    <li class="md-tabs__item">
+      <a href="../cli/" class="md-tabs__link">
+        
   
   
-  Native Go Library
+    
+  
+  CLI Reference
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -302,38 +304,17 @@
   
   
   
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../daemon/install/" class="md-tabs__link">
-          
-  
-  
-  gRPC Daemon
-
-        </a>
-      </li>
-    
-  
-
-      
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
         
   
   
-  
-  
     
-    
-      <li class="md-tabs__item">
-        <a href="../../sdks/python/" class="md-tabs__link">
-          
   
-  
-  Language SDKs
+  Configuration
 
-        </a>
-      </li>
-    
+      </a>
+    </li>
   
 
       
@@ -359,7 +340,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Herd" class="md-nav__button md-logo" aria-label="Herd" data-md-component="logo">
+    <a href=".." title="Herd" class="md-nav__button md-logo" aria-label="Herd" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -388,25 +369,9 @@
   
   
   
-    
-    
-    
-    
-      
-      
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
         
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
-        
-          
-          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
-            
   
   
   <span class="md-ellipsis">
@@ -420,35 +385,26 @@
   
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_1">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Introduction
+      </a>
+    </li>
   
 
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
+    
+      
+      
   
   
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../getting-started/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    What is Herd?
+    Getting Started
   
 
     
@@ -460,211 +416,25 @@
     </li>
   
 
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../intro/quickstart.md" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quickstart
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
     
       
       
   
   
+    
   
   
-    
-    
-    
-    
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
         
       
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
       
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
-        
+        <label class="md-nav__link md-nav__link--active" for="__toc">
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Firecracker microVM
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Firecracker microVM
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/firecracker-microvm-execution/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Execution Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/firecracker-storage-bootstrap/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Storage Bootstrap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../dependencies/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dependencies
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
-        
-          
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
-            
   
   
   <span class="md-ellipsis">
@@ -678,258 +448,101 @@
   
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
-            <span class="md-nav__icon md-icon"></span>
-            
+  
+  
+  <span class="md-ellipsis">
+    
   
     Architecture
   
 
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/dual-mode/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dual-Mode Design
-  
-
     
   </span>
   
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#layer-1-oci-translation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 Layer 1: OCI Translation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-2-l7-wake-on-request-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚡ Layer 2: L7 "Wake-on-Request" Proxy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-3-automated-ipam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 Layer 3: Automated IPAM
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-4-guest-agent-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🤖 Layer 4: Guest Agent Execution
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
-              
-            
-              
-                
+    
+      
+      
   
   
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/singleflight/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Singleflight & Locks
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Native Go Library
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Native Go Library
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../workers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Worker Interfaces
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    gRPC Daemon
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    gRPC Daemon
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../daemon/install/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Installation
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../daemon/cli/" class="md-nav__link">
+      <a href="../cli/" class="md-nav__link">
         
   
   
@@ -948,23 +561,22 @@
     </li>
   
 
-              
-            
-              
-                
+    
+      
+      
   
   
   
   
     <li class="md-nav__item">
-      <a href="../../daemon/uds/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Unix Domain Sockets
+    Configuration
   
 
     
@@ -973,101 +585,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
-        
-          
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Language SDKs
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Language SDKs
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../sdks/python/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Python
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
     </li>
   
 
@@ -1092,6 +609,58 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#layer-1-oci-translation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 Layer 1: OCI Translation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-2-l7-wake-on-request-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚡ Layer 2: L7 "Wake-on-Request" Proxy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-3-automated-ipam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 Layer 3: Automated IPAM
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layer-4-guest-agent-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🤖 Layer 4: Guest Agent Execution
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1110,7 +679,29 @@
   
 
 
-<h1 id="the-pool-engine">The Pool Engine</h1>
+<h1 id="architecture-the-four-layers">Architecture: The Four Layers</h1>
+<p>Herd simplifies the complexity of microVM orchestration by implementing a four-layer delivery stack. This design allows standard application developers to leverage the security and isolation of Firecracker without managing raw disk images or network configurations.</p>
+<hr />
+<h2 id="layer-1-oci-translation">📦 Layer 1: OCI Translation</h2>
+<p>Herd treats standard Docker/OCI images as first-class citizens. When you deploy an image, Herd performs the following:
+- <strong>Metadata Extraction</strong>: It parses the image manifest for <code>CMD</code>, <code>WORKDIR</code>, and <code>ENV</code> variables.
+- <strong>Snapshotting</strong>: Using <code>containerd</code> and the <code>devmapper</code> snapshotter, it creates a Copy-on-Write (CoW) block device from the image layers.
+- <strong>Thin-Pool Management</strong>: Host storage is managed via a dedicated <code>devmapper</code> thin-pool, ensuring microVMs share image data while having isolated write layers.</p>
+<h2 id="layer-2-l7-wake-on-request-proxy">⚡ Layer 2: L7 "Wake-on-Request" Proxy</h2>
+<p>The Herd Data Plane is a high-speed reverse proxy that manages session-affine routing.
+- <strong>Traffic Interception</strong>: Requests arriving on the Data Plane (port 8080) are inspected for an <code>X-Session-ID</code> header.
+- <strong>Cold Booting</strong>: If a session ID is provided but the corresponding microVM is not running, the proxy triggers a cold-boot sequence (sub-500ms) before forwarding the traffic.
+- <strong>Connectivity</strong>: Once the VM is ready, traffic is tunneled through the hypervisor boundary into the guest.</p>
+<h2 id="layer-3-automated-ipam">🌐 Layer 3: Automated IPAM</h2>
+<p>Networking is isolated at the host level to prevent neighbor scanning and provide absolute containment.
+- <strong>TAP Interfaces</strong>: Each microVM gets its own unique TAP device linked to a host-side bridge.
+- <strong>Point-to-Point Networking</strong>: VMs are configured with a <code>/32</code> IP address, routing all traffic through a virtual gateway on the host.
+- <strong>NAT Routing</strong>: Herd automatically manages <code>iptables</code> NAT (MASQUERADE) and FORWARD rules to allow internet access while preventing VM-to-VM traffic.</p>
+<h2 id="layer-4-guest-agent-execution">🤖 Layer 4: Guest Agent Execution</h2>
+<p>The <code>herd-guest-agent</code> is the bridge between the host daemon and the user workload.
+- <strong>Initialize RAM Disk (initrd)</strong>: Herd injects the agent as an <code>initrd</code> ramdisk at boot time.
+- <strong>PID 1 Role</strong>: The agent runs as <code>PID 1</code> inside the VM, responsible for mounting virtual filesystems (<code>/proc</code>, <code>/sys</code>), configuring networking, and <code>chroot</code>-ing into the user's workload filesystem.
+- <strong>Vsock Communication</strong>: The host communicates with the agent over <strong>AF_VSOCK</strong>, allowing for execution commands, logs, and heartbeats without an internal network listener.</p>
 
 
 
@@ -1166,10 +757,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
