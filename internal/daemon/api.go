@@ -39,6 +39,7 @@ func NewControlPlaneHandler(
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/sessions", h.handleCreateSession)
+	mux.HandleFunc("GET /v1/sessions", h.handleListSessions)
 	mux.HandleFunc("DELETE /v1/sessions/", h.handleDeleteSession) // /v1/sessions/{id}
 	mux.HandleFunc("GET /v1/sessions/", h.handleLogsSession)      // /v1/sessions/{id}/logs
 	mux.HandleFunc("POST /v1/sessions/", h.handleExecSession)     // /v1/sessions/{id}/exec
@@ -232,6 +233,15 @@ func (h *ControlPlaneHandler) handleDeleteSession(w http.ResponseWriter, r *http
 	RecordSessionKilled()
 	h.logger.Info("session_killed", map[string]any{"session_id": sessionID})
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *ControlPlaneHandler) handleListSessions(w http.ResponseWriter, r *http.Request) {
+	sessions := h.lifecycleManager.ListSessions()
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(sessions); err != nil {
+		h.logger.Error("failed_to_encode_sessions_list", map[string]any{"error": err})
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
 }
 
 func (h *ControlPlaneHandler) handleExecSession(w http.ResponseWriter, r *http.Request) {

@@ -13,15 +13,15 @@ type WorkerReaper interface {
 }
 
 type SessionState struct {
-	mu                   sync.Mutex
-	SessionID            string
-	CreatedAt            time.Time
-	LastControlHeartbeat time.Time
-	LastDataActivity     time.Time
-	ActiveConns          int
+	mu                   sync.Mutex `json:"-"`
+	SessionID            string     `json:"session_id"`
+	CreatedAt            time.Time  `json:"created_at"`
+	LastControlHeartbeat time.Time  `json:"last_control_heartbeat"`
+	LastDataActivity     time.Time  `json:"last_data_activity"`
+	ActiveConns          int        `json:"active_conns"`
 
-	IdleTTL        time.Duration
-	AbsoluteTTL    time.Duration
+	IdleTTL     time.Duration `json:"idle_ttl"`
+	AbsoluteTTL time.Duration `json:"absolute_ttl"`
 }
 
 type Manager struct {
@@ -79,4 +79,20 @@ func (m *Manager) GetSession(sessionID string) *SessionState {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.registry[sessionID]
+}
+
+// ListSessions returns a snapshot of all active sessions.
+func (m *Manager) ListSessions() []*SessionState {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	sessions := make([]*SessionState, 0, len(m.registry))
+	for _, s := range m.registry {
+		s.mu.Lock()
+		// Return a copy to avoid mutex issues and external mutation
+		copy := *s
+		s.mu.Unlock()
+		sessions = append(sessions, &copy)
+	}
+	return sessions
 }
