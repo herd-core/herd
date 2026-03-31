@@ -117,6 +117,18 @@ func (f *FirecrackerWorker) Close() error {
 	return nil
 }
 
+// Snapshot implements the Snapshotter interface.
+// TODO: This currently requires Firecracker to be started with the API enabled
+// (remove --no-api) so we can issue the CreateSnapshot command via the socket.
+func (f *FirecrackerWorker) Snapshot(ctx context.Context) (memPath, statePath string, err error) {
+	return "", "", fmt.Errorf("snapshot not yet implemented: requires Firecracker API to be enabled")
+}
+
+// Restore implements the Snapshotter interface.
+func (f *FirecrackerWorker) Restore(ctx context.Context, memPath, statePath string) error {
+	return fmt.Errorf("restore not yet implemented")
+}
+
 // WarmImage ensures an image is cached without starting a VM.
 func (f *FirecrackerFactory) WarmImage(ctx context.Context, imageRef string) error {
 	return f.Storage.WarmImage(ctx, imageRef)
