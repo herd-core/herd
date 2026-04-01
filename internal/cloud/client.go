@@ -73,25 +73,31 @@ func (c *Client) telemetryLoop(ctx context.Context) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
+	// Send initial heartbeat immediately
+	c.sendTelemetry()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			// Simple dummy telemetry for now
-			err := c.stream.Send(&herdv1.NodeStream{
-				NodeId:            c.nodeID,
-				AvailableMemoryMb: 8192, // Mock data
-				ActiveVmCount:     0,
-				CpuUsagePercent:   5.0,
-				UptimeSeconds:     time.Now().Unix(),
-			})
-			if err != nil {
+			if err := c.sendTelemetry(); err != nil {
 				log.Printf("failed to send telemetry: %v", err)
 				return
 			}
 		}
 	}
+}
+
+func (c *Client) sendTelemetry() error {
+	// Simple dummy telemetry for now
+	return c.stream.Send(&herdv1.NodeStream{
+		NodeId:            c.nodeID,
+		AvailableMemoryMb: 8192, // Mock data
+		ActiveVmCount:     0,
+		CpuUsagePercent:   5.0,
+		UptimeSeconds:     time.Now().Unix(),
+	})
 }
 
 func (c *Client) commandLoop(ctx context.Context) {
