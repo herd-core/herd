@@ -2,25 +2,28 @@ package cloud
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"time"
 
 	"github.com/herd-core/herd/internal/config"
 	herdv1 "github.com/herd-core/herd/internal/proto/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Client handles the bidirectional gRPC stream to the Elixir Control Plane.
 type Client struct {
-	cfg      config.CloudConfig
-	nodeID   string
-	client   herdv1.HerdControlPlaneClient
-	conn     *grpc.ClientConn
-	stream   herdv1.HerdControlPlane_ConnectClient
+	cfg    config.CloudConfig
+	nodeID string
+	client herdv1.HerdControlPlaneClient
+	conn   *grpc.ClientConn
+	stream herdv1.HerdControlPlane_ConnectClient
 }
 
 func NewClient(cfg config.CloudConfig) *Client {
@@ -42,10 +45,7 @@ func (c *Client) Start(ctx context.Context) error {
 
 	log.Printf("Connecting to Cloud Control Plane at %s...", c.cfg.Endpoint)
 
-	conn, err := grpc.DialContext(ctx, c.cfg.Endpoint, 
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
-	)
+	conn, err := c.dialWithFallback(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to dial control plane: %w", err)
 	}
@@ -62,7 +62,7 @@ func (c *Client) Start(ctx context.Context) error {
 
 	// Start telemetry heartbeat
 	go c.telemetryLoop(ctx)
-	
+
 	// Start command listener
 	go c.commandLoop(ctx)
 
@@ -121,4 +121,47 @@ func (c *Client) Close() {
 	if c.conn != nil {
 		c.conn.Close()
 	}
+}
+
+func (c *Client) dialWithFallback(ctx context.Context) (*grpc.ClientConn, error) {
+	endpointHost, _, err := net.SplitHostPort(c.cfg.Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cloud endpoint %q, expected host:port: %w", c.cfg.Endpoint, err)
+	}
+
+	attemptTimeout := 8 * time.Second
+	tlsCfg := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		ServerName: endpointHost,
+	}
+
+	attempts := []struct {
+		name string
+		cred credentials.TransportCredentials
+	}{
+		{name: "tls", cred: credentials.NewTLS(tlsCfg)},
+		{name: "insecure", cred: insecure.NewCredentials()},
+	}
+
+	var lastErr error
+	for _, a := range attempts {
+		attemptCtx, cancel := context.WithTimeout(ctx, attemptTimeout)
+		conn, err := grpc.DialContext(
+			attemptCtx,
+			c.cfg.Endpoint,
+			grpc.WithTransportCredentials(a.cred),
+			grpc.WithBlock(),
+		)
+		cancel()
+
+		if err == nil {
+			log.Printf("Cloud Control Plane dial succeeded using %s transport", a.name)
+			return conn, nil
+		}
+
+		lastErr = err
+		log.Printf("Cloud Control Plane dial with %s transport failed: %v", a.name, err)
+	}
+
+	return nil, fmt.Errorf("all dial attempts failed (last error: %w)", lastErr)
 }
