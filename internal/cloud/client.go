@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 // Client handles the bidirectional gRPC stream to the Elixir Control Plane.
@@ -142,6 +143,11 @@ func (c *Client) dialWithFallback(ctx context.Context) (*grpc.ClientConn, error)
 		{name: "tls", cred: credentials.NewTLS(tlsCfg)},
 		{name: "insecure", cred: insecure.NewCredentials()},
 	}
+	ka := keepalive.ClientParameters{
+		Time:                60 * time.Second,
+		Timeout:             10 * time.Second,
+		PermitWithoutStream: true,
+	}
 
 	var lastErr error
 	for _, a := range attempts {
@@ -150,6 +156,7 @@ func (c *Client) dialWithFallback(ctx context.Context) (*grpc.ClientConn, error)
 			attemptCtx,
 			c.cfg.Endpoint,
 			grpc.WithTransportCredentials(a.cred),
+			grpc.WithKeepaliveParams(ka),
 			grpc.WithBlock(),
 		)
 		cancel()
