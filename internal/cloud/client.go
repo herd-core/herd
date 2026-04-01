@@ -1,0 +1,118 @@
+package cloud
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"time"
+
+	"github.com/herd-core/herd/internal/config"
+	herdv1 "github.com/herd-core/herd/internal/proto/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
+
+// Client handles the bidirectional gRPC stream to the Elixir Control Plane.
+type Client struct {
+	cfg      config.CloudConfig
+	nodeID   string
+	client   herdv1.HerdControlPlaneClient
+	conn     *grpc.ClientConn
+	stream   herdv1.HerdControlPlane_ConnectClient
+}
+
+func NewClient(cfg config.CloudConfig) *Client {
+	nodeID := cfg.NodeID
+	if nodeID == "" {
+		host, _ := os.Hostname()
+		nodeID = host
+	}
+	return &Client{
+		cfg:    cfg,
+		nodeID: nodeID,
+	}
+}
+
+func (c *Client) Start(ctx context.Context) error {
+	if !c.cfg.Enabled {
+		return nil
+	}
+
+	log.Printf("Connecting to Cloud Control Plane at %s...", c.cfg.Endpoint)
+
+	conn, err := grpc.DialContext(ctx, c.cfg.Endpoint, 
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to dial control plane: %w", err)
+	}
+	c.conn = conn
+	c.client = herdv1.NewHerdControlPlaneClient(conn)
+
+	stream, err := c.client.Connect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to open stream: %w", err)
+	}
+	c.stream = stream
+
+	log.Printf("Cloud Control Plane connected! NodeID: %s", c.nodeID)
+
+	// Start telemetry heartbeat
+	go c.telemetryLoop(ctx)
+	
+	// Start command listener
+	go c.commandLoop(ctx)
+
+	return nil
+}
+
+func (c *Client) telemetryLoop(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Simple dummy telemetry for now
+			err := c.stream.Send(&herdv1.NodeStream{
+				NodeId:            c.nodeID,
+				AvailableMemoryMb: 8192, // Mock data
+				ActiveVmCount:     0,
+				CpuUsagePercent:   5.0,
+				UptimeSeconds:     time.Now().Unix(),
+			})
+			if err != nil {
+				log.Printf("failed to send telemetry: %v", err)
+				return
+			}
+		}
+	}
+}
+
+func (c *Client) commandLoop(ctx context.Context) {
+	for {
+		cmd, err := c.stream.Recv()
+		if err == io.EOF {
+			log.Println("Cloud Control Plane stream closed by server")
+			return
+		}
+		if err != nil {
+			log.Printf("failed to receive command: %v", err)
+			return
+		}
+
+		log.Printf("Received Cloud Command: %s (ID: %s)", cmd.Action, cmd.CommandId)
+		// TODO: Dispatch to internal worker/pool
+	}
+}
+
+func (c *Client) Close() {
+	if c.conn != nil {
+		c.conn.Close()
+	}
+}

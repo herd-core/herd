@@ -34,6 +34,13 @@ type Config struct {
 	Resources ResourceConfig  `yaml:"resources"`
 	Binaries  BinaryConfig    `yaml:"binaries"`
 	Telemetry TelemetryConfig `yaml:"telemetry"`
+	Cloud     CloudConfig     `yaml:"cloud"`
+}
+
+type CloudConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Endpoint string `yaml:"endpoint"`
+	NodeID   string `yaml:"node_id"`
 }
 
 type BinaryConfig struct {
