@@ -58,7 +58,7 @@ func (c *Client) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to open stream: %w", err)
 	}
 	c.stream = stream
-
+	c.sendTelemetry() // Send initial telemetry immediately
 	log.Printf("Cloud Control Plane connected! NodeID: %s", c.nodeID)
 
 	// Start telemetry heartbeat
