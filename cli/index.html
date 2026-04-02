@@ -874,11 +874,20 @@
 <hr />
 <h2 id="infrastructure-commands">🛠️ Infrastructure Commands</h2>
 <h3 id="herd-init"><code>herd init</code></h3>
-<p>Interactive setup for your host environment.
-- <strong>Usage</strong>: <code>sudo herd init</code>
+<p>Initialize herd on your host environment.
+- <strong>Usage</strong>: <code>sudo herd init [flags]</code>
+- <strong>Flags</strong>:
+    - <code>-y, --yes</code>: Skip interactive setup and use defaults/flags.
+    - <code>--firecracker-path &lt;path&gt;</code>: Custom path to Firecracker binary.
+    - <code>--jailer-path &lt;path&gt;</code>: Custom path to jailer binary.
+    - <code>--kernel-path &lt;path&gt;</code>: Custom path to Linux kernel image.
+    - <code>--chroot-base-dir &lt;path&gt;</code>: Jailer chroot base directory (default: <code>/srv/jailer</code>).
+    - <code>--max-vms &lt;int&gt;</code>: Max global concurrent MicroVMs.
+    - <code>--max-memory &lt;int&gt;</code>: Max global memory in MB.
+    - <code>--cpu-cores &lt;float&gt;</code>: CPU limit in cores.
 - <strong>Actions</strong>:
-    - Prompts for resource limits (CPU, Memory).
-    - Downloads <code>firecracker</code> and <code>herd-guest-agent</code>.
+    - Prompts for resource limits (CPU, Memory) if not in non-interactive mode.
+    - Downloads <code>firecracker</code>, <code>jailer</code>, and <code>herd-guest-agent</code> if not found.
     - Bootstraps <code>devmapper</code> storage and host NAT networking.
     - Generates <code>herd.yaml</code>.</p>
 <h3 id="herd-teardown"><code>herd teardown</code></h3>

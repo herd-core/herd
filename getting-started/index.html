@@ -752,6 +752,9 @@
 <p>Before you can spawn microVMs, Herd needs to prepare your host system's storage and networking. Run the interactive <code>init</code> command:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>sudo<span class="w"> </span>herd<span class="w"> </span>init
 </span></code></pre></div>
+<p>Alternatively, you can run in <strong>non-interactive mode</strong> (useful for scripts and CI/CD):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sudo<span class="w"> </span>herd<span class="w"> </span>init<span class="w"> </span>--yes
+</span></code></pre></div>
 <p><strong>What this does</strong>:
 - Sets up the <code>devmapper</code> thin-pool for high-speed rootfs snapshotting.
 - Provisions the chroot base directory (<code>/srv/jailer</code>) owned by <code>root</code>.
@@ -763,13 +766,13 @@
 <hr />
 <h2 id="3-start-the-daemon">🛰️ 3. Start the Daemon</h2>
 <p>Once initialized, start the Herd daemon to begin managing traffic and sessions:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sudo<span class="w"> </span>herd<span class="w"> </span>start
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>herd<span class="w"> </span>start
 </span></code></pre></div>
 <p>This command launches the <strong>Control Plane</strong> (REST API) and the <strong>Data Plane</strong> (HTTP Reverse Proxy).</p>
 <hr />
 <h2 id="4-your-first-deployment">🏗️ 4. Your First Deployment</h2>
 <p>Deploy a standard OCI image directly into a Firecracker microVM:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>herd<span class="w"> </span>deploy<span class="w"> </span>--image<span class="w"> </span>nginx:latest
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>herd<span class="w"> </span>deploy<span class="w"> </span>--image<span class="w"> </span>nginx:latest
 </span></code></pre></div>
 <p>Herd will automatically:
 1.  Pull the image via <code>containerd</code>.
