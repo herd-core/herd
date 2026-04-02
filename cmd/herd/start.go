@@ -187,12 +187,15 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 	}
 
 	factory := &herd.FirecrackerFactory{
-		FirecrackerPath: cfg.Binaries.FirecrackerPath,
-		KernelImagePath: cfg.Binaries.KernelImagePath,
-		Storage:         mgr,
-		SocketPathDir:   "/tmp",
-		GuestAgentPath:  cfg.Binaries.GuestAgentPath,
-		IPAM:            ipam,
+		FirecrackerPath:     cfg.Binaries.FirecrackerPath,
+		JailerPath:          cfg.Binaries.JailerPath,
+		KernelImagePath:     cfg.Binaries.KernelImagePath,
+		GuestAgentPath:      cfg.Binaries.GuestAgentPath,
+		Storage:             mgr,
+		IPAM:                ipam,
+		JailerUID:           cfg.Jailer.UID,
+		JailerGID:           cfg.Jailer.GID,
+		JailerChrootBaseDir: cfg.Jailer.ChrootBaseDir,
 	}
 
 	return herd.New(factory,

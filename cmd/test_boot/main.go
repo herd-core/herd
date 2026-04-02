@@ -38,12 +38,15 @@ func main() {
 	}
 
 	factory := &herd.FirecrackerFactory{
-		FirecrackerPath: "/home/hackstrix/firecracker-v15.0/firecracker",
-		KernelImagePath: filepath.Join(cwd, "assets/vmlinux.bin"),
-		Storage:         mgr,
-		SocketPathDir:   "/tmp",
-		GuestAgentPath:  filepath.Join(cwd, "herd-guest-agent"),
-		IPAM:            ipam,
+		FirecrackerPath:     "/home/hackstrix/firecracker-v15.0/firecracker",
+		JailerPath:          "/home/hackstrix/firecracker-v15.0/jailer",
+		KernelImagePath:     filepath.Join(cwd, "assets/vmlinux.bin"),
+		Storage:             mgr,
+		GuestAgentPath:      filepath.Join(cwd, "herd-guest-agent"),
+		IPAM:                ipam,
+		JailerUID:           900,
+		JailerGID:           900,
+		JailerChrootBaseDir: "/srv/jailer",
 	}
 
 	for i := 0; i < 3; i++ {

@@ -9,8 +9,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/herd-core/herd/internal/config"
@@ -20,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
+
 
 
 var initCmd = &cobra.Command{
@@ -62,17 +65,20 @@ func runInit() {
 	}
 
 	// 2. Binaries
-	var fcPath string
-	useExistingFC := promptConfirm(reader, "Do you already have Firecracker installed? (y/n)", false)
+	var fcPath, jailerPath string
+	useExistingFC := promptConfirm(reader, "Do you already have Firecracker and jailer installed? (y/n)", false)
 	if useExistingFC {
 		fcPath = promptString(reader, "Path to firecracker binary (default: /usr/local/bin/firecracker)", "/usr/local/bin/firecracker")
+		jailerPath = promptString(reader, "Path to jailer binary (default: /usr/local/bin/jailer)", "/usr/local/bin/jailer")
 	} else {
 		fcPath = filepath.Join(binDir, "firecracker")
-		fmt.Println("Downloading Firecracker v1.14.3...")
-		if err := downloadFirecracker(fcPath); err != nil {
-			log.Fatalf("failed to download firecracker: %v", err)
+		jailerPath = filepath.Join(binDir, "jailer")
+		fmt.Println("Downloading Firecracker v1.14.3 (includes jailer)...")
+		if err := downloadFirecrackerAndJailer(fcPath, jailerPath); err != nil {
+			log.Fatalf("failed to download firecracker/jailer: %v", err)
 		}
 		fmt.Printf("✅ Firecracker installed: %s\n", fcPath)
+		fmt.Printf("✅ Jailer installed: %s\n", jailerPath)
 	}
 
 	// Guest Agent - Download pre-compiled binary
@@ -95,6 +101,24 @@ func runInit() {
 			log.Fatalf("failed to download kernel: %v", err)
 		}
 	}
+	fmt.Println()
+
+	// 4. Jailer user+group and chroot base dir
+	fmt.Println("--- Jailer Configuration ---")
+	chrootBaseDir := promptString(reader, "Jailer chroot base dir (default: /srv/jailer)", "/srv/jailer")
+	const jailerUID, jailerGID = 900, 900
+	fmt.Printf("Provisioning 'firecracker' user (uid=%d, gid=%d)...\n", jailerUID, jailerGID)
+	if err := provisionJailerUser(jailerUID, jailerGID); err != nil {
+		log.Fatalf("failed to provision jailer user: %v", err)
+	}
+	fmt.Println("✅ 'firecracker' user/group ready")
+	if err := os.MkdirAll(chrootBaseDir, 0755); err != nil {
+		log.Fatalf("failed to create chroot base dir: %v", err)
+	}
+	if err := os.Chown(chrootBaseDir, jailerUID, jailerGID); err != nil {
+		log.Fatalf("failed to chown chroot base dir: %v", err)
+	}
+	fmt.Printf("✅ Chroot base dir ready: %s\n", chrootBaseDir)
 	fmt.Println()
 
 	// 4. Resource Limits
@@ -134,8 +158,14 @@ func runInit() {
 		},
 		Binaries: config.BinaryConfig{
 			FirecrackerPath: fcPath,
+			JailerPath:      jailerPath,
 			KernelImagePath: kernelPath,
 			GuestAgentPath:  agentPath,
+		},
+		Jailer: config.JailerConfig{
+			UID:           jailerUID,
+			GID:           jailerGID,
+			ChrootBaseDir: chrootBaseDir,
 		},
 		Telemetry: config.TelemetryConfig{
 			LogFormat:   "json",
@@ -166,7 +196,9 @@ func runInit() {
 	fmt.Println("You can now start the daemon with: sudo herd start")
 }
 
-func downloadFirecracker(outputPath string) error {
+// downloadFirecrackerAndJailer downloads the Firecracker release tarball and
+// extracts both the firecracker and jailer binaries in a single HTTP round-trip.
+func downloadFirecrackerAndJailer(fcOutputPath, jailerOutputPath string) error {
 	arch := runtime.GOARCH
 	if arch == "amd64" {
 		arch = "x86_64"
@@ -184,16 +216,16 @@ func downloadFirecracker(outputPath string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download firecracker: %s", resp.Status)
+		return fmt.Errorf("failed to download firecracker release: %s", resp.Status)
 	}
 
-	// Extract .tgz
 	gzr, err := gzip.NewReader(resp.Body)
 	if err != nil {
 		return err
 	}
 	defer gzr.Close()
 
+	fcDone, jailerDone := false, false
 	tr := tar.NewReader(gzr)
 	for {
 		header, err := tr.Next()
@@ -204,22 +236,80 @@ func downloadFirecracker(outputPath string) error {
 			return err
 		}
 
-		// The binary in the tar is usually named "firecracker-v1.14.3-x86_64"
-		if strings.Contains(header.Name, "firecracker-v") && !strings.Contains(header.Name, ".debug") {
-			out, err := os.Create(outputPath)
-			if err != nil {
-				return err
+		switch {
+		case strings.Contains(header.Name, "firecracker-v") && !strings.Contains(header.Name, ".debug") && !strings.Contains(header.Name, "jailer"):
+			if err := extractBinaryFromTar(tr, fcOutputPath); err != nil {
+				return fmt.Errorf("extract firecracker: %w", err)
 			}
-			defer out.Close()
+			fcDone = true
+		case strings.Contains(header.Name, "jailer-v") && !strings.Contains(header.Name, ".debug"):
+			if err := extractBinaryFromTar(tr, jailerOutputPath); err != nil {
+				return fmt.Errorf("extract jailer: %w", err)
+			}
+			jailerDone = true
+		}
 
-			if _, err := io.Copy(out, tr); err != nil {
-				return err
-			}
-			return os.Chmod(outputPath, 0755)
+		if fcDone && jailerDone {
+			break
 		}
 	}
 
-	return fmt.Errorf("firecracker binary not found in archive")
+	if !fcDone {
+		return fmt.Errorf("firecracker binary not found in archive")
+	}
+	if !jailerDone {
+		return fmt.Errorf("jailer binary not found in archive")
+	}
+	return nil
+}
+
+func extractBinaryFromTar(r io.Reader, outputPath string) error {
+	out, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	if _, err := io.Copy(out, r); err != nil {
+		return err
+	}
+	return os.Chmod(outputPath, 0755)
+}
+
+// provisionJailerUser ensures the 'firecracker' group and user exist with the
+// given uid/gid. It is idempotent — if they already exist the calls are skipped.
+func provisionJailerUser(uid, gid int) error {
+	uidStr := strconv.Itoa(uid)
+	gidStr := strconv.Itoa(gid)
+
+	// Create group if it doesn't exist.
+	groupCheckCmd := exec.Command("getent", "group", "firecracker")
+	if err := groupCheckCmd.Run(); err != nil {
+		// Group does not exist — create it.
+		out, err := exec.Command("groupadd", "--gid", gidStr, "firecracker").CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("groupadd firecracker: %s (%w)", strings.TrimSpace(string(out)), err)
+		}
+	}
+
+	// Create user if it doesn't exist.
+	userCheckCmd := exec.Command("getent", "passwd", "firecracker")
+	if err := userCheckCmd.Run(); err != nil {
+		// User does not exist — create it as a system user with no login shell.
+		out, err := exec.Command(
+			"useradd",
+			"--uid", uidStr,
+			"--gid", gidStr,
+			"--no-create-home",
+			"--shell", "/sbin/nologin",
+			"--system",
+			"firecracker",
+		).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("useradd firecracker: %s (%w)", strings.TrimSpace(string(out)), err)
+		}
+	}
+
+	return nil
 }
 
 func downloadGuestAgent(path string) error {

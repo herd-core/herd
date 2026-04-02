@@ -33,6 +33,7 @@ type Config struct {
 	Storage   StorageConfig   `yaml:"storage"`
 	Resources ResourceConfig  `yaml:"resources"`
 	Binaries  BinaryConfig    `yaml:"binaries"`
+	Jailer    JailerConfig    `yaml:"jailer"`
 	Telemetry TelemetryConfig `yaml:"telemetry"`
 	Cloud     CloudConfig     `yaml:"cloud"`
 }
@@ -45,8 +46,16 @@ type CloudConfig struct {
 
 type BinaryConfig struct {
 	FirecrackerPath string `yaml:"firecracker_path"`
+	JailerPath      string `yaml:"jailer_path"`
 	KernelImagePath string `yaml:"kernel_image_path"`
 	GuestAgentPath  string `yaml:"guest_agent_path"`
+}
+
+// JailerConfig holds parameters for the Firecracker jailer process.
+type JailerConfig struct {
+	UID            int    `yaml:"uid"`
+	GID            int    `yaml:"gid"`
+	ChrootBaseDir  string `yaml:"chroot_base_dir"`
 }
 
 type StorageConfig struct {
@@ -133,11 +142,23 @@ func (c *Config) Validate() error {
 	if c.Binaries.FirecrackerPath == "" {
 		return fmt.Errorf("binaries.firecracker_path is required")
 	}
+	if c.Binaries.JailerPath == "" {
+		return fmt.Errorf("binaries.jailer_path is required")
+	}
 	if c.Binaries.KernelImagePath == "" {
 		return fmt.Errorf("binaries.kernel_image_path is required")
 	}
 	if c.Binaries.GuestAgentPath == "" {
 		return fmt.Errorf("binaries.guest_agent_path is required")
+	}
+	if c.Jailer.UID == 0 {
+		return fmt.Errorf("jailer.uid is required and must be non-zero")
+	}
+	if c.Jailer.GID == 0 {
+		return fmt.Errorf("jailer.gid is required and must be non-zero")
+	}
+	if c.Jailer.ChrootBaseDir == "" {
+		return fmt.Errorf("jailer.chroot_base_dir is required")
 	}
 	if c.Telemetry.MetricsPath == "" || c.Telemetry.MetricsPath[0] != '/' {
 		return fmt.Errorf("telemetry.metrics_path must start with '/'")

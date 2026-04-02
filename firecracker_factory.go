@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/herd-core/herd/internal/network"
@@ -18,17 +20,38 @@ import (
 	"github.com/herd-core/herd/internal/vsock"
 )
 
-// FirecrackerFactory is a minimal implementation of a WorkerFactory that spawns Firecracker VMs.
+// FirecrackerFactory is a WorkerFactory that spawns Firecracker VMs via the
+// jailer binary for secure, unprivileged isolation.
 type FirecrackerFactory struct {
+	// FirecrackerPath is the absolute host path to the firecracker binary.
+	// The jailer exec's it inside the chroot; it never runs as root.
 	FirecrackerPath string
+	// JailerPath is the absolute host path to the jailer binary.
+	JailerPath string
+	// KernelImagePath is the shared host path to the guest kernel image.
+	// It is hard-linked into each VM's chroot at /run/vmlinux before boot.
 	KernelImagePath string
-	// GuestAgentPath is the host path to the static herd-guest-agent binary; it is
-	// copied into each VM rootfs before boot (no initrd).
+	// GuestAgentPath is the host path to the static herd-guest-agent binary.
 	GuestAgentPath string
-	Storage        *storage.Manager
 
-	SocketPathDir string
-	IPAM          *network.IPAM
+	Storage *storage.Manager
+	IPAM    *network.IPAM
+
+	// JailerUID / JailerGID are the unprivileged uid/gid the jailer drops to
+	// after setting up cgroups and the chroot (typically the "firecracker" user).
+	JailerUID int
+	JailerGID int
+	// JailerChrootBaseDir is the root under which the jailer creates per-VM
+	// chroot directories: <JailerChrootBaseDir>/firecracker/<vmID>/root/
+	JailerChrootBaseDir string
+}
+
+// chrootRoot returns the chroot root directory for a given VM.
+// This matches the path the jailer creates:
+//
+//	<JailerChrootBaseDir>/firecracker/<vmID>/root
+func (f *FirecrackerFactory) chrootRoot(vmID string) string {
+	return filepath.Join(f.JailerChrootBaseDir, "firecracker", vmID, "root")
 }
 
 // FirecrackerWorker represents a single running Firecracker VM.
@@ -41,6 +64,7 @@ type FirecrackerWorker struct {
 	cmd        *exec.Cmd
 	client     *http.Client
 	ipam       *network.IPAM
+	chrootDir  string        // full chroot root path; removed on Close()
 	done       chan struct{} // closed when cmd.Wait() returns
 }
 
@@ -54,13 +78,12 @@ func (f *FirecrackerWorker) GuestIP() string {
 	return f.guestIP
 }
 
-// Address returns the HTTP base URL for the workload on the guest LAN (data-plane
-// reverse proxy). Exec and other vsock paths use VsockUDSPath.
+// Address returns the HTTP base URL for the workload on the guest LAN.
 func (f *FirecrackerWorker) Address() string {
 	return fmt.Sprintf("http://%s:80", f.guestIP)
 }
 
-// VsockUDSPath is the host Unix socket Firecracker exposes for vsock connect.
+// VsockUDSPath is the host-visible Unix socket Firecracker exposes for vsock.
 func (f *FirecrackerWorker) VsockUDSPath() string {
 	return f.socketPath
 }
@@ -70,15 +93,11 @@ func (f *FirecrackerWorker) Client() *http.Client {
 	return f.client
 }
 
-// Healthy checks if the VM is up. For now we just check if process is alive.
+// Healthy checks if the VM is up by verifying the process hasn't exited.
 func (f *FirecrackerWorker) Healthy(ctx context.Context) error {
-	// 1. Check if the Firecracker process has crashed (requires cmd.Wait() to be called in a goroutine)
 	if f.cmd.ProcessState != nil && f.cmd.ProcessState.Exited() {
 		return fmt.Errorf("firecracker process exited with code: %v", f.cmd.ProcessState.ExitCode())
 	}
-
-	// The HTTP ping check is temporarily disabled because the guest agent currently only speaks
-	// raw JSON payload format on port 5000 and has no HTTP proxy multiplexer over vsock.
 	return nil
 }
 
@@ -87,9 +106,9 @@ func (f *FirecrackerWorker) OnCrash(fn func(sessionID string)) {
 	// Not implemented for this minimal version
 }
 
-// Close kills the VM and cleans up resources. It blocks until the Firecracker
-// process has fully exited before tearing down storage, preventing "device busy"
-// errors on the devmapper thin volume.
+// Close kills the VM and cleans up all resources. It blocks until the
+// Firecracker process has fully exited before tearing down storage and the
+// chroot, preventing "device busy" errors.
 func (f *FirecrackerWorker) Close() error {
 	if f.cmd != nil && f.cmd.Process != nil {
 		_ = f.cmd.Process.Kill()
@@ -100,8 +119,12 @@ func (f *FirecrackerWorker) Close() error {
 		}
 	}
 
-	if err := os.Remove(f.socketPath); err != nil {
-		slog.Warn("failed to remove firecracker socket", "path", f.socketPath, "error", err)
+	// Remove the entire chroot jail directory tree (includes the vsock socket,
+	// the config JSON, the kernel hard-link, and the rootfs device node).
+	if f.chrootDir != "" {
+		if err := os.RemoveAll(f.chrootDir); err != nil {
+			slog.Warn("failed to remove jailer chroot directory", "path", f.chrootDir, "error", err)
+		}
 	}
 
 	_ = network.DeleteTap(f.tapName)
@@ -122,14 +145,12 @@ func (f *FirecrackerFactory) WarmImage(ctx context.Context, imageRef string) err
 	return f.Storage.WarmImage(ctx, imageRef)
 }
 
-// Spawn starts a new Firecracker VM.
+// Spawn starts a new Firecracker VM under the jailer.
 func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config TenantConfig) (Worker[*http.Client], error) {
 	spawnStart := time.Now()
-	workerID := sessionID // Use sessionID universally
-	socketPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.sock", workerID))
+	workerID := sessionID
 
 	t0 := time.Now()
-	// Ensure the image is warmed (pulled) before we try to extract config or snapshot
 	if err := f.Storage.WarmImage(ctx, config.Image); err != nil {
 		return nil, fmt.Errorf("failed to warm image: %w", err)
 	}
@@ -167,14 +188,56 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	}
 	log.Printf("[spawn:%s] inject guest     %v", workerID, time.Since(tInject))
 
-	// Ensure old socket is removed
-	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
-		slog.Warn("failed to remove legacy socket", "path", socketPath, "error", err)
+	// -------------------------------------------------------------------------
+	// Build the per-VM chroot.
+	// The jailer will later chroot into this directory; all paths inside the
+	// config JSON are relative to this root.
+	// -------------------------------------------------------------------------
+	chrootRoot := f.chrootRoot(workerID)
+	chrootRunDir := filepath.Join(chrootRoot, "run")
+	chrootDevDir := filepath.Join(chrootRoot, "dev")
+
+	if err := os.MkdirAll(chrootRunDir, 0700); err != nil {
+		_ = f.Storage.Teardown(ctx, workerID)
+		return nil, fmt.Errorf("create chroot run dir: %w", err)
+	}
+	if err := os.MkdirAll(chrootDevDir, 0755); err != nil {
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
+		return nil, fmt.Errorf("create chroot dev dir: %w", err)
 	}
 
+	// Hard-link the shared kernel image into the chroot so Firecracker can
+	// open it without any host path access. Hard-linking is instant (same inode)
+	// and avoids copying the ~22 MB file on every spawn.
+	kernelInChroot := filepath.Join(chrootRunDir, "vmlinux")
+	if err := os.Link(f.KernelImagePath, kernelInChroot); err != nil {
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
+		return nil, fmt.Errorf("hard-link kernel into chroot: %w", err)
+	}
+
+	// Create a block device node inside the chroot that mirrors the devmapper
+	// thin-volume returned by Snapshot. Firecracker will open /dev/vda inside
+	// the jail; this node has the same major/minor as the host /dev/dm-X device.
+	rootfsInChroot := filepath.Join(chrootDevDir, "vda")
+	if err := bindDeviceIntoChroot(rootfsPath, rootfsInChroot); err != nil {
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
+		return nil, fmt.Errorf("bind rootfs device into chroot: %w", err)
+	}
+
+	// The vsock UDS socket lands inside the chroot; this is its host-visible path.
+	socketPath := filepath.Join(chrootRunDir, fmt.Sprintf("%s.sock", workerID))
+
+	// -------------------------------------------------------------------------
+	// IPAM + TAP
+	// -------------------------------------------------------------------------
 	t1 := time.Now()
 	guestIP, err := f.IPAM.Acquire()
 	if err != nil {
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
 		return nil, fmt.Errorf("failed to acquire IP: %w", err)
 	}
 	log.Printf("[spawn:%s] IPAM.Acquire     %v", workerID, time.Since(t1))
@@ -190,24 +253,29 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	_ = network.DeleteTap(tapName)
 	if err := network.CreatePointToPointTap(tapName, hostIP, guestIP); err != nil {
 		f.IPAM.Release(guestIP)
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
 		return nil, fmt.Errorf("failed to create tap device: %w", err)
 	}
 	log.Printf("[spawn:%s] TAP setup        %v", workerID, time.Since(t2))
 
 	macByte := fmt.Sprintf("%02x", time.Now().UnixNano()%256)
 
-	// Create a minimal config json
-	configPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.json", workerID))
+	// -------------------------------------------------------------------------
+	// Write Firecracker config JSON into the chroot.
+	// All paths here are absolute paths as seen from INSIDE the chroot jail.
+	// -------------------------------------------------------------------------
+	configPath := filepath.Join(chrootRunDir, fmt.Sprintf("%s.json", workerID))
 	initPath := storage.DefaultGuestAgentPath
 	configData := fmt.Sprintf(`{
 		"boot-source": {
-			"kernel_image_path": "%s",
+			"kernel_image_path": "/run/vmlinux",
 			"boot_args": "console=ttyS0 reboot=k panic=1 pci=off quiet mitigations=off i8042.nokbd i8042.noaux tsc=reliable random.trust_cpu=on random.trust_bootloader=on root=/dev/vda rw rootfstype=ext4 rootflags=noload,noinit_itable init=%s herd_rootfs=1 herd_ip=%s herd_gw=%s"
 		},
 		"drives": [
 			{
 				"drive_id": "rootfs",
-				"path_on_host": "%s",
+				"path_on_host": "/dev/vda",
 				"is_root_device": true,
 				"is_read_only": false
 			}
@@ -225,25 +293,50 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		},
 		"vsock": {
 			"guest_cid": 3,
-			"uds_path": "%s"
+			"uds_path": "/run/%s.sock"
 		},
 		"entropy": {}
-	}`, f.KernelImagePath, initPath, guestIP, hostIP, rootfsPath, macByte, tapName, socketPath)
+	}`, initPath, guestIP, hostIP, macByte, tapName, workerID)
 
 	if err := os.WriteFile(configPath, []byte(configData), 0644); err != nil {
+		network.DeleteTap(tapName)
+		f.IPAM.Release(guestIP)
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
 		return nil, fmt.Errorf("failed to write config: %w", err)
 	}
 
-	// The Firecracker process must outlive the HTTP request that spawned it, so use
-	// context.Background() instead of the request-scoped ctx. The request ctx is still
-	// used above for the spawn-time operations (image pull, snapshot, vsock wait).
-	cmd := exec.Command(f.FirecrackerPath, "--no-api", "--config-file", configPath)
+	// -------------------------------------------------------------------------
+	// Launch via jailer.
+	// The jailer:
+	//   1. Creates cgroups for the VM.
+	//   2. Chroots into chrootRoot (which it computes the same way we do).
+	//   3. Drops to JailerUID/JailerGID.
+	//   4. Exec's firecracker with the remaining args.
+	// The config-file path is relative to the chroot root, so we pass the
+	// in-chroot absolute path: /run/<vmID>.json
+	// -------------------------------------------------------------------------
+	cmd := exec.Command(
+		f.JailerPath,
+		"--id", workerID,
+		"--exec-file", f.FirecrackerPath,
+		"--uid", strconv.Itoa(f.JailerUID),
+		"--gid", strconv.Itoa(f.JailerGID),
+		"--chroot-base-dir", f.JailerChrootBaseDir,
+		"--",
+		"--no-api",
+		"--config-file", fmt.Sprintf("/run/%s.json", workerID),
+	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	t3 := time.Now()
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start firecracker: %w", err)
+		_ = network.DeleteTap(tapName)
+		f.IPAM.Release(guestIP)
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
+		return nil, fmt.Errorf("failed to start jailer: %w", err)
 	}
 	log.Printf("[spawn:%s] cmd.Start        %v", workerID, time.Since(t3))
 
@@ -253,9 +346,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		close(done)
 	}()
 
-	// Loop to wait for the VM to boot and accept vsock connections.
-	// 30s accommodates concurrent boot contention when multiple VMs
-	// share host CPU during pool initialization.
+	// Wait for the VM to boot and accept vsock connections.
 	t4 := time.Now()
 	deadline := time.Now().Add(30 * time.Second)
 	var execConn net.Conn
@@ -272,10 +363,16 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	log.Printf("[spawn:%s] vsock connect    %v", workerID, time.Since(t4))
 
 	if execConn == nil {
+		_ = cmd.Process.Kill()
+		<-done
+		_ = network.DeleteTap(tapName)
+		f.IPAM.Release(guestIP)
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
 		return nil, fmt.Errorf("failed to connect to guest agent vsock port 5000 within timeout: %v", lastErr)
 	}
 
-	logPath := filepath.Join(f.SocketPathDir, fmt.Sprintf("%s.log", workerID))
+	logPath := filepath.Join(chrootRoot, fmt.Sprintf("%s.log", workerID))
 	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
 	finalEnv := imgConfig.Env
@@ -283,7 +380,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	// Stream the workload payload down the vsock pipe
+	// Stream the workload payload down the vsock pipe.
 	go func() {
 		defer func() {
 			if cerr := logFile.Close(); cerr != nil {
@@ -299,11 +396,10 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		}
 	}()
 
-	// Create a custom HTTP Client that dials over vsock for HTTP routing
+	// Create a custom HTTP client that dials over vsock for HTTP routing.
 	agentClient := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				// We ignore the actual address and force route to Guest CID 3 over the Firecracker UDS
 				return vsock.DialFirecracker(ctx, socketPath, 5000)
 			},
 		},
@@ -320,6 +416,30 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		client:     agentClient,
 		storage:    f.Storage,
 		ipam:       f.IPAM,
+		chrootDir:  chrootRoot,
 		done:       done,
 	}, nil
+}
+
+// bindDeviceIntoChroot creates a block device node at dstPath that mirrors
+// the major/minor numbers of the host device at srcPath.
+//
+// This is how Firecracker (running inside the chroot as an unprivileged user)
+// can open the devmapper thin-volume that containerd provisioned on the host:
+// the node has the same device numbers, so the kernel routes I/O to the same
+// underlying block layer.
+//
+// Requires CAP_MKNOD (satisfied by the daemon running as root).
+func bindDeviceIntoChroot(srcPath, dstPath string) error {
+	var stat syscall.Stat_t
+	if err := syscall.Stat(srcPath, &stat); err != nil {
+		return fmt.Errorf("stat source device %s: %w", srcPath, err)
+	}
+	// S_IFBLK | 0600 — block device, readable/writable only by root.
+	// Firecracker will be running as JailerUID but the kernel grants access
+	// via the jailer's cgroup device allowlist.
+	if err := syscall.Mknod(dstPath, syscall.S_IFBLK|0600, int(stat.Rdev)); err != nil {
+		return fmt.Errorf("mknod block device at %s: %w", dstPath, err)
+	}
+	return nil
 }
