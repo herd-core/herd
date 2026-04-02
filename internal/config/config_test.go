@@ -20,8 +20,13 @@ telemetry:
   metrics_path: /metrics
 binaries:
   firecracker_path: /usr/local/bin/firecracker
+  jailer_path: /usr/local/bin/jailer
   kernel_image_path: /home/user/.herd/resources/vmlinux-v6.1.bin
   guest_agent_path: /home/user/.herd/bin/herd-guest-agent
+jailer:
+  uid: 900
+  gid: 900
+  chroot_base_dir: /srv/jailer
 `
 
 func TestLoad_ValidConfig(t *testing.T) {
@@ -41,6 +46,18 @@ func TestLoad_ValidConfig(t *testing.T) {
 	}
 	if cfg.Telemetry.LogFormat != "json" {
 		t.Fatalf("expected telemetry.log_format=json, got %q", cfg.Telemetry.LogFormat)
+	}
+	if cfg.Binaries.JailerPath != "/usr/local/bin/jailer" {
+		t.Fatalf("expected binaries.jailer_path /usr/local/bin/jailer, got %q", cfg.Binaries.JailerPath)
+	}
+	if cfg.Jailer.UID != 900 {
+		t.Fatalf("expected jailer.uid 900, got %d", cfg.Jailer.UID)
+	}
+	if cfg.Jailer.GID != 900 {
+		t.Fatalf("expected jailer.gid 900, got %d", cfg.Jailer.GID)
+	}
+	if cfg.Jailer.ChrootBaseDir != "/srv/jailer" {
+		t.Fatalf("expected jailer.chroot_base_dir /srv/jailer, got %q", cfg.Jailer.ChrootBaseDir)
 	}
 }
 
