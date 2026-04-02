@@ -23,6 +23,17 @@ import (
 
 
 
+var (
+	autoYes        bool
+	fcBinaryPath   string
+	jailerBinPath  string
+	kernelImgPath  string
+	chrootBase     string
+	maxGlobalVMs   int
+	maxGlobalMemMB int64
+	cpuLimitCores  float64
+)
+
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize herd with interactive setup",
@@ -33,6 +44,15 @@ var initCmd = &cobra.Command{
 }
 
 func init() {
+	initCmd.Flags().BoolVarP(&autoYes, "yes", "y", false, "Skip interactive setup and use defaults/flags")
+	initCmd.Flags().StringVar(&fcBinaryPath, "firecracker-path", "", "Path to firecracker binary")
+	initCmd.Flags().StringVar(&jailerBinPath, "jailer-path", "", "Path to jailer binary")
+	initCmd.Flags().StringVar(&kernelImgPath, "kernel-path", "", "Path to linux kernel image")
+	initCmd.Flags().StringVar(&chrootBase, "chroot-base-dir", "/srv/jailer", "Jailer chroot base directory")
+	initCmd.Flags().IntVar(&maxGlobalVMs, "max-vms", 0, "Max global concurrent MicroVMs")
+	initCmd.Flags().Int64Var(&maxGlobalMemMB, "max-memory", 0, "Max global memory in MB")
+	initCmd.Flags().Float64Var(&cpuLimitCores, "cpu-cores", 0, "CPU limit in cores")
+
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -42,8 +62,11 @@ func runInit() {
 	}
 
 	fmt.Printf("🚀 Welcome to herd initialization (version %s)!\n", config.Version)
-	fmt.Println("This process will help you configure herd and set up the required environment.")
-	fmt.Println()
+	if !autoYes {
+		fmt.Println("This process will help you configure herd and set up the required environment.")
+		fmt.Println()
+	}
+
 	homeDir, err := config.GetTargetHomeDir()
 	if err != nil {
 		log.Fatalf("failed to determine home directory: %v", err)
@@ -52,8 +75,11 @@ func runInit() {
 	binDir := filepath.Join(herdDir, "bin")
 	stateDir := filepath.Join(herdDir, "state")
 
-	fmt.Printf("--- Path Configuration ---\n")
-	fmt.Printf("Base directory: %s\n", herdDir)
+	if !autoYes {
+		fmt.Printf("--- Path Configuration ---\n")
+		fmt.Printf("Base directory: %s\n", herdDir)
+	}
+
 	reader := bufio.NewReader(os.Stdin)
 	if err := os.MkdirAll(binDir, 0755); err != nil {
 		log.Fatalf("failed to create bin dir: %v", err)
@@ -64,46 +90,84 @@ func runInit() {
 
 	// 2. Binaries
 	var fcPath, jailerPath string
-	useExistingFC := promptConfirm(reader, "Do you already have Firecracker and jailer installed? (y/n)", false)
-	if useExistingFC {
-		fcPath = promptString(reader, "Path to firecracker binary (default: /usr/local/bin/firecracker)", "/usr/local/bin/firecracker")
-		jailerPath = promptString(reader, "Path to jailer binary (default: /usr/local/bin/jailer)", "/usr/local/bin/jailer")
-	} else {
+	if fcBinaryPath != "" && jailerBinPath != "" {
+		fcPath = fcBinaryPath
+		jailerPath = jailerBinPath
+	} else if autoYes {
+		// Non-interactive default: download if not specified
 		fcPath = filepath.Join(binDir, "firecracker")
 		jailerPath = filepath.Join(binDir, "jailer")
-		fmt.Println("Downloading Firecracker v1.14.3 (includes jailer)...")
-		if err := downloadFirecrackerAndJailer(fcPath, jailerPath); err != nil {
-			log.Fatalf("failed to download firecracker/jailer: %v", err)
+		if _, err := os.Stat(fcPath); os.IsNotExist(err) {
+			fmt.Println("Downloading Firecracker v1.14.3 (includes jailer)...")
+			if err := downloadFirecrackerAndJailer(fcPath, jailerPath); err != nil {
+				log.Fatalf("failed to download firecracker/jailer: %v", err)
+			}
 		}
-		fmt.Printf("✅ Firecracker installed: %s\n", fcPath)
-		fmt.Printf("✅ Jailer installed: %s\n", jailerPath)
+	} else {
+		useExistingFC := promptConfirm(reader, "Do you already have Firecracker and jailer installed? (y/n)", false)
+		if useExistingFC {
+			fcPath = promptString(reader, "Path to firecracker binary (default: /usr/local/bin/firecracker)", "/usr/local/bin/firecracker")
+			jailerPath = promptString(reader, "Path to jailer binary (default: /usr/local/bin/jailer)", "/usr/local/bin/jailer")
+		} else {
+			fcPath = filepath.Join(binDir, "firecracker")
+			jailerPath = filepath.Join(binDir, "jailer")
+			fmt.Println("Downloading Firecracker v1.14.3 (includes jailer)...")
+			if err := downloadFirecrackerAndJailer(fcPath, jailerPath); err != nil {
+				log.Fatalf("failed to download firecracker/jailer: %v", err)
+			}
+			fmt.Printf("✅ Firecracker installed: %s\n", fcPath)
+			fmt.Printf("✅ Jailer installed: %s\n", jailerPath)
+		}
 	}
 
 	// Guest Agent - Download pre-compiled binary
 	agentPath := filepath.Join(binDir, "herd-guest-agent")
-	fmt.Println("Downloading pre-compiled herd-guest-agent...")
-	if err := downloadGuestAgent(agentPath); err != nil {
-		log.Fatalf("failed to download guest agent: %v", err)
+	if _, err := os.Stat(agentPath); os.IsNotExist(err) {
+		fmt.Println("Downloading pre-compiled herd-guest-agent...")
+		if err := downloadGuestAgent(agentPath); err != nil {
+			log.Fatalf("failed to download guest agent: %v", err)
+		}
+		if !autoYes {
+			fmt.Printf("✅ Download complete: %s\n", agentPath)
+		}
 	}
-	fmt.Printf("✅ Download complete: %s\n", agentPath)
 
 	// 3. Kernel
 	var kernelPath string
-	useExistingKernel := promptConfirm(reader, "Do you have your own Linux kernel image for Firecracker? (y/n)", false)
-	if useExistingKernel {
-		kernelPath = promptString(reader, "Enter path to kernel image (e.g., /path/to/vmlinux)", "")
-	} else {
+	if kernelImgPath != "" {
+		kernelPath = kernelImgPath
+	} else if autoYes {
 		kernelPath = filepath.Join(stateDir, "vmlinux-v6.1.bin")
-		fmt.Printf("Downloading pre-compiled kernel to %s...\n", kernelPath)
-		if err := downloadKernel(kernelPath); err != nil {
-			log.Fatalf("failed to download kernel: %v", err)
+		if _, err := os.Stat(kernelPath); os.IsNotExist(err) {
+			fmt.Printf("Downloading pre-compiled kernel to %s...\n", kernelPath)
+			if err := downloadKernel(kernelPath); err != nil {
+				log.Fatalf("failed to download kernel: %v", err)
+			}
+		}
+	} else {
+		useExistingKernel := promptConfirm(reader, "Do you have your own Linux kernel image for Firecracker? (y/n)", false)
+		if useExistingKernel {
+			kernelPath = promptString(reader, "Enter path to kernel image (e.g., /path/to/vmlinux)", "")
+		} else {
+			kernelPath = filepath.Join(stateDir, "vmlinux-v6.1.bin")
+			fmt.Printf("Downloading pre-compiled kernel to %s...\n", kernelPath)
+			if err := downloadKernel(kernelPath); err != nil {
+				log.Fatalf("failed to download kernel: %v", err)
+			}
 		}
 	}
-	fmt.Println()
+	if !autoYes {
+		fmt.Println()
+	}
 
 	// 4. Jailer chroot base dir
-	fmt.Println("--- Jailer Configuration ---")
-	chrootBaseDir := promptString(reader, "Jailer chroot base dir (default: /srv/jailer)", "/srv/jailer")
+	var chrootBaseDir string
+	if autoYes {
+		chrootBaseDir = chrootBase
+	} else {
+		fmt.Println("--- Jailer Configuration ---")
+		chrootBaseDir = promptString(reader, "Jailer chroot base dir (default: /srv/jailer)", "/srv/jailer")
+	}
 
 	// The chrootBaseDir is owned by root:root 0755 so all dynamically-leased UIDs
 	// can traverse into it. Per-VM isolation is enforced at the per-VM
@@ -111,14 +175,18 @@ func runInit() {
 	if err := os.MkdirAll(chrootBaseDir, 0755); err != nil {
 		log.Fatalf("failed to create chroot base dir: %v", err)
 	}
-	fmt.Printf("✅ Chroot base dir ready: %s (owned by root)\n", chrootBaseDir)
+	if !autoYes {
+		fmt.Printf("✅ Chroot base dir ready: %s (owned by root)\n", chrootBaseDir)
+	}
 
 	const (
 		uidPoolStart = 300000
 		uidPoolSize  = 200
 	)
-	fmt.Printf("UID pool: [%d, %d) — one unique UID per concurrent MicroVM\n", uidPoolStart, uidPoolStart+uidPoolSize)
-	fmt.Println()
+	if !autoYes {
+		fmt.Printf("UID pool: [%d, %d) — one unique UID per concurrent MicroVM\n", uidPoolStart, uidPoolStart+uidPoolSize)
+		fmt.Println()
+	}
 
 	// 4. Resource Limits
 	sysInfo, err := system.GetInfo()
@@ -133,11 +201,34 @@ func runInit() {
 		defaultCPUCores = 1
 	}
 
-	fmt.Printf("--- Resource Configuration ---\n")
-	maxVMs := promptInt(reader, fmt.Sprintf("Max global VMs (default: %d)", defaultMaxVMs), defaultMaxVMs)
-	maxMem := promptInt64(reader, fmt.Sprintf("Max global memory MB (default: %d)", defaultMaxMem), defaultMaxMem)
-	cpuCores := promptFloat(reader, fmt.Sprintf("CPU limit cores (default: %.1f)", defaultCPUCores), defaultCPUCores)
-	fmt.Println()
+	var maxVMs int
+	var maxMem int64
+	var cpuCores float64
+
+	if autoYes {
+		if maxGlobalVMs > 0 {
+			maxVMs = maxGlobalVMs
+		} else {
+			maxVMs = defaultMaxVMs
+		}
+		if maxGlobalMemMB > 0 {
+			maxMem = maxGlobalMemMB
+		} else {
+			maxMem = defaultMaxMem
+		}
+		if cpuLimitCores > 0 {
+			cpuCores = cpuLimitCores
+		} else {
+			cpuCores = defaultCPUCores
+		}
+	} else {
+		fmt.Printf("--- Resource Configuration ---\n")
+		maxVMs = promptInt(reader, fmt.Sprintf("Max global VMs (default: %d)", defaultMaxVMs), defaultMaxVMs)
+		maxMem = promptInt64(reader, fmt.Sprintf("Max global memory MB (default: %d)", defaultMaxMem), defaultMaxMem)
+		cpuCores = promptFloat(reader, fmt.Sprintf("CPU limit cores (default: %.1f)", defaultCPUCores), defaultCPUCores)
+		fmt.Println()
+	}
+
 
 	// 5. Config Generation
 	cfg := config.Config{

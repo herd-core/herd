@@ -50,7 +50,11 @@ curl -sSL https://raw.githubusercontent.com/herd-core/herd/main/scripts/install.
 ```bash
 # Prepare the host (loop devices, devmapper, containerd config)
 sudo herd init
+
+# Or in non-interactive mode:
+sudo herd init --yes
 ```
+
 
 ### 3. Start the Daemon
 
