@@ -52,10 +52,19 @@ type BinaryConfig struct {
 }
 
 // JailerConfig holds parameters for the Firecracker jailer process.
+//
+// Each concurrent MicroVM is assigned a unique UID/GID leased from the pool
+// [UIDPoolStart, UIDPoolStart+UIDPoolSize). This ensures every tenant runs in
+// a distinct DAC security domain — a requirement for multi-tenant public cloud
+// deployments where different tenants share the same bare-metal host.
 type JailerConfig struct {
-	UID            int    `yaml:"uid"`
-	GID            int    `yaml:"gid"`
-	ChrootBaseDir  string `yaml:"chroot_base_dir"`
+	// UIDPoolStart is the first UID (and GID) in the pool. Must be >= 65536 to
+	// stay well above system-reserved UIDs. Recommended: 300000.
+	UIDPoolStart  int    `yaml:"uid_pool_start"`
+	// UIDPoolSize is how many concurrent MicroVMs the pool can support.
+	// Set this to at least your max_global_vms value.
+	UIDPoolSize   int    `yaml:"uid_pool_size"`
+	ChrootBaseDir string `yaml:"chroot_base_dir"`
 }
 
 type StorageConfig struct {
@@ -151,11 +160,11 @@ func (c *Config) Validate() error {
 	if c.Binaries.GuestAgentPath == "" {
 		return fmt.Errorf("binaries.guest_agent_path is required")
 	}
-	if c.Jailer.UID == 0 {
-		return fmt.Errorf("jailer.uid is required and must be non-zero")
+	if c.Jailer.UIDPoolStart < 65536 {
+		return fmt.Errorf("jailer.uid_pool_start must be >= 65536 (got %d): values below 65536 overlap system-reserved UIDs", c.Jailer.UIDPoolStart)
 	}
-	if c.Jailer.GID == 0 {
-		return fmt.Errorf("jailer.gid is required and must be non-zero")
+	if c.Jailer.UIDPoolSize < 1 {
+		return fmt.Errorf("jailer.uid_pool_size must be >= 1 (got %d)", c.Jailer.UIDPoolSize)
 	}
 	if c.Jailer.ChrootBaseDir == "" {
 		return fmt.Errorf("jailer.chroot_base_dir is required")

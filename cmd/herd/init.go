@@ -9,10 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/herd-core/herd/internal/config"
@@ -103,22 +101,23 @@ func runInit() {
 	}
 	fmt.Println()
 
-	// 4. Jailer user+group and chroot base dir
+	// 4. Jailer chroot base dir
 	fmt.Println("--- Jailer Configuration ---")
 	chrootBaseDir := promptString(reader, "Jailer chroot base dir (default: /srv/jailer)", "/srv/jailer")
-	const jailerUID, jailerGID = 900, 900
-	fmt.Printf("Provisioning 'firecracker' user (uid=%d, gid=%d)...\n", jailerUID, jailerGID)
-	if err := provisionJailerUser(jailerUID, jailerGID); err != nil {
-		log.Fatalf("failed to provision jailer user: %v", err)
-	}
-	fmt.Println("✅ 'firecracker' user/group ready")
+
+	// The chrootBaseDir is owned by root:root 0755 so all dynamically-leased UIDs
+	// can traverse into it. Per-VM isolation is enforced at the per-VM
+	// <chrootBaseDir>/firecracker/<vmID>/root/ level (uid_N:uid_N 0700).
 	if err := os.MkdirAll(chrootBaseDir, 0755); err != nil {
 		log.Fatalf("failed to create chroot base dir: %v", err)
 	}
-	if err := os.Chown(chrootBaseDir, jailerUID, jailerGID); err != nil {
-		log.Fatalf("failed to chown chroot base dir: %v", err)
-	}
-	fmt.Printf("✅ Chroot base dir ready: %s\n", chrootBaseDir)
+	fmt.Printf("✅ Chroot base dir ready: %s (owned by root)\n", chrootBaseDir)
+
+	const (
+		uidPoolStart = 300000
+		uidPoolSize  = 200
+	)
+	fmt.Printf("UID pool: [%d, %d) — one unique UID per concurrent MicroVM\n", uidPoolStart, uidPoolStart+uidPoolSize)
 	fmt.Println()
 
 	// 4. Resource Limits
@@ -163,8 +162,8 @@ func runInit() {
 			GuestAgentPath:  agentPath,
 		},
 		Jailer: config.JailerConfig{
-			UID:           jailerUID,
-			GID:           jailerGID,
+			UIDPoolStart:  uidPoolStart,
+			UIDPoolSize:   uidPoolSize,
 			ChrootBaseDir: chrootBaseDir,
 		},
 		Telemetry: config.TelemetryConfig{
@@ -275,42 +274,13 @@ func extractBinaryFromTar(r io.Reader, outputPath string) error {
 	return os.Chmod(outputPath, 0755)
 }
 
-// provisionJailerUser ensures the 'firecracker' group and user exist with the
-// given uid/gid. It is idempotent — if they already exist the calls are skipped.
-func provisionJailerUser(uid, gid int) error {
-	uidStr := strconv.Itoa(uid)
-	gidStr := strconv.Itoa(gid)
-
-	// Create group if it doesn't exist.
-	groupCheckCmd := exec.Command("getent", "group", "firecracker")
-	if err := groupCheckCmd.Run(); err != nil {
-		// Group does not exist — create it.
-		out, err := exec.Command("groupadd", "--gid", gidStr, "firecracker").CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("groupadd firecracker: %s (%w)", strings.TrimSpace(string(out)), err)
-		}
-	}
-
-	// Create user if it doesn't exist.
-	userCheckCmd := exec.Command("getent", "passwd", "firecracker")
-	if err := userCheckCmd.Run(); err != nil {
-		// User does not exist — create it as a system user with no login shell.
-		out, err := exec.Command(
-			"useradd",
-			"--uid", uidStr,
-			"--gid", gidStr,
-			"--no-create-home",
-			"--shell", "/sbin/nologin",
-			"--system",
-			"firecracker",
-		).CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("useradd firecracker: %s (%w)", strings.TrimSpace(string(out)), err)
-		}
-	}
-
-	return nil
-}
+// provisionJailerUser is intentionally removed.
+//
+// With dynamic UID pooling, every MicroVM runs under a unique UID in the range
+// [uid_pool_start, uid_pool_start+uid_pool_size). These UIDs do not need
+// corresponding /etc/passwd entries because Firecracker/jailer only needs a
+// numeric UID — it never does a name lookup. No system user is created at init
+// time.
 
 func downloadGuestAgent(path string) error {
 	// Pull from a specific release instead of main for stability

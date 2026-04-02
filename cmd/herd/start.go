@@ -6,9 +6,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-"path/filepath"
+	"path/filepath"
 
-"fmt"
+	"fmt"
 	"github.com/containerd/containerd"
 	"github.com/herd-core/herd/internal/storage"
 
@@ -25,6 +25,7 @@ import (
 	"github.com/herd-core/herd/internal/daemon"
 	"github.com/herd-core/herd/internal/lifecycle"
 	"github.com/herd-core/herd/internal/network"
+	"github.com/herd-core/herd/internal/uid"
 	"github.com/spf13/cobra"
 )
 
@@ -186,6 +187,11 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 		return nil, fmt.Errorf("failed to initialize IPAM: %w", err)
 	}
 
+	uidPool, err := uid.NewPool(cfg.Jailer.UIDPoolStart, cfg.Jailer.UIDPoolSize)
+	if err != nil {
+		return nil, fmt.Errorf("create uid pool: %w", err)
+	}
+
 	factory := &herd.FirecrackerFactory{
 		FirecrackerPath:     cfg.Binaries.FirecrackerPath,
 		JailerPath:          cfg.Binaries.JailerPath,
@@ -193,8 +199,7 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 		GuestAgentPath:      cfg.Binaries.GuestAgentPath,
 		Storage:             mgr,
 		IPAM:                ipam,
-		JailerUID:           cfg.Jailer.UID,
-		JailerGID:           cfg.Jailer.GID,
+		UIDPool:             uidPool,
 		JailerChrootBaseDir: cfg.Jailer.ChrootBaseDir,
 	}
 

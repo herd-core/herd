@@ -24,8 +24,8 @@ binaries:
   kernel_image_path: /home/user/.herd/resources/vmlinux-v6.1.bin
   guest_agent_path: /home/user/.herd/bin/herd-guest-agent
 jailer:
-  uid: 900
-  gid: 900
+  uid_pool_start: 300000
+  uid_pool_size: 100
   chroot_base_dir: /srv/jailer
 `
 
@@ -50,11 +50,11 @@ func TestLoad_ValidConfig(t *testing.T) {
 	if cfg.Binaries.JailerPath != "/usr/local/bin/jailer" {
 		t.Fatalf("expected binaries.jailer_path /usr/local/bin/jailer, got %q", cfg.Binaries.JailerPath)
 	}
-	if cfg.Jailer.UID != 900 {
-		t.Fatalf("expected jailer.uid 900, got %d", cfg.Jailer.UID)
+	if cfg.Jailer.UIDPoolStart != 300000 {
+		t.Fatalf("expected jailer.uid_pool_start 300000, got %d", cfg.Jailer.UIDPoolStart)
 	}
-	if cfg.Jailer.GID != 900 {
-		t.Fatalf("expected jailer.gid 900, got %d", cfg.Jailer.GID)
+	if cfg.Jailer.UIDPoolSize != 100 {
+		t.Fatalf("expected jailer.uid_pool_size 100, got %d", cfg.Jailer.UIDPoolSize)
 	}
 	if cfg.Jailer.ChrootBaseDir != "/srv/jailer" {
 		t.Fatalf("expected jailer.chroot_base_dir /srv/jailer, got %q", cfg.Jailer.ChrootBaseDir)
@@ -142,6 +142,21 @@ func TestLoad_ValidationMatrix(t *testing.T) {
 			name:       "invalid log format",
 			yaml:       strings.ReplaceAll(validConfigYAML, "log_format: json", "log_format: xml"),
 			expectPart: "telemetry.log_format must be one of",
+		},
+		{
+			name:       "uid_pool_start too low",
+			yaml:       strings.ReplaceAll(validConfigYAML, "uid_pool_start: 300000", "uid_pool_start: 1000"),
+			expectPart: "jailer.uid_pool_start must be >= 65536",
+		},
+		{
+			name:       "uid_pool_start zero",
+			yaml:       strings.ReplaceAll(validConfigYAML, "uid_pool_start: 300000", "uid_pool_start: 0"),
+			expectPart: "jailer.uid_pool_start must be >= 65536",
+		},
+		{
+			name:       "uid_pool_size zero",
+			yaml:       strings.ReplaceAll(validConfigYAML, "uid_pool_size: 100", "uid_pool_size: 0"),
+			expectPart: "jailer.uid_pool_size must be >= 1",
 		},
 	}
 

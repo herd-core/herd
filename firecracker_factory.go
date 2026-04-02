@@ -17,6 +17,7 @@ import (
 
 	"github.com/herd-core/herd/internal/network"
 	"github.com/herd-core/herd/internal/storage"
+	"github.com/herd-core/herd/internal/uid"
 	"github.com/herd-core/herd/internal/vsock"
 )
 
@@ -37,10 +38,11 @@ type FirecrackerFactory struct {
 	Storage *storage.Manager
 	IPAM    *network.IPAM
 
-	// JailerUID / JailerGID are the unprivileged uid/gid the jailer drops to
-	// after setting up cgroups and the chroot (typically the "firecracker" user).
-	JailerUID int
-	JailerGID int
+	// UIDPool is the per-VM UID/GID allocator. Each Spawn leases a unique UID
+	// from the pool; Close returns it. This guarantees every concurrent microVM
+	// runs in a distinct DAC security domain, preventing lateral movement
+	// between tenants on the same host.
+	UIDPool *uid.Pool
 	// JailerChrootBaseDir is the root under which the jailer creates per-VM
 	// chroot directories: <JailerChrootBaseDir>/firecracker/<vmID>/root/
 	JailerChrootBaseDir string
@@ -65,9 +67,11 @@ type FirecrackerWorker struct {
 	client     *http.Client
 	ipam       *network.IPAM
 	chrootDir  string             // full chroot root path; removed on Close()
-	done       chan struct{}      // closed when cmd.Wait() returns
+	done       chan struct{}       // closed when cmd.Wait() returns
 	ctx        context.Context    // lifecycle context for the worker
 	cancel     context.CancelFunc // cancelled on Close()
+	leasedUID  int                // UID leased from UIDPool for this VM
+	uidPool    *uid.Pool          // pool to return the UID to on Close()
 }
 
 // ID returns the worker ID.
@@ -110,7 +114,9 @@ func (f *FirecrackerWorker) OnCrash(fn func(sessionID string)) {
 
 // Close kills the VM and cleans up all resources. It blocks until the
 // Firecracker process has fully exited before tearing down storage and the
-// chroot, preventing "device busy" errors.
+// chroot, preventing "device busy" errors. The leased UID is returned to the
+// pool after process exit so it cannot be reused while the old process is
+// still alive.
 func (f *FirecrackerWorker) Close() error {
 	if f.cancel != nil {
 		f.cancel()
@@ -142,6 +148,17 @@ func (f *FirecrackerWorker) Close() error {
 			slog.Error("failed to teardown storage", "vmID", f.id, "error", err)
 		}
 	}
+
+	// Return the leased UID to the pool last, after the process has fully
+	// exited and all filesystem resources have been removed. This prevents a
+	// race where a new VM is assigned the same UID before the old chroot is
+	// fully gone.
+	if f.uidPool != nil && f.leasedUID != 0 {
+		if err := f.uidPool.Return(f.leasedUID); err != nil {
+			slog.Error("failed to return uid to pool", "vmID", f.id, "uid", f.leasedUID, "error", err)
+		}
+	}
+
 	return nil
 }
 
@@ -150,18 +167,28 @@ func (f *FirecrackerFactory) WarmImage(ctx context.Context, imageRef string) err
 	return f.Storage.WarmImage(ctx, imageRef)
 }
 
-// Spawn starts a new Firecracker VM under the jailer.
+// Spawn starts a new Firecracker VM under the jailer with a unique leased UID.
 func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config TenantConfig) (Worker[*http.Client], error) {
 	spawnStart := time.Now()
 	workerID := sessionID
 
+	// Lease a unique UID/GID for this VM. This is the first resource we
+	// acquire so that, if any subsequent step fails, the early-return error
+	// paths can call uidPool.Return() without complication.
+	leasedUID, err := f.UIDPool.Checkout()
+	if err != nil {
+		return nil, fmt.Errorf("uid pool checkout: %w", err)
+	}
+
 	t0 := time.Now()
 	if err := f.Storage.WarmImage(ctx, config.Image); err != nil {
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to warm image: %w", err)
 	}
 
 	imgConfig, err := f.Storage.ExtractImageConfig(ctx, config.Image)
 	if err != nil {
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to extract image config: %w", err)
 	}
 
@@ -182,6 +209,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 
 	rootfsPath, err := f.Storage.Snapshot(ctx, workerID, config.Image)
 	if err != nil {
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to create rootfs snapshot: %w", err)
 	}
 	log.Printf("[spawn:%s] Snapshot         %v", workerID, time.Since(t0))
@@ -189,6 +217,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	tInject := time.Now()
 	if err := f.Storage.InjectGuestAgent(ctx, workerID, f.GuestAgentPath, storage.DefaultGuestAgentPath); err != nil {
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("inject guest agent: %w", err)
 	}
 	log.Printf("[spawn:%s] inject guest     %v", workerID, time.Since(tInject))
@@ -205,19 +234,23 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	// Ensure the parent directory <base>/firecracker/<id> exists.
 	if err := os.MkdirAll(filepath.Dir(chrootRoot), 0755); err != nil {
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create jail base dir: %w", err)
 	}
 
 	// Create the chroot root with 0700.
 	if err := os.Mkdir(chrootRoot, 0700); err != nil && !os.IsExist(err) {
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create chroot root: %w", err)
 	}
 
-	// Chown the root to the jailer user/group so it can traverse into it.
-	if err := os.Chown(chrootRoot, f.JailerUID, f.JailerGID); err != nil {
+	// Chown the chroot root to the leased UID/GID so Firecracker (running as
+	// leasedUID after setuid) can traverse into it. No other UID can enter.
+	if err := os.Chown(chrootRoot, leasedUID, leasedUID); err != nil {
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("chown chroot root: %w", err)
 	}
 
@@ -225,11 +258,13 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	if err := os.Mkdir(chrootRunDir, 0700); err != nil && !os.IsExist(err) {
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create chroot run dir: %w", err)
 	}
 	if err := os.Mkdir(chrootDevDir, 0700); err != nil && !os.IsExist(err) {
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create chroot dev dir: %w", err)
 	}
 
@@ -240,6 +275,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	if err := os.Link(f.KernelImagePath, kernelInChroot); err != nil {
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("hard-link kernel into chroot: %w", err)
 	}
 
@@ -247,9 +283,10 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	// thin-volume returned by Snapshot. Firecracker will open /dev/vda inside
 	// the jail; this node has the same major/minor as the host /dev/dm-X device.
 	rootfsInChroot := filepath.Join(chrootDevDir, "vda")
-	if err := bindDeviceIntoChroot(rootfsPath, rootfsInChroot, f.JailerUID, f.JailerGID); err != nil {
+	if err := bindDeviceIntoChroot(rootfsPath, rootfsInChroot, leasedUID, leasedUID); err != nil {
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("bind rootfs device into chroot: %w", err)
 	}
 
@@ -264,6 +301,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	if err != nil {
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to acquire IP: %w", err)
 	}
 	log.Printf("[spawn:%s] IPAM.Acquire     %v", workerID, time.Since(t1))
@@ -277,10 +315,11 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	}
 	tapName := "tap-" + workerID[len(workerID)-tapNameLen:]
 	_ = network.DeleteTap(tapName)
-	if err := network.CreatePointToPointTap(tapName, hostIP, guestIP, f.JailerUID, f.JailerGID); err != nil {
+		if err := network.CreatePointToPointTap(tapName, hostIP, guestIP, leasedUID, leasedUID); err != nil {
 		f.IPAM.Release(guestIP)
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to create tap device: %w", err)
 	}
 	log.Printf("[spawn:%s] TAP setup        %v", workerID, time.Since(t2))
@@ -329,6 +368,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		f.IPAM.Release(guestIP)
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to write config: %w", err)
 	}
 
@@ -346,8 +386,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		f.JailerPath,
 		"--id", workerID,
 		"--exec-file", f.FirecrackerPath,
-		"--uid", strconv.Itoa(f.JailerUID),
-		"--gid", strconv.Itoa(f.JailerGID),
+		"--uid", strconv.Itoa(leasedUID),
+		"--gid", strconv.Itoa(leasedUID),
 		"--chroot-base-dir", f.JailerChrootBaseDir,
 		"--",
 		"--no-api",
@@ -362,6 +402,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		f.IPAM.Release(guestIP)
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to start jailer: %w", err)
 	}
 	log.Printf("[spawn:%s] cmd.Start        %v", workerID, time.Since(t3))
@@ -395,6 +436,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		f.IPAM.Release(guestIP)
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to connect to guest agent vsock port 5000 within timeout: %v", lastErr)
 	}
 
@@ -447,6 +489,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		done:       done,
 		ctx:        workerCtx,
 		cancel:     workerCancel,
+		leasedUID:  leasedUID,
+		uidPool:    f.UIDPool,
 	}, nil
 }
 
