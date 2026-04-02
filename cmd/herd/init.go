@@ -102,6 +102,11 @@ func runInit() {
 			if err := downloadFirecrackerAndJailer(fcPath, jailerPath); err != nil {
 				log.Fatalf("failed to download firecracker/jailer: %v", err)
 			}
+		} else if _, err := os.Stat(jailerPath); os.IsNotExist(err) {
+			fmt.Println("Downloading Firecracker v1.14.3 (includes jailer)...")
+			if err := downloadFirecrackerAndJailer(fcPath, jailerPath); err != nil {
+				log.Fatalf("failed to download firecracker/jailer: %v", err)
+			}
 		}
 	} else {
 		useExistingFC := promptConfirm(reader, "Do you already have Firecracker and jailer installed? (y/n)", false)
