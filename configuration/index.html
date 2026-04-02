@@ -590,6 +590,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#jailer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔒 jailer
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -673,6 +684,17 @@
     <span class="md-ellipsis">
       
         📈 telemetry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#jailer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔒 jailer
       
     </span>
   </a>
@@ -799,6 +821,10 @@
 <td style="text-align: left;">Absolute path to the Firecracker binary.</td>
 </tr>
 <tr>
+<td style="text-align: left;"><code>jailer_path</code></td>
+<td style="text-align: left;">Absolute path to the Firecracker jailer binary.</td>
+</tr>
+<tr>
 <td style="text-align: left;"><code>kernel_image_path</code></td>
 <td style="text-align: left;">Absolute path to the Linux kernel image.</td>
 </tr>
@@ -832,6 +858,62 @@
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="jailer">🔒 <code>jailer</code></h2>
+<p>Parameters for the secure Firecracker jailer process.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Key</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Minimum</th>
+<th style="text-align: left;">Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>uid_pool_start</code></td>
+<td style="text-align: left;">First UID (and GID) in the dynamic pool. Each concurrent MicroVM gets a unique UID from <code>[uid_pool_start, uid_pool_start + uid_pool_size)</code>.</td>
+<td style="text-align: left;"><code>65536</code></td>
+<td style="text-align: left;"><code>300000</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>uid_pool_size</code></td>
+<td style="text-align: left;">Number of UIDs in the pool. Must be ≥ your <code>max_global_vms</code>.</td>
+<td style="text-align: left;"><code>1</code></td>
+<td style="text-align: left;"><code>200</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>chroot_base_dir</code></td>
+<td style="text-align: left;">Root directory where per-VM jails are created (<code>&lt;dir&gt;/firecracker/&lt;vmID&gt;/root/</code>).</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;"><code>/srv/jailer</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Security model — dynamic UID isolation</strong></p>
+<p>Every concurrent MicroVM runs under a <strong>unique, unprivileged UID/GID</strong> leased from the pool. This
+ensures each VM occupies a distinct <a href="https://en.wikipedia.org/wiki/Discretionary_access_control">DAC</a>
+security domain. An escaped process running as <code>uid_N</code> cannot signal, read, or reuse resources
+belonging to any other tenant's <code>uid_M</code> process.</p>
+<ul>
+<li><code>chroot_base_dir</code> is owned <code>root:root 0755</code> — traversable by anyone.</li>
+<li>Each VM's <code>&lt;dir&gt;/firecracker/&lt;vmID&gt;/root/</code> is <code>uid_N:uid_N 0700</code> — traversable <strong>only</strong> by that VM's UID.</li>
+<li>The TAP device and <code>/dev/vda</code> block node are both owned by <code>uid_N</code>, so Firecracker can access them
+  after dropping privileges to <code>uid_N</code>.</li>
+<li>UIDs <strong>do not need <code>/etc/passwd</code> entries</strong>; the jailer uses the numeric value directly.</li>
+</ul>
+</blockquote>
+<p><strong>Example config:</strong></p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">jailer</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">uid_pool_start</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">300000</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">uid_pool_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">chroot_base_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/srv/jailer</span>
+</span></code></pre></div>
+<p><strong>Migration from <code>&lt;= v0.5.x</code>:</strong><br />
+Remove the old <code>uid</code> and <code>gid</code> keys; replace with <code>uid_pool_start</code> and <code>uid_pool_size</code> as shown above.
+The daemon will refuse to start with the old keys due to strict YAML field validation.</p>
 
 
 

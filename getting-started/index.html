@@ -756,8 +756,9 @@
 - Sets up the <code>devmapper</code> thin-pool for high-speed rootfs snapshotting.
 - Provisions the chroot base directory (<code>/srv/jailer</code>) owned by <code>root</code>.
 - Configures a <strong>dynamic UID pool</strong> for multi-tenant isolation (no system users required).
+- Dynamically allocates a unique UID for each microVM from a pool (starting at 300000) for secure jailer isolation.
 - Configures host-wide NAT routing for microVM internet access.
-- Downloads an optimized Linux kernel (<code>vmlinux</code>) if one isn't provided.
+- Downloads a optimized Linux kernel (<code>vmlinux</code>) if one isn't provided.
 - Generates a configuration file at <code>~/.herd/herd.yaml</code>.</p>
 <hr />
 <h2 id="3-start-the-daemon">🛰️ 3. Start the Daemon</h2>
