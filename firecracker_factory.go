@@ -261,11 +261,23 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create chroot run dir: %w", err)
 	}
+	if err := os.Chown(chrootRunDir, leasedUID, leasedUID); err != nil {
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
+		return nil, fmt.Errorf("chown chroot run dir: %w", err)
+	}
 	if err := os.Mkdir(chrootDevDir, 0700); err != nil && !os.IsExist(err) {
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
 		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create chroot dev dir: %w", err)
+	}
+	if err := os.Chown(chrootDevDir, leasedUID, leasedUID); err != nil {
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
+		return nil, fmt.Errorf("chown chroot dev dir: %w", err)
 	}
 
 	// Hard-link the shared kernel image into the chroot so Firecracker can
@@ -508,9 +520,8 @@ func bindDeviceIntoChroot(srcPath, dstPath string, uid, gid int) error {
 	if err := syscall.Stat(srcPath, &stat); err != nil {
 		return fmt.Errorf("stat source device %s: %w", srcPath, err)
 	}
-	// S_IFBLK | 0600 — block device, readable/writable only by root.
-	// Firecracker will be running as JailerUID but the kernel grants access
-	// via the jailer's cgroup device allowlist.
+	// S_IFBLK | 0600 — create as a block device. We immediately chown it
+	// to the leased UID below so Firecracker can open it directly.
 	if err := syscall.Mknod(dstPath, syscall.S_IFBLK|0600, int(stat.Rdev)); err != nil {
 		return fmt.Errorf("mknod block device at %s: %w", dstPath, err)
 	}

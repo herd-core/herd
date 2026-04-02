@@ -50,6 +50,7 @@ sudo herd init
 - Sets up the `devmapper` thin-pool for high-speed rootfs snapshotting.
 - Provisions the chroot base directory (`/srv/jailer`) owned by `root`.
 - Configures a **dynamic UID pool** for multi-tenant isolation (no system users required).
+- Dynamically allocates a unique UID for each microVM from a pool (starting at 300000) for secure jailer isolation.
 - Configures host-wide NAT routing for microVM internet access.
 - Downloads a optimized Linux kernel (`vmlinux`) if one isn't provided.
 - Generates a configuration file at `~/.herd/herd.yaml`.
