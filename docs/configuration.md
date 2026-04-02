@@ -42,6 +42,7 @@ Paths to critical execution components.
 | Key | Description |
 | :--- | :--- |
 | `firecracker_path` | Absolute path to the Firecracker binary. |
+| `jailer_path` | Absolute path to the Firecracker jailer binary. |
 | `kernel_image_path` | Absolute path to the Linux kernel image. |
 | `guest_agent_path` | Absolute path to the `herd-guest-agent` binary. |
 
@@ -54,3 +55,14 @@ Configuration for logging and metrics.
 | :--- | :--- | :--- |
 | `log_format` | Log output format (`json` or `text`). | `json` |
 | `metrics_path` | Endpoint for Prometheus metrics. | `/metrics` |
+
+---
+
+## 🔒 `jailer`
+Parameters for the secure Firecracker jailer process.
+
+| Key | Description | Default |
+| :--- | :--- | :--- |
+| `uid` | Unprivileged User ID the jailer drops to. | `900` |
+| `gid` | Unprivileged Group ID the jailer drops to. | `900` |
+| `chroot_base_dir`| Root directory where jails are created. | `/srv/jailer` |

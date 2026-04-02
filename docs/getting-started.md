@@ -50,6 +50,7 @@ sudo herd init
 **What this does**:
 - Sets up the `devmapper` thin-pool for high-speed rootfs snapshotting.
 - Configures host-wide NAT routing for microVM internet access.
+- Provisions the unprivileged `firecracker` user and group (UID/GID 900) required for secure jailer isolation.
 - Downloads a optimized Linux kernel (`vmlinux`) if one isn't provided.
 - Generates a configuration file at `~/.herd/herd.yaml`.
 
