@@ -204,8 +204,10 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		}
 	}
 	if len(finalCmd) == 0 {
+		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("no command to run: image %q has no Entrypoint or Cmd and none was provided in the request", config.Image)
 	}
+
 
 	rootfsPath, err := f.Storage.Snapshot(ctx, workerID, config.Image)
 	if err != nil {
