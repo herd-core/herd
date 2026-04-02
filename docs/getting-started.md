@@ -22,7 +22,6 @@ Before installing Herd, ensure your system has `containerd` and `iptables` insta
 sudo apt update && sudo apt install -y containerd iptables
 ```
 
----
 
 ## 📦 2. Installation
 
@@ -49,8 +48,9 @@ sudo herd init
 
 **What this does**:
 - Sets up the `devmapper` thin-pool for high-speed rootfs snapshotting.
+- Provisions the chroot base directory (`/srv/jailer`) owned by `root`.
+- Configures a **dynamic UID pool** for multi-tenant isolation (no system users required).
 - Configures host-wide NAT routing for microVM internet access.
-- Provisions the unprivileged `firecracker` user and group (UID/GID 900) required for secure jailer isolation.
 - Downloads a optimized Linux kernel (`vmlinux`) if one isn't provided.
 - Generates a configuration file at `~/.herd/herd.yaml`.
 
