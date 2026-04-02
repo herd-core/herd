@@ -64,8 +64,10 @@ type FirecrackerWorker struct {
 	cmd        *exec.Cmd
 	client     *http.Client
 	ipam       *network.IPAM
-	chrootDir  string        // full chroot root path; removed on Close()
-	done       chan struct{} // closed when cmd.Wait() returns
+	chrootDir  string             // full chroot root path; removed on Close()
+	done       chan struct{}      // closed when cmd.Wait() returns
+	ctx        context.Context    // lifecycle context for the worker
+	cancel     context.CancelFunc // cancelled on Close()
 }
 
 // ID returns the worker ID.
@@ -110,6 +112,9 @@ func (f *FirecrackerWorker) OnCrash(fn func(sessionID string)) {
 // Firecracker process has fully exited before tearing down storage and the
 // chroot, preventing "device busy" errors.
 func (f *FirecrackerWorker) Close() error {
+	if f.cancel != nil {
+		f.cancel()
+	}
 	if f.cmd != nil && f.cmd.Process != nil {
 		_ = f.cmd.Process.Kill()
 		select {
@@ -393,6 +398,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		return nil, fmt.Errorf("failed to connect to guest agent vsock port 5000 within timeout: %v", lastErr)
 	}
 
+	workerCtx, workerCancel := context.WithCancel(context.Background())
 	logPath := filepath.Join(chrootRoot, fmt.Sprintf("%s.log", workerID))
 	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
@@ -412,7 +418,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 			Command: finalCmd,
 			Env:     finalEnv,
 		}
-		if err := vsock.Execute(context.Background(), execConn, payload, io.MultiWriter(os.Stdout, logFile)); err != nil {
+		if err := vsock.Execute(workerCtx, execConn, payload, io.MultiWriter(os.Stdout, logFile)); err != nil {
 			fmt.Printf("[host] Failed to execute payload on %s: %v\n", workerID, err)
 		}
 	}()
@@ -439,6 +445,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		ipam:       f.IPAM,
 		chrootDir:  chrootRoot,
 		done:       done,
+		ctx:        workerCtx,
+		cancel:     workerCancel,
 	}, nil
 }
 
