@@ -10,6 +10,7 @@ Herd implements four critical layers that bridge the gap between "hardware" and 
 - **L7 "Wake-on-Request" Proxy**: A high-speed reverse proxy that intercepts HTTP requests, cold-boots the corresponding VM (if needed [WIP]), and tunnels the traffic inside.
 - **Automated IPAM**: Zero-config networking pool that manages subnets, TAP interfaces, and NAT routing.
 - **Guest Agent Execution**: Injects `herd-guest-agent` as PID 1 to handle internal OS setup and workload execution.
+- **Dynamic UID Isolation**: Leverages the Firecracker jailer to drop process privileges into a unique, per-VM UID/GID leased from a dynamic pool. This ensures every tenant runs in a distinct DAC security domain, providing absolute lateral movement protection on multi-tenant hosts.
 
 ## 🛰️ The "Brutal Difference"
 
@@ -85,9 +86,13 @@ herd deploy --image nginx:latest
 
 ## ⚙️ Configuration Reference (`herd.yaml`)
 
-- `network.control_bind`: "127.0.0.1:8001"
+- `network.control_bind`: "127.0.0.1:8081"
 - `network.data_bind`: "127.0.0.1:8080"
 - `storage.state_dir`: "/var/lib/herd"
 - `storage.snapshotter_name`: "devmapper"
+- `binaries.jailer_path`: "/usr/local/bin/jailer"
+- `jailer.uid_pool_start`: 300000
+- `jailer.uid_pool_size`: 200
+- `jailer.chroot_base_dir`: "/srv/jailer"
 
 For more details, see [CLI & Configuration Reference](./docs/cli.md).

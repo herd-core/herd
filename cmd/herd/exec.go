@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/herd-core/herd/internal/config"
 	"github.com/herd-core/herd/internal/vsock"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -32,8 +33,14 @@ func init() {
 }
 
 func runExec(vmID string) error {
-	// The factory creates sockets in /tmp/<vm-id>.sock
-	socketPath := filepath.Join("/tmp", fmt.Sprintf("%s.sock", vmID))
+	// Load config to find the jailer chroot base directory
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to load config %q: %w", configPath, err)
+	}
+
+	// The factory creates sockets in <JailerChrootBaseDir>/firecracker/<vmID>/root/run/<vmID>.sock
+	socketPath := filepath.Join(cfg.Jailer.ChrootBaseDir, "firecracker", vmID, "root", "run", fmt.Sprintf("%s.sock", vmID))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

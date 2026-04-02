@@ -20,8 +20,13 @@ telemetry:
   metrics_path: /metrics
 binaries:
   firecracker_path: /usr/local/bin/firecracker
+  jailer_path: /usr/local/bin/jailer
   kernel_image_path: /home/user/.herd/resources/vmlinux-v6.1.bin
   guest_agent_path: /home/user/.herd/bin/herd-guest-agent
+jailer:
+  uid_pool_start: 300000
+  uid_pool_size: 100
+  chroot_base_dir: /srv/jailer
 `
 
 func TestLoad_ValidConfig(t *testing.T) {
@@ -41,6 +46,18 @@ func TestLoad_ValidConfig(t *testing.T) {
 	}
 	if cfg.Telemetry.LogFormat != "json" {
 		t.Fatalf("expected telemetry.log_format=json, got %q", cfg.Telemetry.LogFormat)
+	}
+	if cfg.Binaries.JailerPath != "/usr/local/bin/jailer" {
+		t.Fatalf("expected binaries.jailer_path /usr/local/bin/jailer, got %q", cfg.Binaries.JailerPath)
+	}
+	if cfg.Jailer.UIDPoolStart != 300000 {
+		t.Fatalf("expected jailer.uid_pool_start 300000, got %d", cfg.Jailer.UIDPoolStart)
+	}
+	if cfg.Jailer.UIDPoolSize != 100 {
+		t.Fatalf("expected jailer.uid_pool_size 100, got %d", cfg.Jailer.UIDPoolSize)
+	}
+	if cfg.Jailer.ChrootBaseDir != "/srv/jailer" {
+		t.Fatalf("expected jailer.chroot_base_dir /srv/jailer, got %q", cfg.Jailer.ChrootBaseDir)
 	}
 }
 
@@ -125,6 +142,21 @@ func TestLoad_ValidationMatrix(t *testing.T) {
 			name:       "invalid log format",
 			yaml:       strings.ReplaceAll(validConfigYAML, "log_format: json", "log_format: xml"),
 			expectPart: "telemetry.log_format must be one of",
+		},
+		{
+			name:       "uid_pool_start too low",
+			yaml:       strings.ReplaceAll(validConfigYAML, "uid_pool_start: 300000", "uid_pool_start: 1000"),
+			expectPart: "jailer.uid_pool_start must be >= 65536",
+		},
+		{
+			name:       "uid_pool_start zero",
+			yaml:       strings.ReplaceAll(validConfigYAML, "uid_pool_start: 300000", "uid_pool_start: 0"),
+			expectPart: "jailer.uid_pool_start must be >= 65536",
+		},
+		{
+			name:       "uid_pool_size zero",
+			yaml:       strings.ReplaceAll(validConfigYAML, "uid_pool_size: 100", "uid_pool_size: 0"),
+			expectPart: "jailer.uid_pool_size must be >= 1",
 		},
 	}
 

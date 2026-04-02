@@ -6,9 +6,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-"path/filepath"
+	"path/filepath"
 
-"fmt"
+	"fmt"
 	"github.com/containerd/containerd"
 	"github.com/herd-core/herd/internal/storage"
 
@@ -20,10 +20,12 @@ import (
 	"time"
 
 	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/internal/cloud"
 	"github.com/herd-core/herd/internal/config"
 	"github.com/herd-core/herd/internal/daemon"
 	"github.com/herd-core/herd/internal/lifecycle"
 	"github.com/herd-core/herd/internal/network"
+	"github.com/herd-core/herd/internal/uid"
 	"github.com/spf13/cobra"
 )
 
@@ -87,6 +89,16 @@ func runDaemon() {
 			eventLogger.Error("control_listener_close_failed", map[string]any{"error": err})
 		}
 	}()
+	
+	// Initialize Cloud Control Plane (Optional)
+	if cfg.Cloud.Enabled {
+		cloudClient := cloud.NewClient(cfg.Cloud)
+		if err := cloudClient.Start(ctx); err != nil {
+			eventLogger.Error("cloud_control_connection_failed", map[string]any{"error": err})
+		} else {
+			defer cloudClient.Close()
+		}
+	}
 
 	// Initialize Lifecycle Manager
 	lm := lifecycle.NewManager(pool)
@@ -175,13 +187,20 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 		return nil, fmt.Errorf("failed to initialize IPAM: %w", err)
 	}
 
+	uidPool, err := uid.NewPool(cfg.Jailer.UIDPoolStart, cfg.Jailer.UIDPoolSize)
+	if err != nil {
+		return nil, fmt.Errorf("create uid pool: %w", err)
+	}
+
 	factory := &herd.FirecrackerFactory{
-		FirecrackerPath: cfg.Binaries.FirecrackerPath,
-		KernelImagePath: cfg.Binaries.KernelImagePath,
-		Storage:         mgr,
-		SocketPathDir:   "/tmp",
-		GuestAgentPath:  cfg.Binaries.GuestAgentPath,
-		IPAM:            ipam,
+		FirecrackerPath:     cfg.Binaries.FirecrackerPath,
+		JailerPath:          cfg.Binaries.JailerPath,
+		KernelImagePath:     cfg.Binaries.KernelImagePath,
+		GuestAgentPath:      cfg.Binaries.GuestAgentPath,
+		Storage:             mgr,
+		IPAM:                ipam,
+		UIDPool:             uidPool,
+		JailerChrootBaseDir: cfg.Jailer.ChrootBaseDir,
 	}
 
 	return herd.New(factory,

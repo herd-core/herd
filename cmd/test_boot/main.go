@@ -11,6 +11,7 @@ import (
 	"github.com/herd-core/herd/internal/config"
 	"github.com/herd-core/herd/internal/network"
 	"github.com/herd-core/herd/internal/storage"
+	"github.com/herd-core/herd/internal/uid"
 	"github.com/containerd/containerd"
 )
 
@@ -37,13 +38,20 @@ func main() {
 		log.Fatalf("failed to init IPAM: %v", err)
 	}
 
+	uidPool, err := uid.NewPool(300000, 10)
+	if err != nil {
+		log.Fatalf("failed to create uid pool: %v", err)
+	}
+
 	factory := &herd.FirecrackerFactory{
-		FirecrackerPath: "/home/hackstrix/firecracker-v15.0/firecracker",
-		KernelImagePath: filepath.Join(cwd, "assets/vmlinux.bin"),
-		Storage:         mgr,
-		SocketPathDir:   "/tmp",
-		GuestAgentPath:  filepath.Join(cwd, "herd-guest-agent"),
-		IPAM:            ipam,
+		FirecrackerPath:     "/home/hackstrix/firecracker-v15.0/firecracker",
+		JailerPath:          "/home/hackstrix/firecracker-v15.0/jailer",
+		KernelImagePath:     filepath.Join(cwd, "assets/vmlinux.bin"),
+		Storage:             mgr,
+		GuestAgentPath:      filepath.Join(cwd, "herd-guest-agent"),
+		IPAM:                ipam,
+		UIDPool:             uidPool,
+		JailerChrootBaseDir: "/srv/jailer",
 	}
 
 	for i := 0; i < 3; i++ {

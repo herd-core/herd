@@ -22,6 +22,7 @@ import (
 )
 
 
+
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize herd with interactive setup",
@@ -62,17 +63,20 @@ func runInit() {
 	}
 
 	// 2. Binaries
-	var fcPath string
-	useExistingFC := promptConfirm(reader, "Do you already have Firecracker installed? (y/n)", false)
+	var fcPath, jailerPath string
+	useExistingFC := promptConfirm(reader, "Do you already have Firecracker and jailer installed? (y/n)", false)
 	if useExistingFC {
 		fcPath = promptString(reader, "Path to firecracker binary (default: /usr/local/bin/firecracker)", "/usr/local/bin/firecracker")
+		jailerPath = promptString(reader, "Path to jailer binary (default: /usr/local/bin/jailer)", "/usr/local/bin/jailer")
 	} else {
 		fcPath = filepath.Join(binDir, "firecracker")
-		fmt.Println("Downloading Firecracker v1.14.3...")
-		if err := downloadFirecracker(fcPath); err != nil {
-			log.Fatalf("failed to download firecracker: %v", err)
+		jailerPath = filepath.Join(binDir, "jailer")
+		fmt.Println("Downloading Firecracker v1.14.3 (includes jailer)...")
+		if err := downloadFirecrackerAndJailer(fcPath, jailerPath); err != nil {
+			log.Fatalf("failed to download firecracker/jailer: %v", err)
 		}
 		fmt.Printf("✅ Firecracker installed: %s\n", fcPath)
+		fmt.Printf("✅ Jailer installed: %s\n", jailerPath)
 	}
 
 	// Guest Agent - Download pre-compiled binary
@@ -95,6 +99,25 @@ func runInit() {
 			log.Fatalf("failed to download kernel: %v", err)
 		}
 	}
+	fmt.Println()
+
+	// 4. Jailer chroot base dir
+	fmt.Println("--- Jailer Configuration ---")
+	chrootBaseDir := promptString(reader, "Jailer chroot base dir (default: /srv/jailer)", "/srv/jailer")
+
+	// The chrootBaseDir is owned by root:root 0755 so all dynamically-leased UIDs
+	// can traverse into it. Per-VM isolation is enforced at the per-VM
+	// <chrootBaseDir>/firecracker/<vmID>/root/ level (uid_N:uid_N 0700).
+	if err := os.MkdirAll(chrootBaseDir, 0755); err != nil {
+		log.Fatalf("failed to create chroot base dir: %v", err)
+	}
+	fmt.Printf("✅ Chroot base dir ready: %s (owned by root)\n", chrootBaseDir)
+
+	const (
+		uidPoolStart = 300000
+		uidPoolSize  = 200
+	)
+	fmt.Printf("UID pool: [%d, %d) — one unique UID per concurrent MicroVM\n", uidPoolStart, uidPoolStart+uidPoolSize)
 	fmt.Println()
 
 	// 4. Resource Limits
@@ -134,8 +157,14 @@ func runInit() {
 		},
 		Binaries: config.BinaryConfig{
 			FirecrackerPath: fcPath,
+			JailerPath:      jailerPath,
 			KernelImagePath: kernelPath,
 			GuestAgentPath:  agentPath,
+		},
+		Jailer: config.JailerConfig{
+			UIDPoolStart:  uidPoolStart,
+			UIDPoolSize:   uidPoolSize,
+			ChrootBaseDir: chrootBaseDir,
 		},
 		Telemetry: config.TelemetryConfig{
 			LogFormat:   "json",
@@ -166,7 +195,9 @@ func runInit() {
 	fmt.Println("You can now start the daemon with: sudo herd start")
 }
 
-func downloadFirecracker(outputPath string) error {
+// downloadFirecrackerAndJailer downloads the Firecracker release tarball and
+// extracts both the firecracker and jailer binaries in a single HTTP round-trip.
+func downloadFirecrackerAndJailer(fcOutputPath, jailerOutputPath string) error {
 	arch := runtime.GOARCH
 	if arch == "amd64" {
 		arch = "x86_64"
@@ -184,16 +215,16 @@ func downloadFirecracker(outputPath string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download firecracker: %s", resp.Status)
+		return fmt.Errorf("failed to download firecracker release: %s", resp.Status)
 	}
 
-	// Extract .tgz
 	gzr, err := gzip.NewReader(resp.Body)
 	if err != nil {
 		return err
 	}
 	defer gzr.Close()
 
+	fcDone, jailerDone := false, false
 	tr := tar.NewReader(gzr)
 	for {
 		header, err := tr.Next()
@@ -204,23 +235,52 @@ func downloadFirecracker(outputPath string) error {
 			return err
 		}
 
-		// The binary in the tar is usually named "firecracker-v1.14.3-x86_64"
-		if strings.Contains(header.Name, "firecracker-v") && !strings.Contains(header.Name, ".debug") {
-			out, err := os.Create(outputPath)
-			if err != nil {
-				return err
+		switch {
+		case strings.Contains(header.Name, "firecracker-v") && !strings.Contains(header.Name, ".debug") && !strings.Contains(header.Name, "jailer"):
+			if err := extractBinaryFromTar(tr, fcOutputPath); err != nil {
+				return fmt.Errorf("extract firecracker: %w", err)
 			}
-			defer out.Close()
+			fcDone = true
+		case strings.Contains(header.Name, "jailer-v") && !strings.Contains(header.Name, ".debug"):
+			if err := extractBinaryFromTar(tr, jailerOutputPath); err != nil {
+				return fmt.Errorf("extract jailer: %w", err)
+			}
+			jailerDone = true
+		}
 
-			if _, err := io.Copy(out, tr); err != nil {
-				return err
-			}
-			return os.Chmod(outputPath, 0755)
+		if fcDone && jailerDone {
+			break
 		}
 	}
 
-	return fmt.Errorf("firecracker binary not found in archive")
+	if !fcDone {
+		return fmt.Errorf("firecracker binary not found in archive")
+	}
+	if !jailerDone {
+		return fmt.Errorf("jailer binary not found in archive")
+	}
+	return nil
 }
+
+func extractBinaryFromTar(r io.Reader, outputPath string) error {
+	out, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	if _, err := io.Copy(out, r); err != nil {
+		return err
+	}
+	return os.Chmod(outputPath, 0755)
+}
+
+// provisionJailerUser is intentionally removed.
+//
+// With dynamic UID pooling, every MicroVM runs under a unique UID in the range
+// [uid_pool_start, uid_pool_start+uid_pool_size). These UIDs do not need
+// corresponding /etc/passwd entries because Firecracker/jailer only needs a
+// numeric UID — it never does a name lookup. No system user is created at init
+// time.
 
 func downloadGuestAgent(path string) error {
 	// Pull from a specific release instead of main for stability

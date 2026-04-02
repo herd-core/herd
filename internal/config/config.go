@@ -33,13 +33,38 @@ type Config struct {
 	Storage   StorageConfig   `yaml:"storage"`
 	Resources ResourceConfig  `yaml:"resources"`
 	Binaries  BinaryConfig    `yaml:"binaries"`
+	Jailer    JailerConfig    `yaml:"jailer"`
 	Telemetry TelemetryConfig `yaml:"telemetry"`
+	Cloud     CloudConfig     `yaml:"cloud"`
+}
+
+type CloudConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Endpoint string `yaml:"endpoint"`
+	NodeID   string `yaml:"node_id"`
 }
 
 type BinaryConfig struct {
 	FirecrackerPath string `yaml:"firecracker_path"`
+	JailerPath      string `yaml:"jailer_path"`
 	KernelImagePath string `yaml:"kernel_image_path"`
 	GuestAgentPath  string `yaml:"guest_agent_path"`
+}
+
+// JailerConfig holds parameters for the Firecracker jailer process.
+//
+// Each concurrent MicroVM is assigned a unique UID/GID leased from the pool
+// [UIDPoolStart, UIDPoolStart+UIDPoolSize). This ensures every tenant runs in
+// a distinct DAC security domain — a requirement for multi-tenant public cloud
+// deployments where different tenants share the same bare-metal host.
+type JailerConfig struct {
+	// UIDPoolStart is the first UID (and GID) in the pool. Must be >= 65536 to
+	// stay well above system-reserved UIDs. Recommended: 300000.
+	UIDPoolStart  int    `yaml:"uid_pool_start"`
+	// UIDPoolSize is how many concurrent MicroVMs the pool can support.
+	// Set this to at least your max_global_vms value.
+	UIDPoolSize   int    `yaml:"uid_pool_size"`
+	ChrootBaseDir string `yaml:"chroot_base_dir"`
 }
 
 type StorageConfig struct {
@@ -126,11 +151,23 @@ func (c *Config) Validate() error {
 	if c.Binaries.FirecrackerPath == "" {
 		return fmt.Errorf("binaries.firecracker_path is required")
 	}
+	if c.Binaries.JailerPath == "" {
+		return fmt.Errorf("binaries.jailer_path is required")
+	}
 	if c.Binaries.KernelImagePath == "" {
 		return fmt.Errorf("binaries.kernel_image_path is required")
 	}
 	if c.Binaries.GuestAgentPath == "" {
 		return fmt.Errorf("binaries.guest_agent_path is required")
+	}
+	if c.Jailer.UIDPoolStart < 65536 {
+		return fmt.Errorf("jailer.uid_pool_start must be >= 65536 (got %d): values below 65536 overlap system-reserved UIDs", c.Jailer.UIDPoolStart)
+	}
+	if c.Jailer.UIDPoolSize < 1 {
+		return fmt.Errorf("jailer.uid_pool_size must be >= 1 (got %d)", c.Jailer.UIDPoolSize)
+	}
+	if c.Jailer.ChrootBaseDir == "" {
+		return fmt.Errorf("jailer.chroot_base_dir is required")
 	}
 	if c.Telemetry.MetricsPath == "" || c.Telemetry.MetricsPath[0] != '/' {
 		return fmt.Errorf("telemetry.metrics_path must start with '/'")
