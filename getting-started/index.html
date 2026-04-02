@@ -739,7 +739,6 @@
 <p>Before installing Herd, ensure your system has <code>containerd</code> and <code>iptables</code> installed:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sudo<span class="w"> </span>apt<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>containerd<span class="w"> </span>iptables
 </span></code></pre></div>
-<hr />
 <h2 id="2-installation">📦 2. Installation</h2>
 <p>The fastest way to get Herd up and running is with our official installation script:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-sSL<span class="w"> </span>https://raw.githubusercontent.com/herd-core/herd/main/scripts/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
@@ -755,9 +754,10 @@
 </span></code></pre></div>
 <p><strong>What this does</strong>:
 - Sets up the <code>devmapper</code> thin-pool for high-speed rootfs snapshotting.
+- Provisions the chroot base directory (<code>/srv/jailer</code>) owned by <code>root</code>.
+- Configures a <strong>dynamic UID pool</strong> for multi-tenant isolation (no system users required).
 - Configures host-wide NAT routing for microVM internet access.
-- Provisions the unprivileged <code>firecracker</code> user and group (UID/GID 900) required for secure jailer isolation.
-- Downloads a optimized Linux kernel (<code>vmlinux</code>) if one isn't provided.
+- Downloads an optimized Linux kernel (<code>vmlinux</code>) if one isn't provided.
 - Generates a configuration file at <code>~/.herd/herd.yaml</code>.</p>
 <hr />
 <h2 id="3-start-the-daemon">🛰️ 3. Start the Daemon</h2>

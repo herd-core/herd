@@ -527,34 +527,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#layer-5-dynamic-uid-isolation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🔒 Layer 5: Dynamic UID Isolation
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🔒 Layer 5: Dynamic UID Isolation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#directory-device-ownership-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Directory &amp; Device Ownership Model
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -687,34 +659,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#layer-5-dynamic-uid-isolation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🔒 Layer 5: Dynamic UID Isolation
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🔒 Layer 5: Dynamic UID Isolation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#directory-device-ownership-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Directory &amp; Device Ownership Model
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -752,80 +696,12 @@
 <p>Networking is isolated at the host level to prevent neighbor scanning and provide absolute containment.
 - <strong>TAP Interfaces</strong>: Each microVM gets its own unique TAP device linked to a host-side bridge.
 - <strong>Point-to-Point Networking</strong>: VMs are configured with a <code>/32</code> IP address, routing all traffic through a virtual gateway on the host.
-- <strong>TAP Ownership</strong>: To maintain privilege separation, Herd explicitly assigns the TAP device's ownership to the unprivileged jailer user during creation, allowing the jailed Firecracker process to attach to it without <code>CAP_NET_ADMIN</code>.
 - <strong>NAT Routing</strong>: Herd automatically manages <code>iptables</code> NAT (MASQUERADE) and FORWARD rules to allow internet access while preventing VM-to-VM traffic.</p>
 <h2 id="layer-4-guest-agent-execution">🤖 Layer 4: Guest Agent Execution</h2>
 <p>The <code>herd-guest-agent</code> is the bridge between the host daemon and the user workload.
 - <strong>Initialize RAM Disk (initrd)</strong>: Herd injects the agent as an <code>initrd</code> ramdisk at boot time.
 - <strong>PID 1 Role</strong>: The agent runs as <code>PID 1</code> inside the VM, responsible for mounting virtual filesystems (<code>/proc</code>, <code>/sys</code>), configuring networking, and <code>chroot</code>-ing into the user's workload filesystem.
 - <strong>Vsock Communication</strong>: The host communicates with the agent over <strong>AF_VSOCK</strong>, allowing for execution commands, logs, and heartbeats without an internal network listener.</p>
-<h2 id="layer-5-dynamic-uid-isolation">🔒 Layer 5: Dynamic UID Isolation</h2>
-<p>Herd implements a "Dynamic UID Pool" to ensure that untrusted guest code is strictly contained in a distinct security domain. This prevents lateral movement (cross-jail attacks) in multi-tenant environments.</p>
-<ul>
-<li><strong>Per-VM UID Leasing</strong>: Every concurrent microVM is assigned a unique, numeric UID from a configured pool (e.g., <code>300000-301000</code>).</li>
-<li><strong>Cryptographic Separation</strong>: Since each VM runs as a different UID, the Linux kernel prevents process A from signaling or interacting with process B.</li>
-<li><strong>Filesystem &amp; Device Ownership</strong>: Herd explicitly <code>chown</code>s the VM's chroot root, vsock sockets, and block device nodes to the leased UID.</li>
-</ul>
-<h3 id="directory-device-ownership-model">Directory &amp; Device Ownership Model</h3>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">Path / Object</th>
-<th style="text-align: left;">Creator</th>
-<th style="text-align: left;">Owner</th>
-<th style="text-align: left;">Mode</th>
-<th style="text-align: left;">Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;"><code>/srv/jailer/</code></td>
-<td style="text-align: left;"><code>herd init</code></td>
-<td style="text-align: left;"><code>root:root</code></td>
-<td style="text-align: left;"><code>0755</code></td>
-<td style="text-align: left;">Base directory for all jails.</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>.../firecracker/&lt;vmID&gt;/</code></td>
-<td style="text-align: left;"><code>Spawn</code></td>
-<td style="text-align: left;"><code>root:root</code></td>
-<td style="text-align: left;"><code>0755</code></td>
-<td style="text-align: left;">Per-VM parent directory.</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>.../root/</code></td>
-<td style="text-align: left;"><code>Spawn</code></td>
-<td style="text-align: left;"><code>uid_N:uid_N</code></td>
-<td style="text-align: left;"><code>0700</code></td>
-<td style="text-align: left;"><strong>Chroot Root</strong>: Only the leased UID can enter.</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>.../root/run/</code></td>
-<td style="text-align: left;"><code>Spawn</code></td>
-<td style="text-align: left;"><code>uid_N:uid_N</code></td>
-<td style="text-align: left;"><code>0700</code></td>
-<td style="text-align: left;">Contains vsock sockets and config.</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>.../root/dev/vda</code></td>
-<td style="text-align: left;"><code>Spawn</code></td>
-<td style="text-align: left;"><code>uid_N:uid_N</code></td>
-<td style="text-align: left;"><code>0600</code></td>
-<td style="text-align: left;"><strong>Block Device</strong>: Mknod node for the rootfs.</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>tap-&lt;suffix&gt;</code></td>
-<td style="text-align: left;"><code>Spawn</code></td>
-<td style="text-align: left;"><code>uid_N:uid_N</code></td>
-<td style="text-align: left;">—</td>
-<td style="text-align: left;"><strong>Network</strong>: TAP device owned by the jailer UID.</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p>[!NOTE]
-<strong>Numeric UIDs</strong>: These UIDs do not require entries in <code>/etc/passwd</code>. The hypervisor and the <code>jailer</code> binary operate directly on numeric IDs for speed and to avoid host-level configuration bloat.</p>
-</blockquote>
 
 
 
