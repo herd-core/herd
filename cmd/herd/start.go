@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/herd-core/herd"
+	"github.com/herd-core/herd/internal/cloud"
 	"github.com/herd-core/herd/internal/config"
 	"github.com/herd-core/herd/internal/daemon"
 	"github.com/herd-core/herd/internal/lifecycle"
@@ -87,6 +88,16 @@ func runDaemon() {
 			eventLogger.Error("control_listener_close_failed", map[string]any{"error": err})
 		}
 	}()
+	
+	// Initialize Cloud Control Plane (Optional)
+	if cfg.Cloud.Enabled {
+		cloudClient := cloud.NewClient(cfg.Cloud)
+		if err := cloudClient.Start(ctx); err != nil {
+			eventLogger.Error("cloud_control_connection_failed", map[string]any{"error": err})
+		} else {
+			defer cloudClient.Close()
+		}
+	}
 
 	// Initialize Lifecycle Manager
 	lm := lifecycle.NewManager(pool)

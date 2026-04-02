@@ -1,0 +1,22 @@
+syntax = "proto3";
+package herd.v1;
+
+option go_package = "github.com/herd-core/herd/internal/proto/v1;herdv1";
+
+service HerdControlPlane {
+  rpc Connect(stream NodeStream) returns (stream CloudCommand);
+}
+
+message NodeStream {
+  string node_id = 1;
+  int64 available_memory_mb = 2;
+  int32 active_vm_count = 3;
+  double cpu_usage_percent = 4;
+  int64 uptime_seconds = 5;
+}
+
+message CloudCommand {
+  string command_id = 1;
+  string action = 2;           // "boot_vm", "destroy_vm", etc.
+  map<string, string> params = 3;
+}
