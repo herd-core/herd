@@ -197,11 +197,32 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	chrootRunDir := filepath.Join(chrootRoot, "run")
 	chrootDevDir := filepath.Join(chrootRoot, "dev")
 
-	if err := os.MkdirAll(chrootRunDir, 0700); err != nil {
+	// Ensure the parent directory <base>/firecracker/<id> exists.
+	if err := os.MkdirAll(filepath.Dir(chrootRoot), 0755); err != nil {
+		_ = f.Storage.Teardown(ctx, workerID)
+		return nil, fmt.Errorf("create jail base dir: %w", err)
+	}
+
+	// Create the chroot root with 0700.
+	if err := os.Mkdir(chrootRoot, 0700); err != nil && !os.IsExist(err) {
+		_ = f.Storage.Teardown(ctx, workerID)
+		return nil, fmt.Errorf("create chroot root: %w", err)
+	}
+
+	// Chown the root to the jailer user/group so it can traverse into it.
+	if err := os.Chown(chrootRoot, f.JailerUID, f.JailerGID); err != nil {
+		_ = os.RemoveAll(chrootRoot)
+		_ = f.Storage.Teardown(ctx, workerID)
+		return nil, fmt.Errorf("chown chroot root: %w", err)
+	}
+
+	// Create run/dev dirs with 0700; they will be inside the already-protected root.
+	if err := os.Mkdir(chrootRunDir, 0700); err != nil && !os.IsExist(err) {
+		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
 		return nil, fmt.Errorf("create chroot run dir: %w", err)
 	}
-	if err := os.MkdirAll(chrootDevDir, 0755); err != nil {
+	if err := os.Mkdir(chrootDevDir, 0700); err != nil && !os.IsExist(err) {
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
 		return nil, fmt.Errorf("create chroot dev dir: %w", err)
@@ -221,7 +242,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	// thin-volume returned by Snapshot. Firecracker will open /dev/vda inside
 	// the jail; this node has the same major/minor as the host /dev/dm-X device.
 	rootfsInChroot := filepath.Join(chrootDevDir, "vda")
-	if err := bindDeviceIntoChroot(rootfsPath, rootfsInChroot); err != nil {
+	if err := bindDeviceIntoChroot(rootfsPath, rootfsInChroot, f.JailerUID, f.JailerGID); err != nil {
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
 		return nil, fmt.Errorf("bind rootfs device into chroot: %w", err)
@@ -251,7 +272,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	}
 	tapName := "tap-" + workerID[len(workerID)-tapNameLen:]
 	_ = network.DeleteTap(tapName)
-	if err := network.CreatePointToPointTap(tapName, hostIP, guestIP); err != nil {
+	if err := network.CreatePointToPointTap(tapName, hostIP, guestIP, f.JailerUID, f.JailerGID); err != nil {
 		f.IPAM.Release(guestIP)
 		_ = os.RemoveAll(chrootRoot)
 		_ = f.Storage.Teardown(ctx, workerID)
@@ -430,7 +451,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 // underlying block layer.
 //
 // Requires CAP_MKNOD (satisfied by the daemon running as root).
-func bindDeviceIntoChroot(srcPath, dstPath string) error {
+func bindDeviceIntoChroot(srcPath, dstPath string, uid, gid int) error {
 	var stat syscall.Stat_t
 	if err := syscall.Stat(srcPath, &stat); err != nil {
 		return fmt.Errorf("stat source device %s: %w", srcPath, err)
@@ -440,6 +461,10 @@ func bindDeviceIntoChroot(srcPath, dstPath string) error {
 	// via the jailer's cgroup device allowlist.
 	if err := syscall.Mknod(dstPath, syscall.S_IFBLK|0600, int(stat.Rdev)); err != nil {
 		return fmt.Errorf("mknod block device at %s: %w", dstPath, err)
+	}
+
+	if err := os.Chown(dstPath, uid, gid); err != nil {
+		return fmt.Errorf("chown block device at %s: %w", dstPath, err)
 	}
 	return nil
 }

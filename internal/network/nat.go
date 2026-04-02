@@ -112,12 +112,14 @@ func CreateTap(name, ipAddr string) error {
 // CreatePointToPointTap creates a new TAP interface and establishes a Point-to-Point peer route.
 // Uses netlink syscalls directly to avoid fork/exec overhead and kernel RTNL lock contention
 // from concurrent `ip` command invocations.
-func CreatePointToPointTap(name, hostIP, guestIP string) error {
+func CreatePointToPointTap(name, hostIP, guestIP string, uid, gid int) error {
 	slog.Info("creating p2p tap interface", "name", name, "host", hostIP, "guest", guestIP)
 
 	tap := &netlink.Tuntap{
 		LinkAttrs: netlink.LinkAttrs{Name: name},
 		Mode:      netlink.TUNTAP_MODE_TAP,
+		Owner:     uint32(uid),
+		Group:     uint32(gid),
 	}
 	if err := netlink.LinkAdd(tap); err != nil {
 		return fmt.Errorf("netlink: add tap %s: %w", name, err)
