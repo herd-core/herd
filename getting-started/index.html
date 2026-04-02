@@ -756,6 +756,7 @@
 <p><strong>What this does</strong>:
 - Sets up the <code>devmapper</code> thin-pool for high-speed rootfs snapshotting.
 - Configures host-wide NAT routing for microVM internet access.
+- Provisions the unprivileged <code>firecracker</code> user and group (UID/GID 900) required for secure jailer isolation.
 - Downloads a optimized Linux kernel (<code>vmlinux</code>) if one isn't provided.
 - Generates a configuration file at <code>~/.herd/herd.yaml</code>.</p>
 <hr />
