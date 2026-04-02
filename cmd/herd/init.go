@@ -36,7 +36,7 @@ var (
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize herd with interactive setup",
+	Short: "Initialize herd (interactive or non-interactive with --yes)",
 	Long:  `Guides you through the process of setting up herd, including kernel selection, resource limits, and environment bootstrapping.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runInit()
