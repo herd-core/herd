@@ -46,6 +46,13 @@ Before you can spawn microVMs, Herd needs to prepare your host system's storage 
 sudo herd init
 ```
 
+Alternatively, you can run in **non-interactive mode** (useful for scripts and CI/CD):
+
+```bash
+sudo herd init --yes
+```
+
+
 **What this does**:
 - Sets up the `devmapper` thin-pool for high-speed rootfs snapshotting.
 - Provisions the chroot base directory (`/srv/jailer`) owned by `root`.
