@@ -55,6 +55,18 @@ type Worker[C any] interface {
 	io.Closer
 }
 
+// Snapshotter is an optional interface that Workers can implement to support
+// checkpoint/restore (snapshotting).
+type Snapshotter interface {
+	// Snapshot creates a sleep/hibernation-style snapshot (memory + device state).
+	// It returns the host paths to the memory file and the guest state file.
+	// For Firecracker, this requires the VM to be running with the API enabled.
+	Snapshot(ctx context.Context) (memPath, statePath string, err error)
+
+	// Restore resumes a VM from a previously created snapshot.
+	Restore(ctx context.Context, memPath, statePath string) error
+}
+
 // TenantConfig describes the on-demand container workload and its per-session limits.
 type TenantConfig struct {
 	Image              string

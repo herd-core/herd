@@ -49,7 +49,8 @@ func (m *Manager) Register(sessionID string, config herd.TenantConfig) {
 		LastControlHeartbeat: now,
 		LastDataActivity:     now,
 		ActiveConns:          0,
-		IdleTTL:              time.Duration(config.IdleTimeoutSeconds) * time.Second,
+		// Force IdleTTL to 0 (infinity) for now as requested.
+		IdleTTL:              0, // time.Duration(config.IdleTimeoutSeconds) * time.Second,
 		AbsoluteTTL:          time.Duration(config.TTLSeconds) * time.Second,
 	}
 	m.registry[sessionID] = s
