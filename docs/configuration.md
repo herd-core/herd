@@ -11,6 +11,8 @@ Controls the binding addresses for the Control and Data planes.
 | :--- | :--- | :--- |
 | `control_bind` | REST API address for management. | `127.0.0.1:8081` |
 | `data_bind` | HTTP Proxy address for traffic. | `127.0.0.1:8080` |
+| `ephemeral_port_start` | Start of the random port range. | `10000` |
+| `ephemeral_port_end` | End of the random port range. | `39999` |
 
 ---
 

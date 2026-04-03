@@ -55,6 +55,14 @@ type Worker[C any] interface {
 	io.Closer
 }
 
+// PortMapping describes a host-to-guest port forward.
+type PortMapping struct {
+	HostInterface string `json:"host_interface"` // e.g. "eth0", "192.168.0.1", or "0.0.0.0"
+	HostPort      int    `json:"host_port"`      // 0 means assign a random available port
+	GuestPort     int    `json:"guest_port"`
+	Protocol      string `json:"protocol"` // "tcp" or "udp"
+}
+
 // TenantConfig describes the on-demand container workload and its per-session limits.
 type TenantConfig struct {
 	Image              string
@@ -63,6 +71,7 @@ type TenantConfig struct {
 	IdleTimeoutSeconds int
 	TTLSeconds         int
 	HealthInterval     string
+	PortMappings       []PortMapping
 }
 
 // ---------------------------------------------------------------------------

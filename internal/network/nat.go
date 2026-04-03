@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"os/exec"
+	"strconv"
 
 	"github.com/vishvananda/netlink"
 )
@@ -28,10 +29,22 @@ func Bootstrap() error {
 		return err
 	}
 
+	// Allow loopback traffic (127.0.0.1) to be routed through iptables NAT,
+	// enabling the host to access published ports via localhost.
+	if err := runCmd("sysctl", "-w", "net.ipv4.conf.all.route_localnet=1"); err != nil {
+		return err
+	}
+
 	if err := runCmd("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", iface, "-s", Subnet, "-j", "MASQUERADE"); err != nil {
 		return err
 	}
 	if err := runCmd("iptables", "-A", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"); err != nil {
+		return err
+	}
+
+	// Hairpin NAT Masquerade: Ensure host-to-VM traffic (e.g. from 127.0.0.1) 
+	// is masqueraded so the VM sees the host's bridge IP as source.
+	if err := runCmd("iptables", "-t", "nat", "-A", "POSTROUTING", "-d", Subnet, "-m", "addrtype", "--src-type", "LOCAL", "-j", "MASQUERADE"); err != nil {
 		return err
 	}
 
@@ -61,6 +74,7 @@ func Teardown() error {
 
 	// We intentionally suppress errors on teardown so that the failure to delete one rule doesn't halt the rest.
 	_ = runCmd("iptables", "-t", "nat", "-D", "POSTROUTING", "-o", iface, "-s", Subnet, "-j", "MASQUERADE")
+	_ = runCmd("iptables", "-t", "nat", "-D", "POSTROUTING", "-d", Subnet, "-m", "addrtype", "--src-type", "LOCAL", "-j", "MASQUERADE")
 	_ = runCmd("iptables", "-D", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT")
 
 	// Remove RFC 1918 drop rules
@@ -153,6 +167,93 @@ func CreatePointToPointTap(name, hostIP, guestIP string, uid, gid int) error {
 
 	return nil
 }
+
+// AddPortMapping adds DNAT and FORWARD rules for a port mapping.
+func AddPortMapping(hostInterface string, hostPort int, guestIP string, guestPort int, protocol string) error {
+	if protocol == "" {
+		protocol = "tcp"
+	}
+
+	// DNAT Rule
+	dnatArgs := []string{"-t", "nat", "-A", "PREROUTING", "-p", protocol}
+	if hostInterface != "" && hostInterface != "0.0.0.0" {
+		if net.ParseIP(hostInterface) != nil {
+			dnatArgs = append(dnatArgs, "-d", hostInterface)
+		} else {
+			dnatArgs = append(dnatArgs, "-i", hostInterface)
+		}
+	} else {
+		// Specificity: only match packets destined for the host itself (Public IP, 127.0.0.1, etc.)
+		dnatArgs = append(dnatArgs, "-m", "addrtype", "--dst-type", "LOCAL")
+	}
+	dnatArgs = append(dnatArgs, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort))
+
+	if err := runCmd("iptables", dnatArgs...); err != nil {
+		return fmt.Errorf("iptables dnat add: %w", err)
+	}
+
+	// DNAT Rule (Local Host Traffic)
+	// We add this to the OUTPUT chain to allow the host to access its own published ports.
+	if hostInterface == "" || hostInterface == "0.0.0.0" || hostInterface == "127.0.0.1" {
+		outputArgs := []string{"-t", "nat", "-A", "OUTPUT", "-p", protocol, "-m", "addrtype", "--dst-type", "LOCAL", "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
+		_ = runCmd("iptables", outputArgs...)
+	}
+
+	// FORWARD Rule
+	// Scoped: only allow traffic NOT originating from our own MicroVM subnet,
+	// so intra-subnet traffic is still subject to the RFC 1918 isolation DROP rules.
+	fwdArgs := []string{"-A", "FORWARD", "-p", protocol, "!", "-s", Subnet, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
+	if err := runCmd("iptables", fwdArgs...); err != nil {
+		// Rollback DNAT rules
+		// dnatArgs[2] is "-A" — mutate it to "-D" to delete the rule
+		rollbackArgs := make([]string, len(dnatArgs))
+		copy(rollbackArgs, dnatArgs)
+		rollbackArgs[2] = "-D"
+		_ = runCmd("iptables", rollbackArgs...)
+
+		outputRollbackArgs := []string{"-t", "nat", "-D", "OUTPUT", "-p", protocol, "-m", "addrtype", "--dst-type", "LOCAL", "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
+		_ = runCmd("iptables", outputRollbackArgs...)
+
+		return fmt.Errorf("iptables forward add: %w", err)
+	}
+
+	slog.Info("port mapping added", "host", hostInterface, "hPort", hostPort, "gIP", guestIP, "gPort", guestPort)
+	return nil
+}
+
+// RemovePortMapping removes the DNAT and FORWARD rules for a port mapping.
+func RemovePortMapping(hostInterface string, hostPort int, guestIP string, guestPort int, protocol string) error {
+	if protocol == "" {
+		protocol = "tcp"
+	}
+
+	dnatArgs := []string{"-t", "nat", "-D", "PREROUTING", "-p", protocol}
+	if hostInterface != "" && hostInterface != "0.0.0.0" {
+		if net.ParseIP(hostInterface) != nil {
+			dnatArgs = append(dnatArgs, "-d", hostInterface)
+		} else {
+			dnatArgs = append(dnatArgs, "-i", hostInterface)
+		}
+	} else {
+		dnatArgs = append(dnatArgs, "-m", "addrtype", "--dst-type", "LOCAL")
+	}
+	dnatArgs = append(dnatArgs, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort))
+	_ = runCmd("iptables", dnatArgs...)
+
+	// Remove OUTPUT chain rule if applicable
+	if hostInterface == "" || hostInterface == "0.0.0.0" || hostInterface == "127.0.0.1" {
+		outputArgs := []string{"-t", "nat", "-D", "OUTPUT", "-p", protocol, "-m", "addrtype", "--dst-type", "LOCAL", "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
+		_ = runCmd("iptables", outputArgs...)
+	}
+
+	// Must exactly match the rule installed in AddPortMapping (including the negated source).
+	fwdArgs := []string{"-D", "FORWARD", "-p", protocol, "!", "-s", Subnet, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
+	_ = runCmd("iptables", fwdArgs...)
+
+	slog.Info("port mapping removed", "host", hostInterface, "hPort", hostPort, "gIP", guestIP, "gPort", guestPort)
+	return nil
+}
+
 
 // DeleteTap removes a TAP interface.
 func DeleteTap(name string) error {

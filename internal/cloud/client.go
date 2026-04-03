@@ -114,7 +114,12 @@ func (c *Client) commandLoop(ctx context.Context) {
 		}
 
 		log.Printf("Received Cloud Command: %s (ID: %s)", cmd.Action, cmd.CommandId)
-		// TODO: Dispatch to internal worker/pool
+		
+		// TODO (Implementation Detail):
+		// When cmd.Action == "boot_vm", parse 'params' for 'image' and 'publish' port mappings.
+		// Example: publish=eth0:8080:80:tcp,eth1:30042:80:tcp
+		// Map these to herd.TenantConfig and call c.pool.Acquire(ctx, sessionID, config).
+		// This requires passing the herd.Pool into NewClient() in cmd/herd/start.go.
 	}
 }
 

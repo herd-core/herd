@@ -37,6 +37,7 @@ type FirecrackerFactory struct {
 
 	Storage *storage.Manager
 	IPAM    *network.IPAM
+	PortManager *network.PortManager
 
 	// UIDPool is the per-VM UID/GID allocator. Each Spawn leases a unique UID
 	// from the pool; Close returns it. This guarantees every concurrent microVM
@@ -70,8 +71,10 @@ type FirecrackerWorker struct {
 	done       chan struct{}       // closed when cmd.Wait() returns
 	ctx        context.Context    // lifecycle context for the worker
 	cancel     context.CancelFunc // cancelled on Close()
-	leasedUID  int                // UID leased from UIDPool for this VM
-	uidPool    *uid.Pool          // pool to return the UID to on Close()
+	leasedUID    int                // UID leased from UIDPool for this VM
+	uidPool      *uid.Pool          // pool to return the UID to on Close()
+	portMappings []PortMapping      // active port forwards on the host
+	portManager  *network.PortManager // manager to release ports to on Close()
 }
 
 // ID returns the worker ID.
@@ -92,6 +95,11 @@ func (f *FirecrackerWorker) Address() string {
 // VsockUDSPath is the host-visible Unix socket Firecracker exposes for vsock.
 func (f *FirecrackerWorker) VsockUDSPath() string {
 	return f.socketPath
+}
+
+// PortMappings returns the active port forwards for this worker.
+func (f *FirecrackerWorker) PortMappings() []PortMapping {
+	return f.portMappings
 }
 
 // Client returns the HTTP client.
@@ -156,6 +164,13 @@ func (f *FirecrackerWorker) Close() error {
 	if f.uidPool != nil && f.leasedUID != 0 {
 		if err := f.uidPool.Return(f.leasedUID); err != nil {
 			slog.Error("failed to return uid to pool", "vmID", f.id, "uid", f.leasedUID, "error", err)
+		}
+	}
+
+	for _, pm := range f.portMappings {
+		_ = network.RemovePortMapping(pm.HostInterface, pm.HostPort, f.guestIP, pm.GuestPort, pm.Protocol)
+		if f.portManager != nil {
+			f.portManager.Release(pm.HostPort)
 		}
 	}
 
@@ -490,21 +505,67 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 
 	log.Printf("[spawn:%s] TOTAL            %v", workerID, time.Since(spawnStart))
 
+	// Apply Port Mappings
+	activeMappings := make([]PortMapping, 0, len(config.PortMappings))
+	for _, pm := range config.PortMappings {
+		hostPort := pm.HostPort
+		if f.PortManager != nil {
+			var err error
+			hostPort, err = f.PortManager.Allocate(pm.HostPort, pm.Protocol, pm.HostInterface, workerID)
+			if err != nil {
+				// Any port allocation failure is now a hard error. 
+				// Caller didn't get the network profile they requested; fail the Spawn entirely.
+				network.DeleteTap(tapName)
+				f.IPAM.Release(guestIP)
+				_ = cmd.Process.Kill()
+				_ = os.RemoveAll(chrootRoot)
+				_ = f.Storage.Teardown(ctx, workerID)
+				f.UIDPool.Return(leasedUID) //nolint:errcheck
+				return nil, fmt.Errorf("port allocation failed for mapping %d->%d: %w", pm.HostPort, pm.GuestPort, err)
+			}
+		}
+
+		if err := network.AddPortMapping(pm.HostInterface, hostPort, guestIP, pm.GuestPort, pm.Protocol); err != nil {
+			if f.PortManager != nil {
+				f.PortManager.Release(hostPort)
+			}
+			// Clean up any mappings/rules we've already applied for this VM.
+			for _, applied := range activeMappings {
+				_ = network.RemovePortMapping(applied.HostInterface, applied.HostPort, guestIP, applied.GuestPort, applied.Protocol)
+				if f.PortManager != nil {
+					f.PortManager.Release(applied.HostPort)
+				}
+			}
+			network.DeleteTap(tapName)
+			f.IPAM.Release(guestIP)
+			_ = cmd.Process.Kill()
+			_ = os.RemoveAll(chrootRoot)
+			_ = f.Storage.Teardown(ctx, workerID)
+			f.UIDPool.Return(leasedUID) //nolint:errcheck
+			return nil, fmt.Errorf("iptables setup failed for mapping %d->%d: %w", pm.HostPort, pm.GuestPort, err)
+		}
+
+		pm.HostPort = hostPort
+		activeMappings = append(activeMappings, pm)
+	}
+
 	return &FirecrackerWorker{
-		id:         workerID,
-		socketPath: socketPath,
-		tapName:    tapName,
-		guestIP:    guestIP,
-		cmd:        cmd,
-		client:     agentClient,
-		storage:    f.Storage,
-		ipam:       f.IPAM,
-		chrootDir:  chrootRoot,
-		done:       done,
-		ctx:        workerCtx,
-		cancel:     workerCancel,
-		leasedUID:  leasedUID,
-		uidPool:    f.UIDPool,
+		id:            workerID,
+		socketPath:    socketPath,
+		tapName:       tapName,
+		guestIP:       guestIP,
+		cmd:           cmd,
+		client:        agentClient,
+		storage:       f.Storage,
+		ipam:          f.IPAM,
+		chrootDir:     chrootRoot,
+		done:          done,
+		ctx:           workerCtx,
+		cancel:        workerCancel,
+		leasedUID:     leasedUID,
+		uidPool:       f.UIDPool,
+		portMappings:  activeMappings,
+		portManager:   f.PortManager,
 	}, nil
 }
 

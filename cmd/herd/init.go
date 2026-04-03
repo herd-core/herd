@@ -244,6 +244,8 @@ func runInit() {
 		Network: config.NetworkConfig{
 			ControlBind: "127.0.0.1:8081",
 			DataBind:    "127.0.0.1:8080",
+			EphemeralPortStart: 10000,
+			EphemeralPortEnd: 39999,
 		},
 		Storage: config.StorageConfig{
 			StateDir:        stateDir,

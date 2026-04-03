@@ -74,8 +74,10 @@ type StorageConfig struct {
 }
 
 type NetworkConfig struct {
-	ControlBind string `yaml:"control_bind"`
-	DataBind    string `yaml:"data_bind"`
+	ControlBind        string `yaml:"control_bind"`
+	DataBind           string `yaml:"data_bind"`
+	EphemeralPortStart int    `yaml:"ephemeral_port_start"`
+	EphemeralPortEnd   int    `yaml:"ephemeral_port_end"`
 }
 
 type ResourceConfig struct {
@@ -121,6 +123,12 @@ func (c *Config) applyDefaults() {
 	if c.Telemetry.MetricsPath == "" {
 		c.Telemetry.MetricsPath = "/metrics"
 	}
+	if c.Network.EphemeralPortStart == 0 {
+		c.Network.EphemeralPortStart = 10000
+	}
+	if c.Network.EphemeralPortEnd == 0 {
+		c.Network.EphemeralPortEnd = 39999
+	}
 }
 
 func (c *Config) Validate() error {
@@ -135,6 +143,15 @@ func (c *Config) Validate() error {
 	}
 	if err := validateDataBind(c.Network.DataBind); err != nil {
 		return fmt.Errorf("network.data_bind invalid: %w", err)
+	}
+	if c.Network.EphemeralPortStart < 1 || c.Network.EphemeralPortStart > 65535 {
+		return fmt.Errorf("network.ephemeral_port_start must be between 1 and 65535")
+	}
+	if c.Network.EphemeralPortEnd < 1 || c.Network.EphemeralPortEnd > 65535 {
+		return fmt.Errorf("network.ephemeral_port_end must be between 1 and 65535")
+	}
+	if c.Network.EphemeralPortStart > c.Network.EphemeralPortEnd {
+		return fmt.Errorf("network.ephemeral_port_start must be <= network.ephemeral_port_end")
 	}
 	if c.Resources.MaxGlobalVMs < 1 {
 		return fmt.Errorf("resources.max_global_vms must be >= 1")
