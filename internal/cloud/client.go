@@ -20,12 +20,12 @@ import (
 
 // Client handles the bidirectional gRPC stream to the Elixir Control Plane.
 type Client struct {
-	cfg      config.CloudConfig
-	nodeID   string
+	cfg   		config.CloudConfig
+	nodeID   	string
 	interfaceIP string
-	client   herdv1.HerdControlPlaneClient
-	conn     *grpc.ClientConn
-	stream   herdv1.HerdControlPlane_ConnectClient
+	client   	herdv1.HerdControlPlaneClient
+	conn     	*grpc.ClientConn
+	stream   	herdv1.HerdControlPlane_ConnectClient
 }
 
 func NewClient(cfg config.CloudConfig, interfaceIP string) *Client {
@@ -100,7 +100,7 @@ func (c *Client) sendTelemetry() error {
 		ActiveVmCount:     0,
 		CpuUsagePercent:   5.0,
 		UptimeSeconds:     time.Now().Unix(),
-		InterfaceIp:          c.interfaceIP,
+		InterfaceIp:       c.interfaceIP,
 	})
 }
 
