@@ -183,27 +183,40 @@ func (f *FirecrackerFactory) WarmImage(ctx context.Context, imageRef string) err
 }
 
 // Spawn starts a new Firecracker VM under the jailer with a unique leased UID.
-func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config TenantConfig) (Worker[*http.Client], error) {
+func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config TenantConfig) (worker Worker[*http.Client], err error) {
 	spawnStart := time.Now()
 	workerID := sessionID
 
-	// Lease a unique UID/GID for this VM. This is the first resource we
-	// acquire so that, if any subsequent step fails, the early-return error
-	// paths can call uidPool.Return() without complication.
+	// 1. Initialize the Undo Stack
+	var undoStack []func()
+
+	// 2. Register the Defer Executor (LIFO)
+	defer func() {
+		if err != nil {
+			// We failed somewhere. Execute the undo stack in Reverse Order (LIFO)
+			slog.Warn("Spawn failed, rolling back resources...", "vmID", workerID, "error", err)
+			for i := len(undoStack) - 1; i >= 0; i-- {
+				undoStack[i]()
+			}
+		}
+	}()
+
+	// Lease a unique UID/GID for this VM.
 	leasedUID, err := f.UIDPool.Checkout()
 	if err != nil {
 		return nil, fmt.Errorf("uid pool checkout: %w", err)
 	}
+	undoStack = append(undoStack, func() {
+		_ = f.UIDPool.Return(leasedUID)
+	})
 
 	t0 := time.Now()
 	if err := f.Storage.WarmImage(ctx, config.Image); err != nil {
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to warm image: %w", err)
 	}
 
 	imgConfig, err := f.Storage.ExtractImageConfig(ctx, config.Image)
 	if err != nil {
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to extract image config: %w", err)
 	}
 
@@ -219,30 +232,26 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		}
 	}
 	if len(finalCmd) == 0 {
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("no command to run: image %q has no Entrypoint or Cmd and none was provided in the request", config.Image)
 	}
 
-
 	rootfsPath, err := f.Storage.Snapshot(ctx, workerID, config.Image)
 	if err != nil {
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to create rootfs snapshot: %w", err)
 	}
+	undoStack = append(undoStack, func() {
+		_ = f.Storage.Teardown(ctx, workerID)
+	})
 	log.Printf("[spawn:%s] Snapshot         %v", workerID, time.Since(t0))
 
 	tInject := time.Now()
 	if err := f.Storage.InjectGuestAgent(ctx, workerID, f.GuestAgentPath, storage.DefaultGuestAgentPath); err != nil {
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("inject guest agent: %w", err)
 	}
 	log.Printf("[spawn:%s] inject guest     %v", workerID, time.Since(tInject))
 
 	// -------------------------------------------------------------------------
 	// Build the per-VM chroot.
-	// The jailer will later chroot into this directory; all paths inside the
-	// config JSON are relative to this root.
 	// -------------------------------------------------------------------------
 	chrootRoot := f.chrootRoot(workerID)
 	chrootRunDir := filepath.Join(chrootRoot, "run")
@@ -250,77 +259,47 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 
 	// Ensure the parent directory <base>/firecracker/<id> exists.
 	if err := os.MkdirAll(filepath.Dir(chrootRoot), 0755); err != nil {
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create jail base dir: %w", err)
 	}
 
 	// Create the chroot root with 0700.
 	if err := os.Mkdir(chrootRoot, 0700); err != nil && !os.IsExist(err) {
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create chroot root: %w", err)
 	}
-
-	// Chown the chroot root to the leased UID/GID so Firecracker (running as
-	// leasedUID after setuid) can traverse into it. No other UID can enter.
-	if err := os.Chown(chrootRoot, leasedUID, leasedUID); err != nil {
+	undoStack = append(undoStack, func() {
 		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
+	})
+
+	// Chown the chroot root to the leased UID/GID.
+	if err := os.Chown(chrootRoot, leasedUID, leasedUID); err != nil {
 		return nil, fmt.Errorf("chown chroot root: %w", err)
 	}
 
-	// Create run/dev dirs with 0700; they will be inside the already-protected root.
+	// Create run/dev dirs with 0700.
 	if err := os.Mkdir(chrootRunDir, 0700); err != nil && !os.IsExist(err) {
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create chroot run dir: %w", err)
 	}
 	if err := os.Chown(chrootRunDir, leasedUID, leasedUID); err != nil {
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("chown chroot run dir: %w", err)
 	}
 	if err := os.Mkdir(chrootDevDir, 0700); err != nil && !os.IsExist(err) {
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("create chroot dev dir: %w", err)
 	}
 	if err := os.Chown(chrootDevDir, leasedUID, leasedUID); err != nil {
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("chown chroot dev dir: %w", err)
 	}
 
-	// Hard-link the shared kernel image into the chroot so Firecracker can
-	// open it without any host path access. Hard-linking is instant (same inode)
-	// and avoids copying the ~22 MB file on every spawn.
+	// Hard-link the shared kernel image into the chroot.
 	kernelInChroot := filepath.Join(chrootRunDir, "vmlinux")
 	if err := os.Link(f.KernelImagePath, kernelInChroot); err != nil {
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("hard-link kernel into chroot: %w", err)
 	}
 
-	// Create a block device node inside the chroot that mirrors the devmapper
-	// thin-volume returned by Snapshot. Firecracker will open /dev/vda inside
-	// the jail; this node has the same major/minor as the host /dev/dm-X device.
+	// Create a block device node inside the chroot.
 	rootfsInChroot := filepath.Join(chrootDevDir, "vda")
 	if err := bindDeviceIntoChroot(rootfsPath, rootfsInChroot, leasedUID, leasedUID); err != nil {
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("bind rootfs device into chroot: %w", err)
 	}
-
-	// The vsock UDS socket lands inside the chroot; this is its host-visible path.
-	socketPath := filepath.Join(chrootRunDir, fmt.Sprintf("%s.sock", workerID))
 
 	// -------------------------------------------------------------------------
 	// IPAM + TAP
@@ -328,11 +307,11 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	t1 := time.Now()
 	guestIP, err := f.IPAM.Acquire()
 	if err != nil {
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to acquire IP: %w", err)
 	}
+	undoStack = append(undoStack, func() {
+		f.IPAM.Release(guestIP)
+	})
 	log.Printf("[spawn:%s] IPAM.Acquire     %v", workerID, time.Since(t1))
 
 	hostIP := "10.200.0.1"
@@ -344,20 +323,18 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	}
 	tapName := "tap-" + workerID[len(workerID)-tapNameLen:]
 	_ = network.DeleteTap(tapName)
-		if err := network.CreatePointToPointTap(tapName, hostIP, guestIP, leasedUID, leasedUID); err != nil {
-		f.IPAM.Release(guestIP)
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
+	if err := network.CreatePointToPointTap(tapName, hostIP, guestIP, leasedUID, leasedUID); err != nil {
 		return nil, fmt.Errorf("failed to create tap device: %w", err)
 	}
+	undoStack = append(undoStack, func() {
+		_ = network.DeleteTap(tapName)
+	})
 	log.Printf("[spawn:%s] TAP setup        %v", workerID, time.Since(t2))
 
 	macByte := fmt.Sprintf("%02x", time.Now().UnixNano()%256)
 
 	// -------------------------------------------------------------------------
 	// Write Firecracker config JSON into the chroot.
-	// All paths here are absolute paths as seen from INSIDE the chroot jail.
 	// -------------------------------------------------------------------------
 	configPath := filepath.Join(chrootRunDir, fmt.Sprintf("%s.json", workerID))
 	initPath := storage.DefaultGuestAgentPath
@@ -393,23 +370,11 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	}`, initPath, guestIP, hostIP, macByte, tapName, workerID)
 
 	if err := os.WriteFile(configPath, []byte(configData), 0644); err != nil {
-		network.DeleteTap(tapName)
-		f.IPAM.Release(guestIP)
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to write config: %w", err)
 	}
 
 	// -------------------------------------------------------------------------
 	// Launch via jailer.
-	// The jailer:
-	//   1. Creates cgroups for the VM.
-	//   2. Chroots into chrootRoot (which it computes the same way we do).
-	//   3. Drops to JailerUID/JailerGID.
-	//   4. Exec's firecracker with the remaining args.
-	// The config-file path is relative to the chroot root, so we pass the
-	// in-chroot absolute path: /run/<vmID>.json
 	// -------------------------------------------------------------------------
 	cmd := exec.Command(
 		f.JailerPath,
@@ -427,13 +392,11 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 
 	t3 := time.Now()
 	if err := cmd.Start(); err != nil {
-		_ = network.DeleteTap(tapName)
-		f.IPAM.Release(guestIP)
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to start jailer: %w", err)
 	}
+	undoStack = append(undoStack, func() {
+		_ = cmd.Process.Kill()
+	})
 	log.Printf("[spawn:%s] cmd.Start        %v", workerID, time.Since(t3))
 
 	done := make(chan struct{})
@@ -447,6 +410,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	deadline := time.Now().Add(30 * time.Second)
 	var execConn net.Conn
 	var lastErr error
+	socketPath := filepath.Join(chrootRunDir, fmt.Sprintf("%s.sock", workerID))
 	for time.Now().Before(deadline) {
 		conn, err := vsock.DialFirecracker(ctx, socketPath, 5000)
 		if err == nil {
@@ -459,17 +423,14 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	log.Printf("[spawn:%s] vsock connect    %v", workerID, time.Since(t4))
 
 	if execConn == nil {
-		_ = cmd.Process.Kill()
-		<-done
-		_ = network.DeleteTap(tapName)
-		f.IPAM.Release(guestIP)
-		_ = os.RemoveAll(chrootRoot)
-		_ = f.Storage.Teardown(ctx, workerID)
-		f.UIDPool.Return(leasedUID) //nolint:errcheck
 		return nil, fmt.Errorf("failed to connect to guest agent vsock port 5000 within timeout: %v", lastErr)
 	}
 
 	workerCtx, workerCancel := context.WithCancel(context.Background())
+	undoStack = append(undoStack, func() {
+		workerCancel()
+	})
+
 	logPath := filepath.Join(chrootRoot, fmt.Sprintf("%s.log", workerID))
 	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
@@ -513,37 +474,23 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 			var err error
 			hostPort, err = f.PortManager.Allocate(pm.HostPort, pm.Protocol, pm.HostInterface, workerID)
 			if err != nil {
-				// Any port allocation failure is now a hard error. 
-				// Caller didn't get the network profile they requested; fail the Spawn entirely.
-				network.DeleteTap(tapName)
-				f.IPAM.Release(guestIP)
-				_ = cmd.Process.Kill()
-				_ = os.RemoveAll(chrootRoot)
-				_ = f.Storage.Teardown(ctx, workerID)
-				f.UIDPool.Return(leasedUID) //nolint:errcheck
 				return nil, fmt.Errorf("port allocation failed for mapping %d->%d: %w", pm.HostPort, pm.GuestPort, err)
 			}
+			// Add Port Release to stack
+			capturedPort := hostPort
+			undoStack = append(undoStack, func() {
+				f.PortManager.Release(capturedPort)
+			})
 		}
 
 		if err := network.AddPortMapping(pm.HostInterface, hostPort, guestIP, pm.GuestPort, pm.Protocol); err != nil {
-			if f.PortManager != nil {
-				f.PortManager.Release(hostPort)
-			}
-			// Clean up any mappings/rules we've already applied for this VM.
-			for _, applied := range activeMappings {
-				_ = network.RemovePortMapping(applied.HostInterface, applied.HostPort, guestIP, applied.GuestPort, applied.Protocol)
-				if f.PortManager != nil {
-					f.PortManager.Release(applied.HostPort)
-				}
-			}
-			network.DeleteTap(tapName)
-			f.IPAM.Release(guestIP)
-			_ = cmd.Process.Kill()
-			_ = os.RemoveAll(chrootRoot)
-			_ = f.Storage.Teardown(ctx, workerID)
-			f.UIDPool.Return(leasedUID) //nolint:errcheck
 			return nil, fmt.Errorf("iptables setup failed for mapping %d->%d: %w", pm.HostPort, pm.GuestPort, err)
 		}
+		// Capture loop variables cleanly for the closure
+		capturedInterface, capturedHost, capturedGuest, capturedProto := pm.HostInterface, hostPort, pm.GuestPort, pm.Protocol
+		undoStack = append(undoStack, func() {
+			_ = network.RemovePortMapping(capturedInterface, capturedHost, guestIP, capturedGuest, capturedProto)
+		})
 
 		pm.HostPort = hostPort
 		activeMappings = append(activeMappings, pm)
