@@ -10,7 +10,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/herd-core/herd"
 	"github.com/herd-core/herd/internal/config"
+	"github.com/herd-core/herd/internal/daemon"
 	herdv1 "github.com/herd-core/herd/internal/proto/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -20,24 +22,26 @@ import (
 
 // Client handles the bidirectional gRPC stream to the Elixir Control Plane.
 type Client struct {
-	cfg   		config.CloudConfig
-	nodeID   	string
+	cfg         config.CloudConfig
+	nodeID      string
 	interfaceIP string
-	client   	herdv1.HerdControlPlaneClient
-	conn     	*grpc.ClientConn
-	stream   	herdv1.HerdControlPlane_ConnectClient
+	controller  *daemon.Controller
+	client      herdv1.HerdControlPlaneClient
+	conn        *grpc.ClientConn
+	stream      herdv1.HerdControlPlane_ConnectClient
 }
 
-func NewClient(cfg config.CloudConfig, interfaceIP string) *Client {
+func NewClient(cfg config.CloudConfig, interfaceIP string, controller *daemon.Controller) *Client {
 	nodeID := cfg.NodeID
 	if nodeID == "" {
 		host, _ := os.Hostname()
 		nodeID = host
 	}
 	return &Client{
-		cfg:      cfg,
-		nodeID:   nodeID,
+		cfg:         cfg,
+		nodeID:      nodeID,
 		interfaceIP: interfaceIP,
+		controller:  controller,
 	}
 }
 
@@ -60,7 +64,7 @@ func (c *Client) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to open stream: %w", err)
 	}
 	c.stream = stream
-	c.sendTelemetry() // Send initial telemetry immediately
+	c.sendTelemetry(ctx) // Send initial telemetry immediately
 	log.Printf("Cloud Control Plane connected! NodeID: %s", c.nodeID)
 
 	// Start telemetry heartbeat
@@ -77,14 +81,14 @@ func (c *Client) telemetryLoop(ctx context.Context) {
 	defer ticker.Stop()
 
 	// Send initial heartbeat immediately
-	c.sendTelemetry()
+	c.sendTelemetry(ctx)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := c.sendTelemetry(); err != nil {
+			if err := c.sendTelemetry(ctx); err != nil {
 				log.Printf("failed to send telemetry: %v", err)
 				return
 			}
@@ -92,15 +96,31 @@ func (c *Client) telemetryLoop(ctx context.Context) {
 	}
 }
 
-func (c *Client) sendTelemetry() error {
-	// Simple dummy telemetry for now
+func (c *Client) sendTelemetry(ctx context.Context) error {
+	stats := c.controller.Pool().Stats()
+
+	activeSessionsRaw := c.controller.ListSessions(ctx)
+	activeSessions := make([]*herdv1.SessionInfo, 0, len(activeSessionsRaw))
+
+	// For each session, find the first host port mapping.
+	// In a more complex setup, we might report all ports or a specific service port.
+	for _, s := range activeSessionsRaw {
+		activeSessions = append(activeSessions, &herdv1.SessionInfo{
+			SessionId: s.SessionID,
+			// For now, telemetry from control plane dashboard doesn't need the port mapping
+			// as it's primarily used for routing in NodeTwin. But we could add it back
+			// if we query the worker for host port.
+		})
+	}
+
 	return c.stream.Send(&herdv1.NodeStream{
 		NodeId:            c.nodeID,
-		AvailableMemoryMb: 8192, // Mock data
-		ActiveVmCount:     0,
-		CpuUsagePercent:   5.0,
-		UptimeSeconds:     time.Now().Unix(),
+		AvailableMemoryMb: stats.Node.AvailableMemoryBytes / 1024 / 1024,
+		ActiveVmCount:     int32(stats.ActiveSessions),
+		CpuUsagePercent:   (1.0 - stats.Node.CPUIdle) * 100.0,
+		UptimeSeconds:     time.Now().Unix(), // Ideally node uptime, but this works for now
 		InterfaceIp:       c.interfaceIP,
+		ActiveSessions:    activeSessions,
 	})
 }
 
@@ -117,12 +137,33 @@ func (c *Client) commandLoop(ctx context.Context) {
 		}
 
 		log.Printf("Received Cloud Command: %s (ID: %s)", cmd.Action, cmd.CommandId)
-		
-		// TODO (Implementation Detail):
-		// When cmd.Action == "boot_vm", parse 'params' for 'image' and 'publish' port mappings.
-		// Example: publish=eth0:8080:80:tcp,eth1:30042:80:tcp
-		// Map these to herd.TenantConfig and call c.pool.Acquire(ctx, sessionID, config).
-		// This requires passing the herd.Pool into NewClient() in cmd/herd/start.go.
+
+		if cmd.Action == "boot_vm" {
+			log.Printf("Booting VM for command %s", cmd.CommandId)
+
+			go func() {
+				req := daemon.SessionCreateRequest{
+					Image: cmd.Params["image"],
+					PortMappings: []herd.PortMapping{
+						{HostPort: 0, GuestPort: 80, Protocol: "tcp"},
+					},
+				}
+				if req.Image == "" {
+					req.Image = "alpine:latest"
+				}
+
+				resp, err := c.controller.CreateSession(ctx, req)
+				if err != nil {
+					log.Printf("failed to boot VM for command %s: %v", cmd.CommandId, err)
+					return
+				}
+				log.Printf("VM booted for session %s", resp.SessionID)
+			}()
+		}
+
+		if cmd.Action == "destroy_all" {
+			log.Printf("Received destroy_all command")
+		}
 	}
 }
 

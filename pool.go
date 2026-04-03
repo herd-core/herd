@@ -208,6 +208,11 @@ func (p *Pool[C]) Acquire(ctx context.Context, sessionID string, config TenantCo
 	}
 }
 
+// ListSessions returns a snapshot of all currently active sessionID -> Worker mappings.
+func (p *Pool[C]) ListSessions(ctx context.Context) (map[string]Worker[C], error) {
+	return p.registry.List(ctx)
+}
+
 func (p *Pool[C]) GetSession(ctx context.Context, sessionID string) (*Session[C], error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()

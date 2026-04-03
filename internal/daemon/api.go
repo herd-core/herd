@@ -6,35 +6,19 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
-	"sync/atomic"
 	"time"
 
-	"github.com/herd-core/herd"
-	"github.com/herd-core/herd/internal/lifecycle"
 	"github.com/herd-core/herd/internal/vsock"
 )
 
 type ControlPlaneHandler struct {
-	pool             *herd.Pool[*http.Client]
-	lifecycleManager *lifecycle.Manager
-	logger           *EventLogger
-	proxyAddress     string
-	seq              atomic.Uint64
+	controller *Controller
 }
 
-func NewControlPlaneHandler(
-	pool *herd.Pool[*http.Client],
-	lifecycleManager *lifecycle.Manager,
-	proxyAddress string,
-	logger *EventLogger,
-) http.Handler {
+func NewControlPlaneHandler(controller *Controller) http.Handler {
 	h := &ControlPlaneHandler{
-		pool:             pool,
-		lifecycleManager: lifecycleManager,
-		proxyAddress:     proxyAddress,
-		logger:           logger,
+		controller: controller,
 	}
 
 	mux := http.NewServeMux()
@@ -63,19 +47,11 @@ func (h *ControlPlaneHandler) handleWarmImage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// This assumes the factory has a way to warm images.
-	// Since the storage manager is buried inside FirecrackerFactory, we need a way
-	// to expose it. For now, since storage manager warms images implicitly on Acquire
-	// we could just let the client rely on that, but if we want an explicit API:
-	if warmer, ok := h.pool.Factory().(interface{ WarmImage(context.Context, string) error }); ok {
-		if err := warmer.WarmImage(r.Context(), req.Image); err != nil {
-			http.Error(w, fmt.Sprintf("failed to warm image: %v", err), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
+	if err := h.controller.WarmImage(r.Context(), req.Image); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Error(w, "warming not supported by factory", http.StatusNotImplemented)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *ControlPlaneHandler) handleLogsSession(w http.ResponseWriter, r *http.Request) {
@@ -86,41 +62,16 @@ func (h *ControlPlaneHandler) handleLogsSession(w http.ResponseWriter, r *http.R
 	}
 	sessionID := parts[2]
 
-	sess, err := h.pool.GetSession(r.Context(), sessionID)
-	if err != nil || sess == nil {
-		http.Error(w, "session not found", http.StatusNotFound)
-		return
-	}
-
-	// Assuming log file is stored magically in /tmp/id.log because of firecracker factory
-	// Wait, the id from pool is not the firecracker worker id (f.id). The Firecracker worker id is randomly generated in Spawn.
-	// Oh! I should have captured log to /tmp/{sessionID}.log!
-	// Or we can just grab f.id!
-	var workerID string
-	if fw, ok := sess.Worker.(interface{ ID() string }); ok {
-		workerID = fw.ID()
-	} else {
-		http.Error(w, "worker does not support logs", http.StatusBadRequest)
-		return
-	}
-
-	logPath := fmt.Sprintf("/tmp/%s.log", workerID)
-	
-	w.Header().Set("Content-Type", "text/plain")
-	f, err := os.Open(logPath)
+	readCloser, err := h.controller.GetLogs(r.Context(), sessionID)
 	if err != nil {
-		http.Error(w, "logs not available: " + err.Error(), 404)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	defer func() {
-		if cerr := f.Close(); cerr != nil {
-			h.logger.Error("failed_to_close_log_file", map[string]any{"error": cerr, "session_id": sessionID})
-		}
-	}()
+	defer readCloser.Close()
 
-	// In a real app we'd tail this, but io.Copy is fine for now
-	if _, err := io.Copy(w, f); err != nil {
-		h.logger.Error("failed_to_copy_logs_to_response", map[string]any{"error": err, "worker_id": workerID})
+	w.Header().Set("Content-Type", "text/plain")
+	if _, err := io.Copy(w, readCloser); err != nil {
+		h.controller.logger.Error("failed_to_copy_logs_to_response", map[string]any{"error": err, "session_id": sessionID})
 	}
 }
 
@@ -131,95 +82,37 @@ func (h *ControlPlaneHandler) handleHeartbeat(w http.ResponseWriter, r *http.Req
 		return
 	}
 	sessionID := parts[2]
-	h.lifecycleManager.UpdateHeartbeat(sessionID)
+	h.controller.UpdateHeartbeat(r.Context(), sessionID)
 	w.WriteHeader(http.StatusOK)
 }
 
-	// SessionCreateRequest is the JSON body for POST /v1/sessions
-	// It acts as the TenantDeploymentConfig.
-	type SessionCreateRequest struct {
-		Image              string             `json:"image"`
-		Command            []string           `json:"command,omitempty"`
-		Env                map[string]string  `json:"env,omitempty"`
-		IdleTimeoutSeconds int                `json:"idle_timeout_seconds,omitempty"`
-		TTLSeconds         int                `json:"ttl_seconds,omitempty"`
-		HealthInterval     string             `json:"health_interval,omitempty"`
-		Warm               bool               `json:"warm,omitempty"`
-		PortMappings       []herd.PortMapping `json:"port_mappings,omitempty"`
-	}
-
-	// SessionCreateResponse is the JSON response
-	type SessionCreateResponse struct {
-		SessionID    string             `json:"session_id"`
-		InternalIP   string             `json:"internal_ip"`
-		ProxyAddress string             `json:"proxy_address"`
-		PortMappings []herd.PortMapping `json:"port_mappings,omitempty"`
-	}
-
 func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http.Request) {
-	RecordAcquireRequest()
-
-	var req SessionCreateRequest
-	if r.Body != nil {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			h.logger.Error("failed_to_decode_create_request", map[string]any{"error": err})
-		}
-	}
-
-	if req.Warm {
-		if err := h.pool.Factory().WarmImage(r.Context(), req.Image); err != nil {
-			h.logger.Error("failed_to_warm_image", map[string]any{"error": err, "image": req.Image})
-			http.Error(w, fmt.Sprintf("failed to warm image: %v", err), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	sessionID := fmt.Sprintf("sess-%d-%d", time.Now().UnixNano(), h.seq.Add(1))
-	h.logger.Info("acquire_request_received", map[string]any{"session_id": sessionID})
-
-	tenantConfig := herd.TenantConfig{
-		Image:              req.Image,
-		Command:            req.Command,
-		Env:                req.Env,
-		IdleTimeoutSeconds: req.IdleTimeoutSeconds,
-		TTLSeconds:         req.TTLSeconds,
-		HealthInterval:     req.HealthInterval,
-		PortMappings:       req.PortMappings,
-	}
-
-	session, err := h.pool.Acquire(r.Context(), sessionID, tenantConfig)
-	if err != nil {
-		RecordAcquireFailure()
-		h.logger.Error("session_acquire_failed", map[string]any{"session_id": sessionID, "error": err})
-		http.Error(w, fmt.Sprintf("failed to acquire session: %v", err), http.StatusInternalServerError)
+	if r.Body == nil {
+		http.Error(w, "missing request body", http.StatusBadRequest)
 		return
 	}
 
-	h.lifecycleManager.Register(sessionID, tenantConfig)
-	RecordSessionStarted()
-	h.logger.Info("session_acquired", map[string]any{"session_id": sessionID})
-
-	var internalIP string
-	// Try to get GuestIP if it's a Firecracker worker
-	if fw, ok := session.Worker.(interface{ GuestIP() string }); ok {
-		internalIP = fw.GuestIP()
+	var req SessionCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.controller.logger.Error("failed_to_decode_create_request", map[string]any{"error": err})
+		http.Error(w, "invalid json body", http.StatusBadRequest)
+		return
 	}
 
-	resp := SessionCreateResponse{
-		SessionID:    sessionID,
-		InternalIP:   internalIP,
-		ProxyAddress: h.proxyAddress,
-		PortMappings: req.PortMappings,
+	if req.Image == "" {
+		http.Error(w, "missing image field", http.StatusBadRequest)
+		return
 	}
 
-	// If the worker has updated port mappings (e.g. random ports assigned), use those
-	if fw, ok := session.Worker.(interface{ PortMappings() []herd.PortMapping }); ok {
-		resp.PortMappings = fw.PortMappings()
+	resp, err := h.controller.CreateSession(r.Context(), req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		h.logger.Error("failed_to_encode_create_response", map[string]any{"error": err, "session_id": sessionID})
+		h.controller.logger.Error("failed_to_encode_create_response", map[string]any{"error": err, "session_id": resp.SessionID})
 	}
 }
 
@@ -232,24 +125,28 @@ func (h *ControlPlaneHandler) handleDeleteSession(w http.ResponseWriter, r *http
 	}
 	sessionID := parts[2]
 
-	err := h.lifecycleManager.UnregisterAndKill(sessionID, "api_requested")
+	err := h.controller.DeleteSession(r.Context(), sessionID, "api_requested")
 	if err != nil {
-		h.logger.Error("session_cleanup_failed", map[string]any{"session_id": sessionID, "error": err})
-		http.Error(w, fmt.Sprintf("failed to kill session: %v", err), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	RecordSessionKilled()
-	h.logger.Info("session_killed", map[string]any{"session_id": sessionID})
 	w.WriteHeader(http.StatusOK)
 }
 
 func (h *ControlPlaneHandler) handleListSessions(w http.ResponseWriter, r *http.Request) {
-	sessions := h.lifecycleManager.ListSessions()
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(sessions); err != nil {
-		h.logger.Error("failed_to_encode_sessions_list", map[string]any{"error": err})
+	sessions := h.controller.ListSessions(r.Context())
+
+	data, err := json.Marshal(sessions)
+	if err != nil {
+		h.controller.logger.Error("failed_to_encode_sessions_list", map[string]any{"error": err})
 		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(data); err != nil {
+		h.controller.logger.Error("failed_to_write_sessions_list", map[string]any{"error": err})
 	}
 }
 
@@ -262,7 +159,7 @@ func (h *ControlPlaneHandler) handleExecSession(w http.ResponseWriter, r *http.R
 	}
 	sessionID := parts[2]
 
-	session, err := h.pool.GetSession(r.Context(), sessionID)
+	session, err := h.controller.pool.GetSession(r.Context(), sessionID)
 	if err != nil || session == nil {
 		http.Error(w, "session not found", http.StatusNotFound)
 		return
@@ -297,17 +194,17 @@ func (h *ControlPlaneHandler) handleExecSession(w http.ResponseWriter, r *http.R
 	}
 	defer func() {
 		if cerr := conn.Close(); cerr != nil {
-			h.logger.Error("failed_to_close_hijacked_conn", map[string]any{"error": cerr, "session_id": sessionID})
+			h.controller.logger.Error("failed_to_close_hijacked_conn", map[string]any{"error": cerr, "session_id": sessionID})
 		}
 	}()
 
 	// Write HTTP 101 Switching Protocols
 	if _, err := bufrw.WriteString("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: herd-exec\r\n\r\n"); err != nil {
-		h.logger.Error("failed_to_write_exec_upgrade_header", map[string]any{"error": err, "session_id": sessionID})
+		h.controller.logger.Error("failed_to_write_exec_upgrade_header", map[string]any{"error": err, "session_id": sessionID})
 		return
 	}
 	if err := bufrw.Flush(); err != nil {
-		h.logger.Error("failed_to_flush_exec_upgrade_header", map[string]any{"error": err, "session_id": sessionID})
+		h.controller.logger.Error("failed_to_flush_exec_upgrade_header", map[string]any{"error": err, "session_id": sessionID})
 		return
 	}
 
@@ -322,7 +219,7 @@ func (h *ControlPlaneHandler) handleExecSession(w http.ResponseWriter, r *http.R
 	}
 	defer func() {
 		if cerr := vsockConn.Close(); cerr != nil {
-			h.logger.Error("failed_to_close_vsock_conn", map[string]any{"error": cerr, "session_id": sessionID})
+			h.controller.logger.Error("failed_to_close_vsock_conn", map[string]any{"error": cerr, "session_id": sessionID})
 		}
 	}()
 
