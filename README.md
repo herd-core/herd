@@ -2,7 +2,7 @@
 
 The initial goal was to create a lightweight, secure, and fast execution environment for running docker images. The problem with docker is that it has a major security issue with running containers on the same host. Any zero day exploit in the kernel through a container can lead to a full host compromise. 
 
-I am able to successfully run and deploy pre-pulled docker images as microvms. And they are lightning fast. I can start a microvm in under `~500ms`, and that includes all the networking, ingress, file system setup on demand.
+Now, I am able to successfully run and deploy pre-pulled docker images as microvms. And they are lightning fast. I can start a microvm in under `~500ms`, and that includes all the networking, ingress, file system setup on demand.
 
 
 ## Different from firecracker
