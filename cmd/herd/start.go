@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	// uses global configPath
+	interfaceName string
 )
 
 var startCmd = &cobra.Command{
@@ -44,6 +44,7 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
+	startCmd.Flags().StringVar(&interfaceName, "interface", "", "Public network interface to report to the control plane (e.g., eth0)")
 }
 
 func runDaemon() {
@@ -90,9 +91,24 @@ func runDaemon() {
 		}
 	}()
 	
+	// Determine Public IP if interface is specified
+	var interfaceIP string
+	if interfaceName == "" {
+		interfaceName = cfg.Cloud.Interface
+	}
+	if interfaceName != "" {
+		ip, err := getInterfaceIP(interfaceName)
+		if err != nil {
+			log.Printf("Warning: failed to get IP for interface %q: %v", interfaceName, err)
+		} else {
+			interfaceIP = ip
+			log.Printf("Reporting public IP %s (from %s) to Cloud Control Plane", interfaceIP, interfaceName)
+		}
+	}
+
 	// Initialize Cloud Control Plane (Optional)
 	if cfg.Cloud.Enabled {
-		cloudClient := cloud.NewClient(cfg.Cloud)
+		cloudClient := cloud.NewClient(cfg.Cloud, interfaceIP)
 		if err := cloudClient.Start(ctx); err != nil {
 			eventLogger.Error("cloud_control_connection_failed", map[string]any{"error": err})
 		} else {
@@ -209,4 +225,33 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 	return herd.New(factory,
 		herd.WithMaxWorkers(cfg.Resources.MaxGlobalVMs),
 	)
+}
+
+func getInterfaceIP(name string) (string, error) {
+	iface, err := net.InterfaceByName(name)
+	if err != nil {
+		return "", err
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return "", err
+	}
+	for _, addr := range addrs {
+		var ip net.IP
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+		if ip == nil || ip.IsLoopback() {
+			continue
+		}
+		ip = ip.To4()
+		if ip == nil {
+			continue // skip ipv6 for now
+		}
+		return ip.String(), nil
+	}
+	return "", fmt.Errorf("no suitable IPv4 address found for interface %s", name)
 }
