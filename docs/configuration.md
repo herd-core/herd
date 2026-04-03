@@ -60,6 +60,18 @@ Configuration for logging and metrics.
 
 ---
 
+## ☁️ `cloud`
+Configuration for the Elixir-based Cloud Control Plane.
+
+| Key | Description | Default |
+| :--- | :--- | :--- |
+| `enabled` | Whether to connect to the Cloud Control Plane. | `false` |
+| `endpoint` | gRPC address of the control plane. | — |
+| `node_id` | Unique identifier for this node (defaults to hostname). | — |
+| `interface`| Interface used to report the node's public IP (e.g., `eth0`). | — |
+
+---
+
 ## 🔒 `jailer`
 Parameters for the secure Firecracker jailer process.
 

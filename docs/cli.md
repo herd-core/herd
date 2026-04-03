@@ -39,8 +39,11 @@ Completely removes Herd state from the host.
 
 ### `herd start`
 Launches the Herd daemon.
-- **Usage**: `sudo herd start [--config path/to/herd.yaml]`
+- **Usage**: `sudo herd start [--config path/to/herd.yaml] [--interface eth0]`
+- **Flags**:
+    - `--interface <name>`: Public network interface to report to the control plane (e.g., `eth0`).
 - **Actions**:
+    - Determines the node's public IP from the specified interface.
     - Starts the Data Plane (Proxy) on port 8080.
     - Starts the Control Plane (REST API) on port 8081.
     - Initializes the session reaper for automatic cleanup.

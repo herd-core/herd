@@ -13,6 +13,7 @@ message NodeStream {
   int32 active_vm_count = 3;
   double cpu_usage_percent = 4;
   int64 uptime_seconds = 5;
+  string interface_ip = 6;
 }
 
 message CloudCommand {

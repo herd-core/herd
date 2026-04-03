@@ -28,6 +28,7 @@ type NodeStream struct {
 	ActiveVmCount     int32                  `protobuf:"varint,3,opt,name=active_vm_count,json=activeVmCount,proto3" json:"active_vm_count,omitempty"`
 	CpuUsagePercent   float64                `protobuf:"fixed64,4,opt,name=cpu_usage_percent,json=cpuUsagePercent,proto3" json:"cpu_usage_percent,omitempty"`
 	UptimeSeconds     int64                  `protobuf:"varint,5,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
+	InterfaceIp       string                 `protobuf:"bytes,6,opt,name=interface_ip,json=interfaceIp,proto3" json:"interface_ip,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -97,6 +98,13 @@ func (x *NodeStream) GetUptimeSeconds() int64 {
 	return 0
 }
 
+func (x *NodeStream) GetInterfaceIp() string {
+	if x != nil {
+		return x.InterfaceIp
+	}
+	return ""
+}
+
 type CloudCommand struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CommandId     string                 `protobuf:"bytes,1,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
@@ -161,14 +169,15 @@ var File_internal_proto_v1_herd_proto protoreflect.FileDescriptor
 
 const file_internal_proto_v1_herd_proto_rawDesc = "" +
 	"\n" +
-	"\x1cinternal/proto/v1/herd.proto\x12\aherd.v1\"\xd0\x01\n" +
+	"\x1cinternal/proto/v1/herd.proto\x12\aherd.v1\"\xf3\x01\n" +
 	"\n" +
 	"NodeStream\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12.\n" +
 	"\x13available_memory_mb\x18\x02 \x01(\x03R\x11availableMemoryMb\x12&\n" +
 	"\x0factive_vm_count\x18\x03 \x01(\x05R\ractiveVmCount\x12*\n" +
 	"\x11cpu_usage_percent\x18\x04 \x01(\x01R\x0fcpuUsagePercent\x12%\n" +
-	"\x0euptime_seconds\x18\x05 \x01(\x03R\ruptimeSeconds\"\xbb\x01\n" +
+	"\x0euptime_seconds\x18\x05 \x01(\x03R\ruptimeSeconds\x12!\n" +
+	"\finterface_ip\x18\x06 \x01(\tR\vinterfaceIp\"\xbb\x01\n" +
 	"\fCloudCommand\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12\x16\n" +

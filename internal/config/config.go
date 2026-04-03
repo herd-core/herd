@@ -39,9 +39,10 @@ type Config struct {
 }
 
 type CloudConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	Endpoint string `yaml:"endpoint"`
-	NodeID   string `yaml:"node_id"`
+	Enabled         bool   `yaml:"enabled"`
+	Endpoint        string `yaml:"endpoint"`
+	NodeID          string `yaml:"node_id"`
+	Interface string `yaml:"interface"`
 }
 
 type BinaryConfig struct {
