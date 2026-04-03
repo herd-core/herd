@@ -13,7 +13,7 @@ import (
 
 // Version is the current version of herd.
 // Version is the current version of herd.
-const Version = "v0.5.0"
+const Version = "v0.5.5"
 
 // GetTargetHomeDir returns the home directory of the original user if running under sudo,
 // falling back to the current user's home directory.
