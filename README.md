@@ -2,6 +2,9 @@
 
 The initial goal was to create a lightweight, secure, and fast execution environment for running docker images. The problem with docker is that it has a major security issue with running containers on the same host. Any zero day exploit in the kernel through a container can lead to a full host compromise. 
 
+I am able to successfully run and deploy pre-pulled docker images as microvms. And they are lightning fast. I can start a microvm in under `~500ms`, and that includes all the networking, ingress, file system setup on demand.
+
+
 ## Different from firecracker
 
 Firecracker microvm is an amazing peice of technology but it's just a dumb hypervisor. It doesn't provide any host side setup for running OCI images, or networking, or ingress, or anything. You have to build all of that yourself. Herd provides all of that out of the box. 
@@ -63,7 +66,7 @@ sudo herd start
 ### 4. Deploy a MicroVM
 
 ```bash
-herd deploy --image nginx:latest
+herd deploy --image postgres:latest -p 5432:5432 -e POSTGRES_PASSWORD=postgres
 ```
 
 *Note: Herd requires `sudo` for managing KVM, TAP devices, and devmapper snapshots.*
