@@ -29,6 +29,12 @@ func Bootstrap() error {
 		return err
 	}
 
+	// Allow loopback traffic (127.0.0.1) to be routed through iptables NAT,
+	// enabling the host to access published ports via localhost.
+	if err := runCmd("sysctl", "-w", "net.ipv4.conf.all.route_localnet=1"); err != nil {
+		return err
+	}
+
 	if err := runCmd("iptables", "-t", "nat", "-A", "POSTROUTING", "-o", iface, "-s", Subnet, "-j", "MASQUERADE"); err != nil {
 		return err
 	}
