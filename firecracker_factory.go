@@ -70,8 +70,9 @@ type FirecrackerWorker struct {
 	done       chan struct{}       // closed when cmd.Wait() returns
 	ctx        context.Context    // lifecycle context for the worker
 	cancel     context.CancelFunc // cancelled on Close()
-	leasedUID  int                // UID leased from UIDPool for this VM
-	uidPool    *uid.Pool          // pool to return the UID to on Close()
+	leasedUID    int                // UID leased from UIDPool for this VM
+	uidPool      *uid.Pool          // pool to return the UID to on Close()
+	portMappings []PortMapping      // active port forwards on the host
 }
 
 // ID returns the worker ID.
@@ -92,6 +93,11 @@ func (f *FirecrackerWorker) Address() string {
 // VsockUDSPath is the host-visible Unix socket Firecracker exposes for vsock.
 func (f *FirecrackerWorker) VsockUDSPath() string {
 	return f.socketPath
+}
+
+// PortMappings returns the active port forwards for this worker.
+func (f *FirecrackerWorker) PortMappings() []PortMapping {
+	return f.portMappings
 }
 
 // Client returns the HTTP client.
@@ -157,6 +163,10 @@ func (f *FirecrackerWorker) Close() error {
 		if err := f.uidPool.Return(f.leasedUID); err != nil {
 			slog.Error("failed to return uid to pool", "vmID", f.id, "uid", f.leasedUID, "error", err)
 		}
+	}
+
+	for _, pm := range f.portMappings {
+		_ = network.RemovePortMapping(pm.HostInterface, pm.HostPort, f.guestIP, pm.GuestPort, pm.Protocol)
 	}
 
 	return nil
@@ -490,21 +500,44 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 
 	log.Printf("[spawn:%s] TOTAL            %v", workerID, time.Since(spawnStart))
 
+	// Apply Port Mappings
+	activeMappings := make([]PortMapping, 0, len(config.PortMappings))
+	for _, pm := range config.PortMappings {
+		hostPort := pm.HostPort
+		if hostPort == 0 {
+			var err error
+			hostPort, err = network.FindAvailablePort(pm.HostInterface)
+			if err != nil {
+				slog.Warn("failed to find available port for mapping", "id", workerID, "error", err)
+				continue
+			}
+		}
+
+		if err := network.AddPortMapping(pm.HostInterface, hostPort, guestIP, pm.GuestPort, pm.Protocol); err != nil {
+			slog.Warn("failed to add port mapping", "id", workerID, "error", err)
+			continue
+		}
+
+		pm.HostPort = hostPort
+		activeMappings = append(activeMappings, pm)
+	}
+
 	return &FirecrackerWorker{
-		id:         workerID,
-		socketPath: socketPath,
-		tapName:    tapName,
-		guestIP:    guestIP,
-		cmd:        cmd,
-		client:     agentClient,
-		storage:    f.Storage,
-		ipam:       f.IPAM,
-		chrootDir:  chrootRoot,
-		done:       done,
-		ctx:        workerCtx,
-		cancel:     workerCancel,
-		leasedUID:  leasedUID,
-		uidPool:    f.UIDPool,
+		id:           workerID,
+		socketPath:   socketPath,
+		tapName:      tapName,
+		guestIP:      guestIP,
+		cmd:          cmd,
+		client:       agentClient,
+		storage:      f.Storage,
+		ipam:         f.IPAM,
+		chrootDir:    chrootRoot,
+		done:         done,
+		ctx:          workerCtx,
+		cancel:       workerCancel,
+		leasedUID:    leasedUID,
+		uidPool:      f.UIDPool,
+		portMappings: activeMappings,
 	}, nil
 }
 

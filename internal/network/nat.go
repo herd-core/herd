@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"os/exec"
+	"strconv"
 
 	"github.com/vishvananda/netlink"
 )
@@ -152,6 +153,80 @@ func CreatePointToPointTap(name, hostIP, guestIP string, uid, gid int) error {
 	}
 
 	return nil
+}
+
+// AddPortMapping adds DNAT and FORWARD rules for a port mapping.
+func AddPortMapping(hostInterface string, hostPort int, guestIP string, guestPort int, protocol string) error {
+	if protocol == "" {
+		protocol = "tcp"
+	}
+
+	// DNAT Rule
+	dnatArgs := []string{"-t", "nat", "-A", "PREROUTING", "-p", protocol}
+	if hostInterface != "" && hostInterface != "0.0.0.0" {
+		if net.ParseIP(hostInterface) != nil {
+			dnatArgs = append(dnatArgs, "-d", hostInterface)
+		} else {
+			dnatArgs = append(dnatArgs, "-i", hostInterface)
+		}
+	}
+	dnatArgs = append(dnatArgs, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort))
+
+	if err := runCmd("iptables", dnatArgs...); err != nil {
+		return fmt.Errorf("iptables dnat add: %w", err)
+	}
+
+	// FORWARD Rule
+	fwdArgs := []string{"-A", "FORWARD", "-p", protocol, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
+	if err := runCmd("iptables", fwdArgs...); err != nil {
+		// Rollback DNAT rule
+		dnatArgs[3] = "-D" // Change -A to -D
+		_ = runCmd("iptables", dnatArgs...)
+		return fmt.Errorf("iptables forward add: %w", err)
+	}
+
+	slog.Info("port mapping added", "host", hostInterface, "hPort", hostPort, "gIP", guestIP, "gPort", guestPort)
+	return nil
+}
+
+// RemovePortMapping removes the DNAT and FORWARD rules for a port mapping.
+func RemovePortMapping(hostInterface string, hostPort int, guestIP string, guestPort int, protocol string) error {
+	if protocol == "" {
+		protocol = "tcp"
+	}
+
+	dnatArgs := []string{"-t", "nat", "-D", "PREROUTING", "-p", protocol}
+	if hostInterface != "" && hostInterface != "0.0.0.0" {
+		if net.ParseIP(hostInterface) != nil {
+			dnatArgs = append(dnatArgs, "-d", hostInterface)
+		} else {
+			dnatArgs = append(dnatArgs, "-i", hostInterface)
+		}
+	}
+	dnatArgs = append(dnatArgs, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort))
+	_ = runCmd("iptables", dnatArgs...)
+
+	fwdArgs := []string{"-D", "FORWARD", "-p", protocol, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
+	_ = runCmd("iptables", fwdArgs...)
+
+	slog.Info("port mapping removed", "host", hostInterface, "hPort", hostPort, "gIP", guestIP, "gPort", guestPort)
+	return nil
+}
+
+// FindAvailablePort find a random available port on the host.
+func FindAvailablePort(hostInterface string) (int, error) {
+	addr := "0.0.0.0:0"
+	if hostInterface != "" && hostInterface != "0.0.0.0" && net.ParseIP(hostInterface) != nil {
+		addr = hostInterface + ":0"
+	}
+
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return 0, fmt.Errorf("find available port: %w", err)
+	}
+	defer l.Close()
+
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
 // DeleteTap removes a TAP interface.

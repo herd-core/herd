@@ -138,20 +138,22 @@ func (h *ControlPlaneHandler) handleHeartbeat(w http.ResponseWriter, r *http.Req
 	// SessionCreateRequest is the JSON body for POST /v1/sessions
 	// It acts as the TenantDeploymentConfig.
 	type SessionCreateRequest struct {
-		Image              string            `json:"image"`
-		Command            []string          `json:"command,omitempty"`
-		Env                map[string]string `json:"env,omitempty"`
-		IdleTimeoutSeconds int               `json:"idle_timeout_seconds,omitempty"`
-		TTLSeconds         int               `json:"ttl_seconds,omitempty"`
-		HealthInterval     string            `json:"health_interval,omitempty"`
-		Warm               bool              `json:"warm,omitempty"`
+		Image              string             `json:"image"`
+		Command            []string           `json:"command,omitempty"`
+		Env                map[string]string  `json:"env,omitempty"`
+		IdleTimeoutSeconds int                `json:"idle_timeout_seconds,omitempty"`
+		TTLSeconds         int                `json:"ttl_seconds,omitempty"`
+		HealthInterval     string             `json:"health_interval,omitempty"`
+		Warm               bool               `json:"warm,omitempty"`
+		PortMappings       []herd.PortMapping `json:"port_mappings,omitempty"`
 	}
 
 	// SessionCreateResponse is the JSON response
 	type SessionCreateResponse struct {
-		SessionID    string `json:"session_id"`
-		InternalIP   string `json:"internal_ip"`
-		ProxyAddress string `json:"proxy_address"`
+		SessionID    string             `json:"session_id"`
+		InternalIP   string             `json:"internal_ip"`
+		ProxyAddress string             `json:"proxy_address"`
+		PortMappings []herd.PortMapping `json:"port_mappings,omitempty"`
 	}
 
 func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http.Request) {
@@ -182,6 +184,7 @@ func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http
 		IdleTimeoutSeconds: req.IdleTimeoutSeconds,
 		TTLSeconds:         req.TTLSeconds,
 		HealthInterval:     req.HealthInterval,
+		PortMappings:       req.PortMappings,
 	}
 
 	session, err := h.pool.Acquire(r.Context(), sessionID, tenantConfig)
@@ -206,6 +209,12 @@ func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http
 		SessionID:    sessionID,
 		InternalIP:   internalIP,
 		ProxyAddress: h.proxyAddress,
+		PortMappings: req.PortMappings,
+	}
+
+	// If the worker has updated port mappings (e.g. random ports assigned), use those
+	if fw, ok := session.Worker.(interface{ PortMappings() []herd.PortMapping }); ok {
+		resp.PortMappings = fw.PortMappings()
 	}
 
 	w.Header().Set("Content-Type", "application/json")
