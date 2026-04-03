@@ -106,19 +106,19 @@ func runDaemon() {
 		}
 	}
 
+	// Initialize Lifecycle Manager
+	lm := lifecycle.NewManager(pool)
+	go lm.StartReaper(ctx) // Run reaper in background
+
 	// Initialize Cloud Control Plane (Optional)
 	if cfg.Cloud.Enabled {
-		cloudClient := cloud.NewClient(cfg.Cloud, interfaceIP)
+		cloudClient := cloud.NewClient(cfg.Cloud, interfaceIP, pool, lm)
 		if err := cloudClient.Start(ctx); err != nil {
 			eventLogger.Error("cloud_control_connection_failed", map[string]any{"error": err})
 		} else {
 			defer cloudClient.Close()
 		}
 	}
-
-	// Initialize Lifecycle Manager
-	lm := lifecycle.NewManager(pool)
-	go lm.StartReaper(ctx) // Run reaper in background
 
 	controlServer := &http.Server{
 		Handler: daemon.NewControlPlaneHandler(pool, lm, "http://"+cfg.Network.DataBind, eventLogger),

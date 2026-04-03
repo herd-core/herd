@@ -29,6 +29,7 @@ type NodeStream struct {
 	CpuUsagePercent   float64                `protobuf:"fixed64,4,opt,name=cpu_usage_percent,json=cpuUsagePercent,proto3" json:"cpu_usage_percent,omitempty"`
 	UptimeSeconds     int64                  `protobuf:"varint,5,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
 	InterfaceIp       string                 `protobuf:"bytes,6,opt,name=interface_ip,json=interfaceIp,proto3" json:"interface_ip,omitempty"`
+	ActiveSessions    []*SessionInfo         `protobuf:"bytes,7,rep,name=active_sessions,json=activeSessions,proto3" json:"active_sessions,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -105,6 +106,65 @@ func (x *NodeStream) GetInterfaceIp() string {
 	return ""
 }
 
+func (x *NodeStream) GetActiveSessions() []*SessionInfo {
+	if x != nil {
+		return x.ActiveSessions
+	}
+	return nil
+}
+
+type SessionInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Port          int32                  `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionInfo) Reset() {
+	*x = SessionInfo{}
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionInfo) ProtoMessage() {}
+
+func (x *SessionInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionInfo.ProtoReflect.Descriptor instead.
+func (*SessionInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *SessionInfo) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SessionInfo) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
 type CloudCommand struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CommandId     string                 `protobuf:"bytes,1,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
@@ -116,7 +176,7 @@ type CloudCommand struct {
 
 func (x *CloudCommand) Reset() {
 	*x = CloudCommand{}
-	mi := &file_internal_proto_v1_herd_proto_msgTypes[1]
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -128,7 +188,7 @@ func (x *CloudCommand) String() string {
 func (*CloudCommand) ProtoMessage() {}
 
 func (x *CloudCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_v1_herd_proto_msgTypes[1]
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -141,7 +201,7 @@ func (x *CloudCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudCommand.ProtoReflect.Descriptor instead.
 func (*CloudCommand) Descriptor() ([]byte, []int) {
-	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{1}
+	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *CloudCommand) GetCommandId() string {
@@ -169,7 +229,7 @@ var File_internal_proto_v1_herd_proto protoreflect.FileDescriptor
 
 const file_internal_proto_v1_herd_proto_rawDesc = "" +
 	"\n" +
-	"\x1cinternal/proto/v1/herd.proto\x12\aherd.v1\"\xf3\x01\n" +
+	"\x1cinternal/proto/v1/herd.proto\x12\aherd.v1\"\xb2\x02\n" +
 	"\n" +
 	"NodeStream\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12.\n" +
@@ -177,7 +237,12 @@ const file_internal_proto_v1_herd_proto_rawDesc = "" +
 	"\x0factive_vm_count\x18\x03 \x01(\x05R\ractiveVmCount\x12*\n" +
 	"\x11cpu_usage_percent\x18\x04 \x01(\x01R\x0fcpuUsagePercent\x12%\n" +
 	"\x0euptime_seconds\x18\x05 \x01(\x03R\ruptimeSeconds\x12!\n" +
-	"\finterface_ip\x18\x06 \x01(\tR\vinterfaceIp\"\xbb\x01\n" +
+	"\finterface_ip\x18\x06 \x01(\tR\vinterfaceIp\x12=\n" +
+	"\x0factive_sessions\x18\a \x03(\v2\x14.herd.v1.SessionInfoR\x0eactiveSessions\"@\n" +
+	"\vSessionInfo\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x12\n" +
+	"\x04port\x18\x02 \x01(\x05R\x04port\"\xbb\x01\n" +
 	"\fCloudCommand\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12\x16\n" +
@@ -201,21 +266,23 @@ func file_internal_proto_v1_herd_proto_rawDescGZIP() []byte {
 	return file_internal_proto_v1_herd_proto_rawDescData
 }
 
-var file_internal_proto_v1_herd_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_internal_proto_v1_herd_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_internal_proto_v1_herd_proto_goTypes = []any{
 	(*NodeStream)(nil),   // 0: herd.v1.NodeStream
-	(*CloudCommand)(nil), // 1: herd.v1.CloudCommand
-	nil,                  // 2: herd.v1.CloudCommand.ParamsEntry
+	(*SessionInfo)(nil),  // 1: herd.v1.SessionInfo
+	(*CloudCommand)(nil), // 2: herd.v1.CloudCommand
+	nil,                  // 3: herd.v1.CloudCommand.ParamsEntry
 }
 var file_internal_proto_v1_herd_proto_depIdxs = []int32{
-	2, // 0: herd.v1.CloudCommand.params:type_name -> herd.v1.CloudCommand.ParamsEntry
-	0, // 1: herd.v1.HerdControlPlane.Connect:input_type -> herd.v1.NodeStream
-	1, // 2: herd.v1.HerdControlPlane.Connect:output_type -> herd.v1.CloudCommand
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 0: herd.v1.NodeStream.active_sessions:type_name -> herd.v1.SessionInfo
+	3, // 1: herd.v1.CloudCommand.params:type_name -> herd.v1.CloudCommand.ParamsEntry
+	0, // 2: herd.v1.HerdControlPlane.Connect:input_type -> herd.v1.NodeStream
+	2, // 3: herd.v1.HerdControlPlane.Connect:output_type -> herd.v1.CloudCommand
+	3, // [3:4] is the sub-list for method output_type
+	2, // [2:3] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_internal_proto_v1_herd_proto_init() }
@@ -229,7 +296,7 @@ func file_internal_proto_v1_herd_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_proto_v1_herd_proto_rawDesc), len(file_internal_proto_v1_herd_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

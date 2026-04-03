@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -95,4 +96,21 @@ func (m *Manager) ListSessions() []*SessionState {
 		sessions = append(sessions, &copy)
 	}
 	return sessions
+}
+
+// StopAll kills all active sessions and removes them from the registry.
+func (m *Manager) StopAll(ctx context.Context) error {
+	m.mu.Lock()
+	sessions := make([]string, 0, len(m.registry))
+	for sid := range m.registry {
+		sessions = append(sessions, sid)
+	}
+	m.mu.Unlock()
+
+	for _, sid := range sessions {
+		if err := m.UnregisterAndKill(sid, "destroy_all command"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
