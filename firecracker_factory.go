@@ -37,6 +37,7 @@ type FirecrackerFactory struct {
 
 	Storage *storage.Manager
 	IPAM    *network.IPAM
+	PortManager *network.PortManager
 
 	// UIDPool is the per-VM UID/GID allocator. Each Spawn leases a unique UID
 	// from the pool; Close returns it. This guarantees every concurrent microVM
@@ -73,6 +74,7 @@ type FirecrackerWorker struct {
 	leasedUID    int                // UID leased from UIDPool for this VM
 	uidPool      *uid.Pool          // pool to return the UID to on Close()
 	portMappings []PortMapping      // active port forwards on the host
+	portManager  *network.PortManager // manager to release ports to on Close()
 }
 
 // ID returns the worker ID.
@@ -167,6 +169,9 @@ func (f *FirecrackerWorker) Close() error {
 
 	for _, pm := range f.portMappings {
 		_ = network.RemovePortMapping(pm.HostInterface, pm.HostPort, f.guestIP, pm.GuestPort, pm.Protocol)
+		if f.portManager != nil {
+			f.portManager.Release(pm.HostPort)
+		}
 	}
 
 	return nil
@@ -504,17 +509,20 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	activeMappings := make([]PortMapping, 0, len(config.PortMappings))
 	for _, pm := range config.PortMappings {
 		hostPort := pm.HostPort
-		if hostPort == 0 {
+		if f.PortManager != nil {
 			var err error
-			hostPort, err = network.FindAvailablePort(pm.HostInterface)
+			hostPort, err = f.PortManager.Allocate(pm.HostPort, pm.Protocol, workerID)
 			if err != nil {
-				slog.Warn("failed to find available port for mapping", "id", workerID, "error", err)
+				slog.Warn("failed to allocate port", "id", workerID, "requested", pm.HostPort, "error", err)
 				continue
 			}
 		}
 
 		if err := network.AddPortMapping(pm.HostInterface, hostPort, guestIP, pm.GuestPort, pm.Protocol); err != nil {
 			slog.Warn("failed to add port mapping", "id", workerID, "error", err)
+			if f.PortManager != nil {
+				f.PortManager.Release(hostPort)
+			}
 			continue
 		}
 
@@ -523,21 +531,22 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	}
 
 	return &FirecrackerWorker{
-		id:           workerID,
-		socketPath:   socketPath,
-		tapName:      tapName,
-		guestIP:      guestIP,
-		cmd:          cmd,
-		client:       agentClient,
-		storage:      f.Storage,
-		ipam:         f.IPAM,
-		chrootDir:    chrootRoot,
-		done:         done,
-		ctx:          workerCtx,
-		cancel:       workerCancel,
-		leasedUID:    leasedUID,
-		uidPool:      f.UIDPool,
-		portMappings: activeMappings,
+		id:            workerID,
+		socketPath:    socketPath,
+		tapName:       tapName,
+		guestIP:       guestIP,
+		cmd:           cmd,
+		client:        agentClient,
+		storage:       f.Storage,
+		ipam:          f.IPAM,
+		chrootDir:     chrootRoot,
+		done:          done,
+		ctx:           workerCtx,
+		cancel:        workerCancel,
+		leasedUID:     leasedUID,
+		uidPool:       f.UIDPool,
+		portMappings:  activeMappings,
+		portManager:   f.PortManager,
 	}, nil
 }
 

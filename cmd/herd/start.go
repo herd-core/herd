@@ -192,6 +192,8 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 		return nil, fmt.Errorf("create uid pool: %w", err)
 	}
 
+	portMgr := network.NewPortManager(cfg.Network.EphemeralPortStart, cfg.Network.EphemeralPortEnd)
+
 	factory := &herd.FirecrackerFactory{
 		FirecrackerPath:     cfg.Binaries.FirecrackerPath,
 		JailerPath:          cfg.Binaries.JailerPath,
@@ -200,6 +202,7 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 		Storage:             mgr,
 		IPAM:                ipam,
 		UIDPool:             uidPool,
+		PortManager:         portMgr,
 		JailerChrootBaseDir: cfg.Jailer.ChrootBaseDir,
 	}
 

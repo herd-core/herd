@@ -176,12 +176,23 @@ func AddPortMapping(hostInterface string, hostPort int, guestIP string, guestPor
 		return fmt.Errorf("iptables dnat add: %w", err)
 	}
 
+	// DNAT Rule (Local Host Traffic)
+	// We add this to the OUTPUT chain to allow the host to access its own published ports.
+	if hostInterface == "" || hostInterface == "0.0.0.0" || hostInterface == "127.0.0.1" {
+		outputArgs := []string{"-t", "nat", "-A", "OUTPUT", "-p", protocol, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
+		_ = runCmd("iptables", outputArgs...)
+	}
+
 	// FORWARD Rule
 	fwdArgs := []string{"-A", "FORWARD", "-p", protocol, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
 	if err := runCmd("iptables", fwdArgs...); err != nil {
-		// Rollback DNAT rule
-		dnatArgs[3] = "-D" // Change -A to -D
+		// Rollback DNAT rules
+		dnatArgs[3] = "-D"
 		_ = runCmd("iptables", dnatArgs...)
+		
+		outputArgs := []string{"-t", "nat", "-D", "OUTPUT", "-p", protocol, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
+		_ = runCmd("iptables", outputArgs...)
+
 		return fmt.Errorf("iptables forward add: %w", err)
 	}
 
@@ -206,6 +217,12 @@ func RemovePortMapping(hostInterface string, hostPort int, guestIP string, guest
 	dnatArgs = append(dnatArgs, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort))
 	_ = runCmd("iptables", dnatArgs...)
 
+	// Remove OUTPUT chain rule if applicable
+	if hostInterface == "" || hostInterface == "0.0.0.0" || hostInterface == "127.0.0.1" {
+		outputArgs := []string{"-t", "nat", "-D", "OUTPUT", "-p", protocol, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
+		_ = runCmd("iptables", outputArgs...)
+	}
+
 	fwdArgs := []string{"-D", "FORWARD", "-p", protocol, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
 	_ = runCmd("iptables", fwdArgs...)
 
@@ -213,21 +230,6 @@ func RemovePortMapping(hostInterface string, hostPort int, guestIP string, guest
 	return nil
 }
 
-// FindAvailablePort find a random available port on the host.
-func FindAvailablePort(hostInterface string) (int, error) {
-	addr := "0.0.0.0:0"
-	if hostInterface != "" && hostInterface != "0.0.0.0" && net.ParseIP(hostInterface) != nil {
-		addr = hostInterface + ":0"
-	}
-
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return 0, fmt.Errorf("find available port: %w", err)
-	}
-	defer l.Close()
-
-	return l.Addr().(*net.TCPAddr).Port, nil
-}
 
 // DeleteTap removes a TAP interface.
 func DeleteTap(name string) error {
