@@ -10,6 +10,7 @@ Herd implements four critical layers that bridge the gap between "hardware" and 
 - **L7 "Wake-on-Request" Proxy**: A high-speed reverse proxy that intercepts HTTP requests, cold-boots the corresponding VM (if needed [WIP]), and tunnels the traffic inside.
 - **Automated IPAM**: Zero-config networking pool that manages subnets, TAP interfaces, and NAT routing.
 - **Guest Agent Execution**: Injects `herd-guest-agent` as PID 1 to handle internal OS setup and workload execution.
+- **Port Publishing (Hybrid Mode)**: Supports both deterministic host port binding (`-p 80:80`) and dynamic ephemeral allocation for secure, multi-tenant ingress.
 - **Dynamic UID Isolation**: Leverages the Firecracker jailer to drop process privileges into a unique, per-VM UID/GID leased from a dynamic pool. This ensures every tenant runs in a distinct DAC security domain, providing absolute lateral movement protection on multi-tenant hosts.
 
 ## 🛰️ The "Brutal Difference"

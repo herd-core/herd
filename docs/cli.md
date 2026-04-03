@@ -57,6 +57,13 @@ Quickly spawn a new microVM session.
     - `--cmd`: Command to run (comma-separated).
     - `-e`, `--env`: Environment variables.
     - `--timeout`: Idle timeout in seconds (default: `300`).
+    - `-p`, `--publish`: Publish a guest port to the host.
+        - Format: `[host_interface:]host_port:guest_port[/protocol]`
+        - Examples:
+            - `8080:80` (Bind all interfaces)
+            - `127.0.0.1:8080:80` (Localhost only)
+            - `:80` (Random host port allocation)
+            - `53:53/udp` (UDP mapping)
 
 ### `herd exec`
 Open an interactive shell inside a running microVM.

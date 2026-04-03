@@ -92,3 +92,20 @@ Herd will automatically:
 5.  Provide you with a **Session ID** and a **Proxy URL**.
 
 You can now access your application via the proxy, which intelligently routes traffic to your dedicated microVM.
+
+---
+
+## 🌐 5. Port Publishing (Hybrid Mode)
+
+If you need to expose a specific port (e.g., for a database or a web server on a custom port), use the `--publish` flag:
+
+```bash
+# Explicitly map host port 5432 to guest port 5432
+herd deploy --image postgres:latest -e POSTGRES_PASSWORD=test --publish 5432:5432
+
+# Mapping to a random available host port
+herd deploy --image nginx:latest --publish :80
+```
+
+**Network Prerequisites**:
+For loopback access (`127.0.0.1`) to work with published ports, Herd automatically enables `net.ipv4.conf.all.route_localnet=1` during initialization. This allows loopback traffic to be routed through the NAT stack to your microVMs.
