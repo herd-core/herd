@@ -1,26 +1,26 @@
-# Herd: The Go Edge Cloud Core
+# Herd: Microvm Hypervisor
 
-**Herd** is the core engine for an Application Delivery Plane. Unlike raw microVM orchestrators that just boot virtual motherboard instances, Herd provides a complete delivery stack: holding L7 connections, cold-booting microVMs in sub-500ms, and securely tunneling traffic from standard OCI/Docker images.
+The initial goal was to create a lightweight, secure, and fast execution environment for running docker images. The problem with docker is that it has a major security issue with running containers on the same host. Any zero day exploit in the kernel through a container can lead to a full host compromise. 
 
-## 🧱 The Engine Architecture
+I am able to successfully run and deploy pre-pulled docker images as microvms. And they are lightning fast. I can start a microvm in under `~500ms`, and that includes all the networking, ingress, file system setup on demand.
 
-Herd implements four critical layers that bridge the gap between "hardware" and "application":
 
-- **OCI Translation**: Automatically pulls Docker images via `containerd`, extracts `CMD`/`ENV`, and flattens them into Copy-on-Write rootfs snapshots.
-- **L7 "Wake-on-Request" Proxy**: A high-speed reverse proxy that intercepts HTTP requests, cold-boots the corresponding VM (if needed [WIP]), and tunnels the traffic inside.
-- **Automated IPAM**: Zero-config networking pool that manages subnets, TAP interfaces, and NAT routing.
-- **Guest Agent Execution**: Injects `herd-guest-agent` as PID 1 to handle internal OS setup and workload execution.
-- **Port Publishing (Hybrid Mode)**: Supports both deterministic host port binding (`-p 80:80`) and dynamic ephemeral allocation for secure, multi-tenant ingress.
-- **Dynamic UID Isolation**: Leverages the Firecracker jailer to drop process privileges into a unique, per-VM UID/GID leased from a dynamic pool. This ensures every tenant runs in a distinct DAC security domain, providing absolute lateral movement protection on multi-tenant hosts.
+## Different from firecracker
 
-## 🛰️ The "Brutal Difference"
+Firecracker microvm is an amazing peice of technology but it's just a dumb hypervisor. It doesn't provide any host side setup for running OCI images, or networking, or ingress, or anything. You have to build all of that yourself. Herd provides all of that out of the box. 
 
-| Feature | Pure Orchestrator (e.g., Raw Firecracker) | Herd (Fly.io Open Source Core) |
+The table below highlights the difference between firecracker and herd.
+
+| Feature | Raw Firecracker | Herd |
 | :--- | :--- | :--- |
 | **Input** | Custom Kernel + Raw `ext4` Disk Image | Standard Docker/OCI Image |
-| **Ingress** | None. You must install Traefik/Nginx | Built-in L7 Reverse Proxy |
-| **Lifecycle** | Turn On / Turn Off | Wake-on-HTTP-Request (Scale to Zero) [WIP] |
-| **User Experience** | Systems Engineer (Hard) | Application Developer (Easy) |
+| **Storage** | Manually create disk images using `dd` | **OCI Translation**: Automated image-to-snapshot. |
+| **Network** | Creates a TAP device, you route the rest | **Automated IPAM**: Host side NAT + routing. |
+| **Ingress** | No ingress | **Wake-on-Request Proxy**: Host port binding. |
+|**Isolation** | Manually configure jailer for each microvm | **Automated Isolation**: Herd auto configures jailer for each microvm. |
+| **Lifecycle** | Turn On / Turn Off | **Scale to Zero**: Cold-boots on first request [WIP]. |
+| **User Experience/Complexity** | Systems Engineer (Hard) | Application Developer (Easy) |
+
 
 ## 🛠️ Installation & Running
 
@@ -66,38 +66,9 @@ sudo herd start
 ### 4. Deploy a MicroVM
 
 ```bash
-herd deploy --image nginx:latest
+herd deploy --image postgres:latest -p 5432:5432 -e POSTGRES_PASSWORD=postgres
 ```
 
 *Note: Herd requires `sudo` for managing KVM, TAP devices, and devmapper snapshots.*
-
-## 🔌 API Overview
-
-### Control Plane (REST)
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/v1/sessions` | Acquire a new session (wakes up the VM). |
-| `GET` | `/v1/sessions` | List all active sessions. |
-| `DELETE` | `/v1/sessions/{id}` | Kill a running session. |
-| `PUT` | `/v1/sessions/{id}/heartbeat` | Keep the session alive. |
-| `GET` | `/v1/sessions/{id}/logs` | Stream real-time logs from the VM. |
-
-### Data Plane (HTTP Proxy)
-
-- **Port**: 8080 (Data Plane)
-- **Routing Header**: `X-Session-ID`
-- **Behavior**: Routes directly to the pinned VM. Supports cold-boot "Wake-on-Request" for known sessions.
-
-## ⚙️ Configuration Reference (`herd.yaml`)
-
-- `network.control_bind`: "127.0.0.1:8081"
-- `network.data_bind`: "127.0.0.1:8080"
-- `storage.state_dir`: "/var/lib/herd"
-- `storage.snapshotter_name`: "devmapper"
-- `binaries.jailer_path`: "/usr/local/bin/jailer"
-- `jailer.uid_pool_start`: 300000
-- `jailer.uid_pool_size`: 200
-- `jailer.chroot_base_dir`: "/srv/jailer"
 
 For more details, see [CLI & Configuration Reference](./docs/cli.md).
