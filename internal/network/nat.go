@@ -246,7 +246,8 @@ func RemovePortMapping(hostInterface string, hostPort int, guestIP string, guest
 		_ = runCmd("iptables", outputArgs...)
 	}
 
-	fwdArgs := []string{"-D", "FORWARD", "-p", protocol, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
+	// Must exactly match the rule installed in AddPortMapping (including the negated source).
+	fwdArgs := []string{"-D", "FORWARD", "-p", protocol, "!", "-s", Subnet, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
 	_ = runCmd("iptables", fwdArgs...)
 
 	slog.Info("port mapping removed", "host", hostInterface, "hPort", hostPort, "gIP", guestIP, "gPort", guestPort)

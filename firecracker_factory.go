@@ -513,17 +513,36 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 			var err error
 			hostPort, err = f.PortManager.Allocate(pm.HostPort, pm.Protocol, pm.HostInterface, workerID)
 			if err != nil {
-				slog.Warn("failed to allocate port", "id", workerID, "requested", pm.HostPort, "error", err)
-				continue
+				// Any port allocation failure is now a hard error. 
+				// Caller didn't get the network profile they requested; fail the Spawn entirely.
+				network.DeleteTap(tapName)
+				f.IPAM.Release(guestIP)
+				_ = cmd.Process.Kill()
+				_ = os.RemoveAll(chrootRoot)
+				_ = f.Storage.Teardown(ctx, workerID)
+				f.UIDPool.Return(leasedUID) //nolint:errcheck
+				return nil, fmt.Errorf("port allocation failed for mapping %d->%d: %w", pm.HostPort, pm.GuestPort, err)
 			}
 		}
 
 		if err := network.AddPortMapping(pm.HostInterface, hostPort, guestIP, pm.GuestPort, pm.Protocol); err != nil {
-			slog.Warn("failed to add port mapping", "id", workerID, "error", err)
 			if f.PortManager != nil {
 				f.PortManager.Release(hostPort)
 			}
-			continue
+			// Clean up any mappings/rules we've already applied for this VM.
+			for _, applied := range activeMappings {
+				_ = network.RemovePortMapping(applied.HostInterface, applied.HostPort, guestIP, applied.GuestPort, applied.Protocol)
+				if f.PortManager != nil {
+					f.PortManager.Release(applied.HostPort)
+				}
+			}
+			network.DeleteTap(tapName)
+			f.IPAM.Release(guestIP)
+			_ = cmd.Process.Kill()
+			_ = os.RemoveAll(chrootRoot)
+			_ = f.Storage.Teardown(ctx, workerID)
+			f.UIDPool.Return(leasedUID) //nolint:errcheck
+			return nil, fmt.Errorf("iptables setup failed for mapping %d->%d: %w", pm.HostPort, pm.GuestPort, err)
 		}
 
 		pm.HostPort = hostPort
