@@ -36,6 +36,12 @@ func Bootstrap() error {
 		return err
 	}
 
+	// Hairpin NAT Masquerade: Ensure host-to-VM traffic (e.g. from 127.0.0.1) 
+	// is masqueraded so the VM sees the host's bridge IP as source.
+	if err := runCmd("iptables", "-t", "nat", "-A", "POSTROUTING", "-d", Subnet, "-m", "addrtype", "--src-type", "LOCAL", "-j", "MASQUERADE"); err != nil {
+		return err
+	}
+
 	// Drop all traffic from the MicroVM subnet to RFC 1918 private subnets for isolation
 	for _, privNet := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"} {
 		if err := runCmd("iptables", "-A", "FORWARD", "-s", Subnet, "-d", privNet, "-j", "DROP"); err != nil {
@@ -62,6 +68,7 @@ func Teardown() error {
 
 	// We intentionally suppress errors on teardown so that the failure to delete one rule doesn't halt the rest.
 	_ = runCmd("iptables", "-t", "nat", "-D", "POSTROUTING", "-o", iface, "-s", Subnet, "-j", "MASQUERADE")
+	_ = runCmd("iptables", "-t", "nat", "-D", "POSTROUTING", "-d", Subnet, "-m", "addrtype", "--src-type", "LOCAL", "-j", "MASQUERADE")
 	_ = runCmd("iptables", "-D", "FORWARD", "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT")
 
 	// Remove RFC 1918 drop rules
@@ -169,6 +176,9 @@ func AddPortMapping(hostInterface string, hostPort int, guestIP string, guestPor
 		} else {
 			dnatArgs = append(dnatArgs, "-i", hostInterface)
 		}
+	} else {
+		// Specificity: only match packets destined for the host itself (Public IP, 127.0.0.1, etc.)
+		dnatArgs = append(dnatArgs, "-m", "addrtype", "--dst-type", "LOCAL")
 	}
 	dnatArgs = append(dnatArgs, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort))
 
@@ -179,7 +189,7 @@ func AddPortMapping(hostInterface string, hostPort int, guestIP string, guestPor
 	// DNAT Rule (Local Host Traffic)
 	// We add this to the OUTPUT chain to allow the host to access its own published ports.
 	if hostInterface == "" || hostInterface == "0.0.0.0" || hostInterface == "127.0.0.1" {
-		outputArgs := []string{"-t", "nat", "-A", "OUTPUT", "-p", protocol, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
+		outputArgs := []string{"-t", "nat", "-A", "OUTPUT", "-p", protocol, "-m", "addrtype", "--dst-type", "LOCAL", "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
 		_ = runCmd("iptables", outputArgs...)
 	}
 
@@ -213,13 +223,15 @@ func RemovePortMapping(hostInterface string, hostPort int, guestIP string, guest
 		} else {
 			dnatArgs = append(dnatArgs, "-i", hostInterface)
 		}
+	} else {
+		dnatArgs = append(dnatArgs, "-m", "addrtype", "--dst-type", "LOCAL")
 	}
 	dnatArgs = append(dnatArgs, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort))
 	_ = runCmd("iptables", dnatArgs...)
 
 	// Remove OUTPUT chain rule if applicable
 	if hostInterface == "" || hostInterface == "0.0.0.0" || hostInterface == "127.0.0.1" {
-		outputArgs := []string{"-t", "nat", "-D", "OUTPUT", "-p", protocol, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
+		outputArgs := []string{"-t", "nat", "-D", "OUTPUT", "-p", protocol, "-m", "addrtype", "--dst-type", "LOCAL", "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
 		_ = runCmd("iptables", outputArgs...)
 	}
 
