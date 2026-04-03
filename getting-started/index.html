@@ -522,6 +522,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#5-port-publishing-hybrid-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 5. Port Publishing (Hybrid Mode)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -703,6 +714,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#5-port-publishing-hybrid-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 5. Port Publishing (Hybrid Mode)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -781,6 +803,17 @@
 4.  Spawn the Firecracker process.
 5.  Provide you with a <strong>Session ID</strong> and a <strong>Proxy URL</strong>.</p>
 <p>You can now access your application via the proxy, which intelligently routes traffic to your dedicated microVM.</p>
+<hr />
+<h2 id="5-port-publishing-hybrid-mode">🌐 5. Port Publishing (Hybrid Mode)</h2>
+<p>If you need to expose a specific port (e.g., for a database or a web server on a custom port), use the <code>--publish</code> flag:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Explicitly map host port 5432 to guest port 5432</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>herd<span class="w"> </span>deploy<span class="w"> </span>--image<span class="w"> </span>postgres:latest<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span><span class="nb">test</span><span class="w"> </span>--publish<span class="w"> </span><span class="m">5432</span>:5432
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># Mapping to a random available host port</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>herd<span class="w"> </span>deploy<span class="w"> </span>--image<span class="w"> </span>nginx:latest<span class="w"> </span>--publish<span class="w"> </span>:80
+</span></code></pre></div>
+<p><strong>Network Prerequisites</strong>:
+For loopback access (<code>127.0.0.1</code>) to work with published ports, Herd automatically enables <code>net.ipv4.conf.all.route_localnet=1</code> during initialization. This allows loopback traffic to be routed through the NAT stack to your microVMs.</p>
 
 
 

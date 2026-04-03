@@ -915,7 +915,14 @@
     - <code>--image</code>: OCI image (default: <code>alpine:latest</code>).
     - <code>--cmd</code>: Command to run (comma-separated).
     - <code>-e</code>, <code>--env</code>: Environment variables.
-    - <code>--timeout</code>: Idle timeout in seconds (default: <code>300</code>).</p>
+    - <code>--timeout</code>: Idle timeout in seconds (default: <code>300</code>).
+    - <code>-p</code>, <code>--publish</code>: Publish a guest port to the host.
+        - Format: <code>[host_interface:]host_port:guest_port[/protocol]</code>
+        - Examples:
+            - <code>8080:80</code> (Bind all interfaces)
+            - <code>127.0.0.1:8080:80</code> (Localhost only)
+            - <code>:80</code> (Random host port allocation)
+            - <code>53:53/udp</code> (UDP mapping)</p>
 <h3 id="herd-exec"><code>herd exec</code></h3>
 <p>Open an interactive shell inside a running microVM.
 - <strong>Usage</strong>: <code>herd exec &lt;session-id&gt;</code>
