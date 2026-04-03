@@ -1,4 +1,4 @@
-# Herd: Microvm Hypervisor
+# Herd: microvm hypervisor
 
 The initial goal was to create a lightweight, secure, and fast execution environment for running docker images. The problem with docker is that it has a major security issue with running containers on the same host. Any zero day exploit in the kernel through a container can lead to a full host compromise. 
 
