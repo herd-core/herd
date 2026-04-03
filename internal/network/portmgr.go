@@ -27,7 +27,7 @@ func NewPortManager(start, end int) *PortManager {
 // Allocate attempts to reserve a port for a specific VM.
 // If requestedPort is 0, it picks an available port from the ephemeral pool.
 // If requestedPort is > 0, it checks if the port is available and claims it.
-func (pm *PortManager) Allocate(requestedPort int, protocol string, vmID string) (int, error) {
+func (pm *PortManager) Allocate(requestedPort int, protocol string, iface string, vmID string) (int, error) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
@@ -35,8 +35,8 @@ func (pm *PortManager) Allocate(requestedPort int, protocol string, vmID string)
 		// Find first available in ephemeral range
 		for p := pm.ephemeralStart; p <= pm.ephemeralEnd; p++ {
 			if _, exists := pm.inUse[p]; !exists {
-				// Also check if host actually allows binding
-				if pm.isHostPortFree(protocol, p) {
+				// Also check if host actually allows binding (ephemeral: any interface)
+				if pm.isHostPortFree(protocol, p, "") {
 					pm.inUse[p] = vmID
 					return p, nil
 				}
@@ -53,8 +53,8 @@ func (pm *PortManager) Allocate(requestedPort int, protocol string, vmID string)
 		return 0, fmt.Errorf("port %d already in use by VM %s within herd", requestedPort, owner)
 	}
 
-	// Check if something else on the host is using it
-	if !pm.isHostPortFree(protocol, requestedPort) {
+	// Check if something else on the host is using it (on the specific interface)
+	if !pm.isHostPortFree(protocol, requestedPort, iface) {
 		return 0, fmt.Errorf("port %d is already in use by another process on the host", requestedPort)
 	}
 
@@ -62,8 +62,13 @@ func (pm *PortManager) Allocate(requestedPort int, protocol string, vmID string)
 	return requestedPort, nil
 }
 
-func (pm *PortManager) isHostPortFree(protocol string, port int) bool {
-	addr := fmt.Sprintf("0.0.0.0:%d", port)
+func (pm *PortManager) isHostPortFree(protocol string, port int, iface string) bool {
+	// Use the specific interface if provided, otherwise check all interfaces.
+	host := "0.0.0.0"
+	if iface != "" && iface != "0.0.0.0" {
+		host = iface
+	}
+	addr := fmt.Sprintf("%s:%d", host, port)
 	if protocol == "udp" {
 		l, err := net.ListenPacket("udp", addr)
 		if err != nil {

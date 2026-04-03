@@ -200,14 +200,19 @@ func AddPortMapping(hostInterface string, hostPort int, guestIP string, guestPor
 	}
 
 	// FORWARD Rule
-	fwdArgs := []string{"-A", "FORWARD", "-p", protocol, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
+	// Scoped: only allow traffic NOT originating from our own MicroVM subnet,
+	// so intra-subnet traffic is still subject to the RFC 1918 isolation DROP rules.
+	fwdArgs := []string{"-A", "FORWARD", "-p", protocol, "!", "-s", Subnet, "-d", guestIP, "--dport", strconv.Itoa(guestPort), "-j", "ACCEPT"}
 	if err := runCmd("iptables", fwdArgs...); err != nil {
 		// Rollback DNAT rules
-		dnatArgs[3] = "-D"
-		_ = runCmd("iptables", dnatArgs...)
-		
-		outputArgs := []string{"-t", "nat", "-D", "OUTPUT", "-p", protocol, "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
-		_ = runCmd("iptables", outputArgs...)
+		// dnatArgs[2] is "-A" — mutate it to "-D" to delete the rule
+		rollbackArgs := make([]string, len(dnatArgs))
+		copy(rollbackArgs, dnatArgs)
+		rollbackArgs[2] = "-D"
+		_ = runCmd("iptables", rollbackArgs...)
+
+		outputRollbackArgs := []string{"-t", "nat", "-D", "OUTPUT", "-p", protocol, "-m", "addrtype", "--dst-type", "LOCAL", "--dport", strconv.Itoa(hostPort), "-j", "DNAT", "--to-destination", fmt.Sprintf("%s:%d", guestIP, guestPort)}
+		_ = runCmd("iptables", outputRollbackArgs...)
 
 		return fmt.Errorf("iptables forward add: %w", err)
 	}

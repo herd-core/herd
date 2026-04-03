@@ -511,7 +511,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		hostPort := pm.HostPort
 		if f.PortManager != nil {
 			var err error
-			hostPort, err = f.PortManager.Allocate(pm.HostPort, pm.Protocol, workerID)
+			hostPort, err = f.PortManager.Allocate(pm.HostPort, pm.Protocol, pm.HostInterface, workerID)
 			if err != nil {
 				slog.Warn("failed to allocate port", "id", workerID, "requested", pm.HostPort, "error", err)
 				continue

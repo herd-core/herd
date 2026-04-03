@@ -77,17 +77,29 @@ var deployCmd = &cobra.Command{
 						m["host_interface"] = "0.0.0.0"
 					} else {
 						// 8080:80
-						hPort, _ := strconv.Atoi(parts[0])
+						hPort, err := strconv.Atoi(parts[0])
+						if err != nil {
+							log.Fatalf("invalid host port %q in publish flag %q: %v", parts[0], p, err)
+						}
 						m["host_port"] = hPort
 						m["host_interface"] = "0.0.0.0"
 					}
-					gPort, _ := strconv.Atoi(parts[1])
+					gPort, err := strconv.Atoi(parts[1])
+					if err != nil {
+						log.Fatalf("invalid guest port %q in publish flag %q: %v", parts[1], p, err)
+					}
 					m["guest_port"] = gPort
 				} else if len(parts) == 3 {
 					// interface:host_port:guest_port
 					m["host_interface"] = parts[0]
-					hPort, _ := strconv.Atoi(parts[1])
-					gPort, _ := strconv.Atoi(parts[2])
+					hPort, err := strconv.Atoi(parts[1])
+					if err != nil {
+						log.Fatalf("invalid host port %q in publish flag %q: %v", parts[1], p, err)
+					}
+					gPort, err := strconv.Atoi(parts[2])
+					if err != nil {
+						log.Fatalf("invalid guest port %q in publish flag %q: %v", parts[2], p, err)
+					}
 					m["host_port"] = hPort
 					m["guest_port"] = gPort
 				} else {
@@ -124,6 +136,24 @@ var deployCmd = &cobra.Command{
 		fmt.Printf("Session ID: %v\n", result["session_id"])
 		fmt.Printf("Internal IP: %v\n", result["internal_ip"])
 		fmt.Printf("Proxy URL: %v\n", result["proxy_address"])
+		// Print port mappings so the user knows what was assigned (especially for random `:port` allocation)
+		if mappings, ok := result["port_mappings"]; ok && mappings != nil {
+			if ms, ok := mappings.([]any); ok && len(ms) > 0 {
+				fmt.Println("Port Mappings:")
+				for _, m := range ms {
+					if mm, ok := m.(map[string]any); ok {
+						protocol := mm["protocol"]
+						hostPort := mm["host_port"]
+						guestPort := mm["guest_port"]
+						if mm["host_interface"] != nil && mm["host_interface"] != "0.0.0.0" {
+							fmt.Printf("  %v:%v -> VM:%v/%v\n", mm["host_interface"], hostPort, guestPort, protocol)
+						} else {
+							fmt.Printf("  0.0.0.0:%v -> VM:%v/%v\n", hostPort, guestPort, protocol)
+						}
+					}
+				}
+			}
+		}
 	},
 }
 
