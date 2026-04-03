@@ -87,13 +87,21 @@ func (h *ControlPlaneHandler) handleHeartbeat(w http.ResponseWriter, r *http.Req
 }
 
 func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		http.Error(w, "missing request body", http.StatusBadRequest)
+		return
+	}
+
 	var req SessionCreateRequest
-	if r.Body != nil {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			h.controller.logger.Error("failed_to_decode_create_request", map[string]any{"error": err})
-			http.Error(w, "invalid json body", http.StatusBadRequest)
-			return
-		}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.controller.logger.Error("failed_to_decode_create_request", map[string]any{"error": err})
+		http.Error(w, "invalid json body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Image == "" {
+		http.Error(w, "missing image field", http.StatusBadRequest)
+		return
 	}
 
 	resp, err := h.controller.CreateSession(r.Context(), req)
