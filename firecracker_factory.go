@@ -211,7 +211,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	})
 
 	t0 := time.Now()
-	if err := f.Storage.WarmImage(ctx, config.Image); err != nil {
+	err = f.Storage.WarmImage(ctx, config.Image)
+	if err != nil {
 		return nil, fmt.Errorf("failed to warm image: %w", err)
 	}
 
@@ -245,7 +246,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	log.Printf("[spawn:%s] Snapshot         %v", workerID, time.Since(t0))
 
 	tInject := time.Now()
-	if err := f.Storage.InjectGuestAgent(ctx, workerID, f.GuestAgentPath, storage.DefaultGuestAgentPath); err != nil {
+	err = f.Storage.InjectGuestAgent(ctx, workerID, f.GuestAgentPath, storage.DefaultGuestAgentPath)
+	if err != nil {
 		return nil, fmt.Errorf("inject guest agent: %w", err)
 	}
 	log.Printf("[spawn:%s] inject guest     %v", workerID, time.Since(tInject))
@@ -258,46 +260,58 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	chrootDevDir := filepath.Join(chrootRoot, "dev")
 
 	// Ensure the parent directory <base>/firecracker/<id> exists.
-	if err := os.MkdirAll(filepath.Dir(chrootRoot), 0755); err != nil {
+	err = os.MkdirAll(filepath.Dir(chrootRoot), 0755)
+	if err != nil {
 		return nil, fmt.Errorf("create jail base dir: %w", err)
 	}
 
 	// Create the chroot root with 0700.
-	if err := os.Mkdir(chrootRoot, 0700); err != nil && !os.IsExist(err) {
+	err = os.Mkdir(chrootRoot, 0700)
+	if err != nil && !os.IsExist(err) {
 		return nil, fmt.Errorf("create chroot root: %w", err)
 	}
-	undoStack = append(undoStack, func() {
-		_ = os.RemoveAll(chrootRoot)
-	})
+	if err == nil {
+		// Only register the RemoveAll undo if we actually created the directory.
+		undoStack = append(undoStack, func() {
+			_ = os.RemoveAll(chrootRoot)
+		})
+	}
 
 	// Chown the chroot root to the leased UID/GID.
-	if err := os.Chown(chrootRoot, leasedUID, leasedUID); err != nil {
+	err = os.Chown(chrootRoot, leasedUID, leasedUID)
+	if err != nil {
 		return nil, fmt.Errorf("chown chroot root: %w", err)
 	}
 
 	// Create run/dev dirs with 0700.
-	if err := os.Mkdir(chrootRunDir, 0700); err != nil && !os.IsExist(err) {
+	err = os.Mkdir(chrootRunDir, 0700)
+	if err != nil && !os.IsExist(err) {
 		return nil, fmt.Errorf("create chroot run dir: %w", err)
 	}
-	if err := os.Chown(chrootRunDir, leasedUID, leasedUID); err != nil {
+	err = os.Chown(chrootRunDir, leasedUID, leasedUID)
+	if err != nil {
 		return nil, fmt.Errorf("chown chroot run dir: %w", err)
 	}
-	if err := os.Mkdir(chrootDevDir, 0700); err != nil && !os.IsExist(err) {
+	err = os.Mkdir(chrootDevDir, 0700)
+	if err != nil && !os.IsExist(err) {
 		return nil, fmt.Errorf("create chroot dev dir: %w", err)
 	}
-	if err := os.Chown(chrootDevDir, leasedUID, leasedUID); err != nil {
+	err = os.Chown(chrootDevDir, leasedUID, leasedUID)
+	if err != nil {
 		return nil, fmt.Errorf("chown chroot dev dir: %w", err)
 	}
 
 	// Hard-link the shared kernel image into the chroot.
 	kernelInChroot := filepath.Join(chrootRunDir, "vmlinux")
-	if err := os.Link(f.KernelImagePath, kernelInChroot); err != nil {
+	err = os.Link(f.KernelImagePath, kernelInChroot)
+	if err != nil {
 		return nil, fmt.Errorf("hard-link kernel into chroot: %w", err)
 	}
 
 	// Create a block device node inside the chroot.
 	rootfsInChroot := filepath.Join(chrootDevDir, "vda")
-	if err := bindDeviceIntoChroot(rootfsPath, rootfsInChroot, leasedUID, leasedUID); err != nil {
+	err = bindDeviceIntoChroot(rootfsPath, rootfsInChroot, leasedUID, leasedUID)
+	if err != nil {
 		return nil, fmt.Errorf("bind rootfs device into chroot: %w", err)
 	}
 
@@ -323,7 +337,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	}
 	tapName := "tap-" + workerID[len(workerID)-tapNameLen:]
 	_ = network.DeleteTap(tapName)
-	if err := network.CreatePointToPointTap(tapName, hostIP, guestIP, leasedUID, leasedUID); err != nil {
+	err = network.CreatePointToPointTap(tapName, hostIP, guestIP, leasedUID, leasedUID)
+	if err != nil {
 		return nil, fmt.Errorf("failed to create tap device: %w", err)
 	}
 	undoStack = append(undoStack, func() {
@@ -369,7 +384,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 		"entropy": {}
 	}`, initPath, guestIP, hostIP, macByte, tapName, workerID)
 
-	if err := os.WriteFile(configPath, []byte(configData), 0644); err != nil {
+	err = os.WriteFile(configPath, []byte(configData), 0644)
+	if err != nil {
 		return nil, fmt.Errorf("failed to write config: %w", err)
 	}
 
@@ -391,7 +407,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	cmd.Stderr = os.Stderr
 
 	t3 := time.Now()
-	if err := cmd.Start(); err != nil {
+	err = cmd.Start()
+	if err != nil {
 		return nil, fmt.Errorf("failed to start jailer: %w", err)
 	}
 	done := make(chan struct{})
@@ -484,7 +501,6 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	for _, pm := range config.PortMappings {
 		hostPort := pm.HostPort
 		if f.PortManager != nil {
-			var err error
 			hostPort, err = f.PortManager.Allocate(pm.HostPort, pm.Protocol, pm.HostInterface, workerID)
 			if err != nil {
 				return nil, fmt.Errorf("port allocation failed for mapping %d->%d: %w", pm.HostPort, pm.GuestPort, err)
@@ -496,7 +512,8 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 			})
 		}
 
-		if err := network.AddPortMapping(pm.HostInterface, hostPort, guestIP, pm.GuestPort, pm.Protocol); err != nil {
+		err = network.AddPortMapping(pm.HostInterface, hostPort, guestIP, pm.GuestPort, pm.Protocol)
+		if err != nil {
 			return nil, fmt.Errorf("iptables setup failed for mapping %d->%d: %w", pm.HostPort, pm.GuestPort, err)
 		}
 		// Capture loop variables cleanly for the closure
