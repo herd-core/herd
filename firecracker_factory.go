@@ -394,16 +394,23 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start jailer: %w", err)
 	}
-	undoStack = append(undoStack, func() {
-		_ = cmd.Process.Kill()
-	})
-	log.Printf("[spawn:%s] cmd.Start        %v", workerID, time.Since(t3))
-
 	done := make(chan struct{})
 	go func() {
 		_ = cmd.Wait()
 		close(done)
 	}()
+	undoStack = append(undoStack, func() {
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+			select {
+			case <-done:
+			case <-time.After(3 * time.Second):
+				slog.Error("timeout waiting for firecracker to die during rollback", "vmID", workerID)
+			}
+		}
+	})
+	log.Printf("[spawn:%s] cmd.Start        %v", workerID, time.Since(t3))
+
 
 	// Wait for the VM to boot and accept vsock connections.
 	t4 := time.Now()
@@ -425,6 +432,12 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	if execConn == nil {
 		return nil, fmt.Errorf("failed to connect to guest agent vsock port 5000 within timeout: %v", lastErr)
 	}
+
+	undoStack = append(undoStack, func() {
+		if execConn != nil {
+			_ = execConn.Close()
+		}
+	})
 
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	undoStack = append(undoStack, func() {
@@ -451,7 +464,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 			Env:     finalEnv,
 		}
 		if err := vsock.Execute(workerCtx, execConn, payload, io.MultiWriter(os.Stdout, logFile)); err != nil {
-			fmt.Printf("[host] Failed to execute payload on %s: %v\n", workerID, err)
+			slog.Warn("vsock execution interrupted/failed", "vmID", workerID, "error", err)
 		}
 	}()
 
