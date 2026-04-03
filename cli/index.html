@@ -901,8 +901,11 @@
 <h2 id="daemon-commands">🛰️ Daemon Commands</h2>
 <h3 id="herd-start"><code>herd start</code></h3>
 <p>Launches the Herd daemon.
-- <strong>Usage</strong>: <code>sudo herd start [--config path/to/herd.yaml]</code>
+- <strong>Usage</strong>: <code>sudo herd start [--config path/to/herd.yaml] [--interface eth0]</code>
+- <strong>Flags</strong>:
+    - <code>--interface &lt;name&gt;</code>: Public network interface to report to the control plane (e.g., <code>eth0</code>).
 - <strong>Actions</strong>:
+    - Determines the node's public IP from the specified interface.
     - Starts the Data Plane (Proxy) on port 8080.
     - Starts the Control Plane (REST API) on port 8081.
     - Initializes the session reaper for automatic cleanup.</p>

@@ -591,6 +591,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ☁️ cloud
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#jailer" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -684,6 +695,17 @@
     <span class="md-ellipsis">
       
         📈 telemetry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ☁️ cloud
       
     </span>
   </a>
@@ -865,6 +887,40 @@
 <td style="text-align: left;"><code>metrics_path</code></td>
 <td style="text-align: left;">Endpoint for Prometheus metrics.</td>
 <td style="text-align: left;"><code>/metrics</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="cloud">☁️ <code>cloud</code></h2>
+<p>Configuration for the Elixir-based Cloud Control Plane.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Key</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>enabled</code></td>
+<td style="text-align: left;">Whether to connect to the Cloud Control Plane.</td>
+<td style="text-align: left;"><code>false</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>endpoint</code></td>
+<td style="text-align: left;">gRPC address of the control plane.</td>
+<td style="text-align: left;">—</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>node_id</code></td>
+<td style="text-align: left;">Unique identifier for this node (defaults to hostname).</td>
+<td style="text-align: left;">—</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>interface</code></td>
+<td style="text-align: left;">Interface used to report the node's public IP (e.g., <code>eth0</code>).</td>
+<td style="text-align: left;">—</td>
 </tr>
 </tbody>
 </table>
