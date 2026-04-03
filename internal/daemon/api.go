@@ -91,6 +91,8 @@ func (h *ControlPlaneHandler) handleCreateSession(w http.ResponseWriter, r *http
 	if r.Body != nil {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			h.controller.logger.Error("failed_to_decode_create_request", map[string]any{"error": err})
+			http.Error(w, "invalid json body", http.StatusBadRequest)
+			return
 		}
 	}
 
@@ -126,10 +128,17 @@ func (h *ControlPlaneHandler) handleDeleteSession(w http.ResponseWriter, r *http
 
 func (h *ControlPlaneHandler) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	sessions := h.controller.ListSessions(r.Context())
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(sessions); err != nil {
+
+	data, err := json.Marshal(sessions)
+	if err != nil {
 		h.controller.logger.Error("failed_to_encode_sessions_list", map[string]any{"error": err})
 		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(data); err != nil {
+		h.controller.logger.Error("failed_to_write_sessions_list", map[string]any{"error": err})
 	}
 }
 
