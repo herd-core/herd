@@ -111,6 +111,8 @@ type Heartbeat struct {
 	UptimeSeconds     int64                  `protobuf:"varint,4,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
 	InterfaceIp       string                 `protobuf:"bytes,5,opt,name=interface_ip,json=interfaceIp,proto3" json:"interface_ip,omitempty"`
 	ActiveSessions    []*SessionInfo         `protobuf:"bytes,6,rep,name=active_sessions,json=activeSessions,proto3" json:"active_sessions,omitempty"`
+	TotalMemoryMb     int64                  `protobuf:"varint,7,opt,name=total_memory_mb,json=totalMemoryMb,proto3" json:"total_memory_mb,omitempty"`
+	TotalVcpu         int32                  `protobuf:"varint,8,opt,name=total_vcpu,json=totalVcpu,proto3" json:"total_vcpu,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -185,6 +187,20 @@ func (x *Heartbeat) GetActiveSessions() []*SessionInfo {
 		return x.ActiveSessions
 	}
 	return nil
+}
+
+func (x *Heartbeat) GetTotalMemoryMb() int64 {
+	if x != nil {
+		return x.TotalMemoryMb
+	}
+	return 0
+}
+
+func (x *Heartbeat) GetTotalVcpu() int32 {
+	if x != nil {
+		return x.TotalVcpu
+	}
+	return 0
 }
 
 type CommandResponse struct {
@@ -357,6 +373,7 @@ type CloudCommand struct {
 	Action             string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"` // "boot_vm", "destroy_vm", etc.
 	Params             map[string]string      `protobuf:"bytes,3,rep,name=params,proto3" json:"params,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	RequestedSessionId string                 `protobuf:"bytes,4,opt,name=requested_session_id,json=requestedSessionId,proto3" json:"requested_session_id,omitempty"` // Top-Down ID from Control Plane
+	RequestedMappings  []*PortMapping         `protobuf:"bytes,5,rep,name=requested_mappings,json=requestedMappings,proto3" json:"requested_mappings,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -419,6 +436,13 @@ func (x *CloudCommand) GetRequestedSessionId() string {
 	return ""
 }
 
+func (x *CloudCommand) GetRequestedMappings() []*PortMapping {
+	if x != nil {
+		return x.RequestedMappings
+	}
+	return nil
+}
+
 var File_internal_proto_v1_herd_proto protoreflect.FileDescriptor
 
 const file_internal_proto_v1_herd_proto_rawDesc = "" +
@@ -428,14 +452,17 @@ const file_internal_proto_v1_herd_proto_rawDesc = "" +
 	"NodeStream\x122\n" +
 	"\theartbeat\x18\x01 \x01(\v2\x12.herd.v1.HeartbeatH\x00R\theartbeat\x12E\n" +
 	"\x10command_response\x18\x02 \x01(\v2\x18.herd.v1.CommandResponseH\x00R\x0fcommandResponseB\t\n" +
-	"\apayload\"\x98\x02\n" +
+	"\apayload\"\xdf\x02\n" +
 	"\tHeartbeat\x12.\n" +
 	"\x13available_memory_mb\x18\x01 \x01(\x03R\x11availableMemoryMb\x12&\n" +
 	"\x0factive_vm_count\x18\x02 \x01(\x05R\ractiveVmCount\x12*\n" +
 	"\x11cpu_usage_percent\x18\x03 \x01(\x01R\x0fcpuUsagePercent\x12%\n" +
 	"\x0euptime_seconds\x18\x04 \x01(\x03R\ruptimeSeconds\x12!\n" +
 	"\finterface_ip\x18\x05 \x01(\tR\vinterfaceIp\x12=\n" +
-	"\x0factive_sessions\x18\x06 \x03(\v2\x14.herd.v1.SessionInfoR\x0eactiveSessions\"e\n" +
+	"\x0factive_sessions\x18\x06 \x03(\v2\x14.herd.v1.SessionInfoR\x0eactiveSessions\x12&\n" +
+	"\x0ftotal_memory_mb\x18\a \x01(\x03R\rtotalMemoryMb\x12\x1d\n" +
+	"\n" +
+	"total_vcpu\x18\b \x01(\x05R\ttotalVcpu\"e\n" +
 	"\x0fCommandResponse\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12\x1d\n" +
@@ -448,13 +475,14 @@ const file_internal_proto_v1_herd_proto_rawDesc = "" +
 	"\bmappings\x18\x02 \x03(\v2\x14.herd.v1.PortMappingR\bmappings\"O\n" +
 	"\vPortMapping\x12#\n" +
 	"\rinternal_port\x18\x01 \x01(\x05R\finternalPort\x12\x1b\n" +
-	"\thost_port\x18\x02 \x01(\x05R\bhostPort\"\xed\x01\n" +
+	"\thost_port\x18\x02 \x01(\x05R\bhostPort\"\xb2\x02\n" +
 	"\fCloudCommand\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\x129\n" +
 	"\x06params\x18\x03 \x03(\v2!.herd.v1.CloudCommand.ParamsEntryR\x06params\x120\n" +
-	"\x14requested_session_id\x18\x04 \x01(\tR\x12requestedSessionId\x1a9\n" +
+	"\x14requested_session_id\x18\x04 \x01(\tR\x12requestedSessionId\x12C\n" +
+	"\x12requested_mappings\x18\x05 \x03(\v2\x14.herd.v1.PortMappingR\x11requestedMappings\x1a9\n" +
 	"\vParamsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012M\n" +
@@ -489,13 +517,14 @@ var file_internal_proto_v1_herd_proto_depIdxs = []int32{
 	3, // 2: herd.v1.Heartbeat.active_sessions:type_name -> herd.v1.SessionInfo
 	4, // 3: herd.v1.SessionInfo.mappings:type_name -> herd.v1.PortMapping
 	6, // 4: herd.v1.CloudCommand.params:type_name -> herd.v1.CloudCommand.ParamsEntry
-	0, // 5: herd.v1.HerdControlPlane.Connect:input_type -> herd.v1.NodeStream
-	5, // 6: herd.v1.HerdControlPlane.Connect:output_type -> herd.v1.CloudCommand
-	6, // [6:7] is the sub-list for method output_type
-	5, // [5:6] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	4, // 5: herd.v1.CloudCommand.requested_mappings:type_name -> herd.v1.PortMapping
+	0, // 6: herd.v1.HerdControlPlane.Connect:input_type -> herd.v1.NodeStream
+	5, // 7: herd.v1.HerdControlPlane.Connect:output_type -> herd.v1.CloudCommand
+	7, // [7:8] is the sub-list for method output_type
+	6, // [6:7] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_internal_proto_v1_herd_proto_init() }

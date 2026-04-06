@@ -25,11 +25,38 @@ func pollNodeStats() (NodeStats, error) {
 		return NodeStats{}, fmt.Errorf("observer: measureCPUIdle: %w", err)
 	}
 
+	count, err := readCPUCount()
+	if err != nil {
+		return NodeStats{}, fmt.Errorf("observer: readCPUCount: %w", err)
+	}
+
 	return NodeStats{
 		TotalMemoryBytes:     mem.total,
 		AvailableMemoryBytes: mem.available,
 		CPUIdle:              cpu,
+		CPUCount:             count,
 	}, nil
+}
+
+func readCPUCount() (int, error) {
+	f, err := os.Open("/proc/stat")
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+
+	count := 0
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "cpu") && len(line) > 3 && line[3] >= '0' && line[3] <= '9' {
+			count++
+		}
+	}
+	if count == 0 {
+		return 1, nil // Fallback to 1 if we can't find individual cores (unlikely on Linux)
+	}
+	return count, nil
 }
 
 // ---------------------------------------------------------------------------

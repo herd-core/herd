@@ -7,5 +7,7 @@ package observer
 // Callers should treat a zero NodeStats as "metrics unavailable" rather
 // than "machine has zero memory."
 func pollNodeStats() (NodeStats, error) {
-	return NodeStats{}, nil
+	return NodeStats{
+		CPUCount: 1,
+	}, nil
 }
