@@ -219,12 +219,12 @@ func (c *Client) persistIdentity(nodeID, nodeKey string) error {
 	os.Remove(c.cfg.NodeKeyPath)
 
 	// Write key with restricted permissions
-	if err := os.WriteFile(c.cfg.NodeKeyPath, []byte(nodeKey), 0400); err != nil {
+	if err := os.WriteFile(c.cfg.NodeKeyPath, []byte(nodeKey), 0600); err != nil {
 		return err
 	}
 
 	idPath := filepath.Join(dir, "node.id")
-	return os.WriteFile(idPath, []byte(nodeID), 0644)
+	return os.WriteFile(idPath, []byte(nodeID), 0400)
 }
 
 func (c *Client) Close() {
