@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/herd-core/herd"
@@ -195,13 +196,13 @@ func (c *Client) commandLoop(ctx context.Context) {
 func (c *Client) loadLocalIdentity() {
 	keyData, err := os.ReadFile(c.cfg.NodeKeyPath)
 	if err == nil {
-		c.cfg.NodeKey = string(keyData)
+		c.cfg.NodeKey = strings.TrimSpace(string(keyData))
 	}
 
 	idPath := filepath.Join(filepath.Dir(c.cfg.NodeKeyPath), "node.id")
 	idData, err := os.ReadFile(idPath)
 	if err == nil {
-		c.cfg.NodeID = string(idData)
+		c.cfg.NodeID = strings.TrimSpace(string(idData))
 	}
 }
 
@@ -213,6 +214,9 @@ func (c *Client) persistIdentity(nodeID, nodeKey string) error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
+
+	// P0 Fix: Remove existing read-only file before writing a new one
+	os.Remove(c.cfg.NodeKeyPath)
 
 	// Write key with restricted permissions
 	if err := os.WriteFile(c.cfg.NodeKeyPath, []byte(nodeKey), 0400); err != nil {

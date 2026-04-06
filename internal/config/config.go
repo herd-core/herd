@@ -43,9 +43,9 @@ type CloudConfig struct {
 	Enabled      bool   `yaml:"enabled"`
 	Endpoint     string `yaml:"endpoint"`
 	MachineToken string `yaml:"machine_token"`
-	NodeKey      string `yaml:"node_key"`
+	NodeKey      string `yaml:"-"`
 	NodeKeyPath  string `yaml:"node_key_path"`
-	NodeID       string `yaml:"node_id"` // Used for reconnection
+	NodeID       string `yaml:"-"` // Used for reconnection
 	Interface    string `yaml:"interface"`
 }
 
