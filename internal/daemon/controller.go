@@ -9,12 +9,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/herd-core/herd"
 	"github.com/herd-core/herd/internal/lifecycle"
 )
 
 // SessionCreateRequest is the shared request structure for booting VMs.
 type SessionCreateRequest struct {
+	SessionID          string             `json:"session_id,omitempty"`
 	Image              string             `json:"image"`
 	Command            []string           `json:"command,omitempty"`
 	Env                map[string]string  `json:"env,omitempty"`
@@ -22,6 +24,8 @@ type SessionCreateRequest struct {
 	TTLSeconds         int                `json:"ttl_seconds,omitempty"`
 	HealthInterval     string             `json:"health_interval,omitempty"`
 	Warm               bool               `json:"warm,omitempty"`
+	VCPUs              int                `json:"vcpus,omitempty"`
+	MemoryMB           int                `json:"memory_mb,omitempty"`
 	PortMappings       []herd.PortMapping `json:"port_mappings,omitempty"`
 }
 
@@ -69,7 +73,11 @@ func (c *Controller) CreateSession(ctx context.Context, req SessionCreateRequest
 		}
 	}
 
-	sessionID := fmt.Sprintf("sess-%d-%d", time.Now().UnixNano(), c.seq.Add(1))
+	sessionID := req.SessionID
+	if sessionID == "" {
+		sessionID = uuid.NewString()
+	}
+
 	c.logger.Info("acquire_request_received", map[string]any{"session_id": sessionID})
 
 	tenantConfig := herd.TenantConfig{
@@ -79,6 +87,8 @@ func (c *Controller) CreateSession(ctx context.Context, req SessionCreateRequest
 		IdleTimeoutSeconds: req.IdleTimeoutSeconds,
 		TTLSeconds:         req.TTLSeconds,
 		HealthInterval:     req.HealthInterval,
+		VCPUs:              req.VCPUs,
+		MemoryMB:           req.MemoryMB,
 		PortMappings:       req.PortMappings,
 	}
 
@@ -89,9 +99,14 @@ func (c *Controller) CreateSession(ctx context.Context, req SessionCreateRequest
 		return nil, fmt.Errorf("failed to acquire session: %w", err)
 	}
 
-	c.lifecycleManager.Register(sessionID, tenantConfig)
+	var mappings []herd.PortMapping
+	if fw, ok := session.Worker.(interface{ PortMappings() []herd.PortMapping }); ok {
+		mappings = fw.PortMappings()
+	}
+
+	c.lifecycleManager.Register(sessionID, tenantConfig, mappings)
 	RecordSessionStarted()
-	c.logger.Info("session_acquired", map[string]any{"session_id": sessionID})
+	c.logger.Info("session_acquired", map[string]any{"session_id": sessionID, "mappings": mappings})
 
 	var internalIP string
 	if fw, ok := session.Worker.(interface{ GuestIP() string }); ok {

@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -113,24 +114,33 @@ func (c *Client) sendTelemetry(ctx context.Context) error {
 	activeSessionsRaw := c.controller.ListSessions(ctx)
 	activeSessions := make([]*herdv1.SessionInfo, 0, len(activeSessionsRaw))
 
-	// For each session, find the first host port mapping.
-	// In a more complex setup, we might report all ports or a specific service port.
 	for _, s := range activeSessionsRaw {
+		protoMappings := make([]*herdv1.PortMapping, 0, len(s.PortMappings))
+		for _, m := range s.PortMappings {
+			protoMappings = append(protoMappings, &herdv1.PortMapping{
+				InternalPort: int32(m.GuestPort),
+				HostPort:     int32(m.HostPort),
+			})
+		}
 		activeSessions = append(activeSessions, &herdv1.SessionInfo{
 			SessionId: s.SessionID,
-			// For now, telemetry from control plane dashboard doesn't need the port mapping
-			// as it's primarily used for routing in NodeTwin. But we could add it back
-			// if we query the worker for host port.
+			Mappings:  protoMappings,
 		})
 	}
 
 	return c.stream.Send(&herdv1.NodeStream{
-		AvailableMemoryMb: stats.Node.AvailableMemoryBytes / 1024 / 1024,
-		ActiveVmCount:     int32(stats.ActiveSessions),
-		CpuUsagePercent:   (1.0 - stats.Node.CPUIdle) * 100.0,
-		UptimeSeconds:     time.Now().Unix(), // Ideally node uptime, but this works for now
-		InterfaceIp:       c.interfaceIP,
-		ActiveSessions:    activeSessions,
+		Payload: &herdv1.NodeStream_Heartbeat{
+			Heartbeat: &herdv1.Heartbeat{
+				AvailableMemoryMb: stats.Node.AvailableMemoryBytes / 1024 / 1024,
+				ActiveVmCount:     int32(stats.ActiveSessions),
+				CpuUsagePercent:   (1.0 - stats.Node.CPUIdle) * 100.0,
+				UptimeSeconds:     time.Now().Unix(),
+				InterfaceIp:       c.interfaceIP,
+				ActiveSessions:    activeSessions,
+				TotalMemoryMb:     stats.Node.TotalMemoryBytes / 1024 / 1024,
+				TotalVcpu:         int32(stats.Node.CPUCount),
+			},
+		},
 	})
 }
 
@@ -149,25 +159,58 @@ func (c *Client) commandLoop(ctx context.Context) {
 		log.Printf("Received Cloud Command: %s (ID: %s)", cmd.Action, cmd.CommandId)
 
 		if cmd.Action == "boot_vm" {
-			log.Printf("Booting VM for command %s", cmd.CommandId)
+			log.Printf("Booting VM for command %s (requested_id: %s)", cmd.CommandId, cmd.RequestedSessionId)
 
 			go func() {
+				requestedMappings := make([]herd.PortMapping, 0, len(cmd.RequestedMappings))
+				for _, m := range cmd.RequestedMappings {
+					requestedMappings = append(requestedMappings, herd.PortMapping{
+						GuestPort: int(m.InternalPort),
+						Protocol:  "tcp", // Defaulting to TCP for now
+					})
+				}
+
+				if len(requestedMappings) == 0 {
+					// Fallback to legacy default if no mappings provided
+					requestedMappings = append(requestedMappings, herd.PortMapping{
+						GuestPort: 80,
+						Protocol:  "tcp",
+					})
+				}
+
+				vcpus, _ := strconv.Atoi(cmd.Params["vcpus"])
+				memoryMB, _ := strconv.Atoi(cmd.Params["memory_mb"])
+
 				req := daemon.SessionCreateRequest{
-					Image: cmd.Params["image"],
-					PortMappings: []herd.PortMapping{
-						{HostPort: 0, GuestPort: 80, Protocol: "tcp"},
-					},
+					SessionID:    cmd.RequestedSessionId,
+					Image:        cmd.Params["image_ref"],
+					VCPUs:        vcpus,
+					MemoryMB:     memoryMB,
+					PortMappings: requestedMappings,
 				}
 				if req.Image == "" {
 					req.Image = "alpine:latest"
 				}
 
 				resp, err := c.controller.CreateSession(ctx, req)
+				
+				// Send CommandResponse feedback
+				respPayload := &herdv1.CommandResponse{
+					CommandId: cmd.CommandId,
+				}
 				if err != nil {
 					log.Printf("failed to boot VM for command %s: %v", cmd.CommandId, err)
-					return
+					respPayload.Error = err.Error()
+				} else {
+					log.Printf("VM booted for session %s", resp.SessionID)
+					respPayload.SessionId = resp.SessionID
 				}
-				log.Printf("VM booted for session %s", resp.SessionID)
+
+				c.stream.Send(&herdv1.NodeStream{
+					Payload: &herdv1.NodeStream_CommandResponse{
+						CommandResponse: respPayload,
+					},
+				})
 			}()
 		}
 

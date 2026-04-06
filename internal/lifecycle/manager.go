@@ -20,8 +20,9 @@ type SessionState struct {
 	LastDataActivity     time.Time  `json:"last_data_activity"`
 	ActiveConns          int        `json:"active_conns"`
 
-	IdleTTL     time.Duration `json:"idle_ttl"`
-	AbsoluteTTL time.Duration `json:"absolute_ttl"`
+	IdleTTL     time.Duration      `json:"idle_ttl"`
+	AbsoluteTTL time.Duration      `json:"absolute_ttl"`
+	PortMappings []herd.PortMapping `json:"port_mappings"`
 }
 
 type Manager struct {
@@ -38,7 +39,7 @@ func NewManager(reaper WorkerReaper) *Manager {
 }
 
 // Register explicitly creates the session lease.
-func (m *Manager) Register(sessionID string, config herd.TenantConfig) {
+func (m *Manager) Register(sessionID string, config herd.TenantConfig, mappings []herd.PortMapping) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := time.Now()
@@ -51,6 +52,7 @@ func (m *Manager) Register(sessionID string, config herd.TenantConfig) {
 		ActiveConns:          0,
 		IdleTTL:              time.Duration(config.IdleTimeoutSeconds) * time.Second,
 		AbsoluteTTL:          time.Duration(config.TTLSeconds) * time.Second,
+		PortMappings:         mappings,
 	}
 	m.registry[sessionID] = s
 }
