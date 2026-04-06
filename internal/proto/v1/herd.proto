@@ -8,7 +8,8 @@ service HerdControlPlane {
 }
 
 message NodeStream {
-  string node_id = 1;
+  reserved 1;
+  reserved "node_id";
   int64 available_memory_mb = 2;
   int32 active_vm_count = 3;
   double cpu_usage_percent = 4;
