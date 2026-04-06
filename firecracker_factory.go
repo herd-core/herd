@@ -391,7 +391,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 			"uds_path": "/run/%s.sock"
 		},
 		"entropy": {}
-	}`, initPath, guestIP, hostIP, macByte, tapName, workerID, vcpu, mem)
+	}`, initPath, guestIP, hostIP, macByte, tapName, vcpu, mem, workerID)
 
 	err = os.WriteFile(configPath, []byte(configData), 0644)
 	if err != nil {
