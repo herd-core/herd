@@ -224,7 +224,7 @@ func (c *Client) persistIdentity(nodeID, nodeKey string) error {
 	}
 
 	idPath := filepath.Join(dir, "node.id")
-	return os.WriteFile(idPath, []byte(nodeID), 0400)
+	return os.WriteFile(idPath, []byte(nodeID), 0600)
 }
 
 func (c *Client) Close() {
