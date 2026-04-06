@@ -206,11 +206,13 @@ func (c *Client) commandLoop(ctx context.Context) {
 					respPayload.SessionId = resp.SessionID
 				}
 
-				c.stream.Send(&herdv1.NodeStream{
+				if err := c.stream.Send(&herdv1.NodeStream{
 					Payload: &herdv1.NodeStream_CommandResponse{
 						CommandResponse: respPayload,
 					},
-				})
+				}); err != nil {
+					log.Printf("failed to send command response feedback: %v", err)
+				}
 			}()
 		}
 
