@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/herd-core/herd"
