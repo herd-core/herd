@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 
 	"gopkg.in/yaml.v3"
@@ -39,10 +40,13 @@ type Config struct {
 }
 
 type CloudConfig struct {
-	Enabled         bool   `yaml:"enabled"`
-	Endpoint        string `yaml:"endpoint"`
-	NodeID          string `yaml:"node_id"`
-	Interface 		string `yaml:"interface"`
+	Enabled      bool   `yaml:"enabled"`
+	Endpoint     string `yaml:"endpoint"`
+	MachineToken string `yaml:"machine_token"`
+	NodeKey      string `yaml:"-"`
+	NodeKeyPath  string `yaml:"node_key_path"`
+	NodeID       string `yaml:"-"` // Used for reconnection
+	Interface    string `yaml:"interface"`
 }
 
 type BinaryConfig struct {
@@ -129,6 +133,14 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Network.EphemeralPortEnd == 0 {
 		c.Network.EphemeralPortEnd = 39999
+	}
+	if c.Cloud.NodeKeyPath == "" {
+		home, _ := GetTargetHomeDir()
+		if home != "" {
+			c.Cloud.NodeKeyPath = filepath.Join(home, ".herd", "node.key")
+		} else {
+			c.Cloud.NodeKeyPath = "/etc/herd/node.key"
+		}
 	}
 }
 

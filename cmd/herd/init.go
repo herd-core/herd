@@ -32,8 +32,8 @@ var (
 	maxGlobalVMs   int
 	maxGlobalMemMB int64
 	cpuLimitCores  float64
-	cloudEndpoint  string
-	nodeID         string
+	cloudEndpoint string
+	machineToken  string
 )
 
 var initCmd = &cobra.Command{
@@ -55,7 +55,7 @@ func init() {
 	initCmd.Flags().Int64Var(&maxGlobalMemMB, "max-memory", 0, "Max global memory in MB")
 	initCmd.Flags().Float64Var(&cpuLimitCores, "cpu-cores", 0, "CPU limit in cores")
 	initCmd.Flags().StringVar(&cloudEndpoint, "cloud-endpoint", "", "Cloud control plane endpoint (e.g. grpc.herdcore.io:443)")
-	initCmd.Flags().StringVar(&nodeID, "node-id", "", "Unique node identifier for cloud registration")
+	initCmd.Flags().StringVar(&machineToken, "machine-token", "", "Token for machine identity authentication")
 
 	rootCmd.AddCommand(initCmd)
 }
@@ -273,9 +273,9 @@ func runInit() {
 			MetricsPath: "/metrics",
 		},
 		Cloud: config.CloudConfig{
-			Enabled:  cloudEndpoint != "" && nodeID != "",
-			Endpoint: cloudEndpoint,
-			NodeID:   nodeID,
+			Enabled:      cloudEndpoint != "" && machineToken != "",
+			Endpoint:     cloudEndpoint,
+			MachineToken: machineToken,
 		},
 	}
 

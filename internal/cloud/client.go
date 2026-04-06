@@ -8,6 +8,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/herd-core/herd"
@@ -18,12 +20,12 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/metadata"
 )
 
 // Client handles the bidirectional gRPC stream to the Elixir Control Plane.
 type Client struct {
 	cfg         config.CloudConfig
-	nodeID      string
 	interfaceIP string
 	controller  *daemon.Controller
 	client      herdv1.HerdControlPlaneClient
@@ -32,14 +34,8 @@ type Client struct {
 }
 
 func NewClient(cfg config.CloudConfig, interfaceIP string, controller *daemon.Controller) *Client {
-	nodeID := cfg.NodeID
-	if nodeID == "" {
-		host, _ := os.Hostname()
-		nodeID = host
-	}
 	return &Client{
 		cfg:         cfg,
-		nodeID:      nodeID,
 		interfaceIP: interfaceIP,
 		controller:  controller,
 	}
@@ -58,14 +54,29 @@ func (c *Client) Start(ctx context.Context) error {
 	}
 	c.conn = conn
 	c.client = herdv1.NewHerdControlPlaneClient(conn)
+	c.loadLocalIdentity()
 
-	stream, err := c.client.Connect(ctx)
+	var authCtx context.Context
+	if c.cfg.NodeKey != "" && c.cfg.NodeID != "" {
+		log.Printf("Authenticating with persistent NodeKey for ID: %s", c.cfg.NodeID)
+		authCtx = metadata.AppendToOutgoingContext(ctx,
+			"x-node-id", c.cfg.NodeID,
+			"x-node-key", c.cfg.NodeKey,
+		)
+	} else if c.cfg.MachineToken != "" {
+		log.Printf("Authenticating with one-time Machine Token")
+		authCtx = metadata.AppendToOutgoingContext(ctx, "x-machine-token", c.cfg.MachineToken)
+	} else {
+		return fmt.Errorf("no authentication credentials available (machine token or node key)")
+	}
+
+	stream, err := c.client.Connect(authCtx)
 	if err != nil {
 		return fmt.Errorf("failed to open stream: %w", err)
 	}
 	c.stream = stream
 	c.sendTelemetry(ctx) // Send initial telemetry immediately
-	log.Printf("Cloud Control Plane connected! NodeID: %s", c.nodeID)
+	log.Printf("Cloud Control Plane connected!")
 
 	// Start telemetry heartbeat
 	go c.telemetryLoop(ctx)
@@ -114,7 +125,6 @@ func (c *Client) sendTelemetry(ctx context.Context) error {
 	}
 
 	return c.stream.Send(&herdv1.NodeStream{
-		NodeId:            c.nodeID,
 		AvailableMemoryMb: stats.Node.AvailableMemoryBytes / 1024 / 1024,
 		ActiveVmCount:     int32(stats.ActiveSessions),
 		CpuUsagePercent:   (1.0 - stats.Node.CPUIdle) * 100.0,
@@ -164,7 +174,57 @@ func (c *Client) commandLoop(ctx context.Context) {
 		if cmd.Action == "destroy_all" {
 			log.Printf("Received destroy_all command")
 		}
+
+		if cmd.Action == "swap_credentials" {
+			nodeID := cmd.Params["node_id"]
+			nodeKey := cmd.Params["node_key"]
+			if nodeID == "" || nodeKey == "" {
+				log.Printf("received malformed swap_credentials command")
+				continue
+			}
+
+			log.Printf("Credential Swap triggered! Persisting new NodeKey for ID: %s", nodeID)
+			if err := c.persistIdentity(nodeID, nodeKey); err != nil {
+				log.Printf("failed to persist new identity: %v", err)
+				continue
+			}
+			log.Printf("✅ NodeKey persisted to %s. One-time token approach is now superseded.", c.cfg.NodeKeyPath)
+		}
 	}
+}
+
+func (c *Client) loadLocalIdentity() {
+	keyData, err := os.ReadFile(c.cfg.NodeKeyPath)
+	if err == nil {
+		c.cfg.NodeKey = strings.TrimSpace(string(keyData))
+	}
+
+	idPath := filepath.Join(filepath.Dir(c.cfg.NodeKeyPath), "node.id")
+	idData, err := os.ReadFile(idPath)
+	if err == nil {
+		c.cfg.NodeID = strings.TrimSpace(string(idData))
+	}
+}
+
+func (c *Client) persistIdentity(nodeID, nodeKey string) error {
+	c.cfg.NodeID = nodeID
+	c.cfg.NodeKey = nodeKey
+
+	dir := filepath.Dir(c.cfg.NodeKeyPath)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+
+	// P0 Fix: Remove existing read-only file before writing a new one
+	os.Remove(c.cfg.NodeKeyPath)
+
+	// Write key with restricted permissions
+	if err := os.WriteFile(c.cfg.NodeKeyPath, []byte(nodeKey), 0600); err != nil {
+		return err
+	}
+
+	idPath := filepath.Join(dir, "node.id")
+	return os.WriteFile(idPath, []byte(nodeID), 0600)
 }
 
 func (c *Client) Close() {
