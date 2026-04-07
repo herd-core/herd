@@ -22,16 +22,14 @@ const (
 )
 
 type NodeStream struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	NodeId            string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	AvailableMemoryMb int64                  `protobuf:"varint,2,opt,name=available_memory_mb,json=availableMemoryMb,proto3" json:"available_memory_mb,omitempty"`
-	ActiveVmCount     int32                  `protobuf:"varint,3,opt,name=active_vm_count,json=activeVmCount,proto3" json:"active_vm_count,omitempty"`
-	CpuUsagePercent   float64                `protobuf:"fixed64,4,opt,name=cpu_usage_percent,json=cpuUsagePercent,proto3" json:"cpu_usage_percent,omitempty"`
-	UptimeSeconds     int64                  `protobuf:"varint,5,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
-	InterfaceIp       string                 `protobuf:"bytes,6,opt,name=interface_ip,json=interfaceIp,proto3" json:"interface_ip,omitempty"`
-	ActiveSessions    []*SessionInfo         `protobuf:"bytes,7,rep,name=active_sessions,json=activeSessions,proto3" json:"active_sessions,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Payload:
+	//
+	//	*NodeStream_Heartbeat
+	//	*NodeStream_CommandResponse
+	Payload       isNodeStream_Payload `protobuf_oneof:"payload"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NodeStream) Reset() {
@@ -64,66 +62,218 @@ func (*NodeStream) Descriptor() ([]byte, []int) {
 	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *NodeStream) GetNodeId() string {
+func (x *NodeStream) GetPayload() isNodeStream_Payload {
 	if x != nil {
-		return x.NodeId
+		return x.Payload
 	}
-	return ""
+	return nil
 }
 
-func (x *NodeStream) GetAvailableMemoryMb() int64 {
+func (x *NodeStream) GetHeartbeat() *Heartbeat {
+	if x != nil {
+		if x, ok := x.Payload.(*NodeStream_Heartbeat); ok {
+			return x.Heartbeat
+		}
+	}
+	return nil
+}
+
+func (x *NodeStream) GetCommandResponse() *CommandResponse {
+	if x != nil {
+		if x, ok := x.Payload.(*NodeStream_CommandResponse); ok {
+			return x.CommandResponse
+		}
+	}
+	return nil
+}
+
+type isNodeStream_Payload interface {
+	isNodeStream_Payload()
+}
+
+type NodeStream_Heartbeat struct {
+	Heartbeat *Heartbeat `protobuf:"bytes,1,opt,name=heartbeat,proto3,oneof"`
+}
+
+type NodeStream_CommandResponse struct {
+	CommandResponse *CommandResponse `protobuf:"bytes,2,opt,name=command_response,json=commandResponse,proto3,oneof"`
+}
+
+func (*NodeStream_Heartbeat) isNodeStream_Payload() {}
+
+func (*NodeStream_CommandResponse) isNodeStream_Payload() {}
+
+type Heartbeat struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	AvailableMemoryMb int64                  `protobuf:"varint,1,opt,name=available_memory_mb,json=availableMemoryMb,proto3" json:"available_memory_mb,omitempty"`
+	ActiveVmCount     int32                  `protobuf:"varint,2,opt,name=active_vm_count,json=activeVmCount,proto3" json:"active_vm_count,omitempty"`
+	CpuUsagePercent   float64                `protobuf:"fixed64,3,opt,name=cpu_usage_percent,json=cpuUsagePercent,proto3" json:"cpu_usage_percent,omitempty"`
+	UptimeSeconds     int64                  `protobuf:"varint,4,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
+	InterfaceIp       string                 `protobuf:"bytes,5,opt,name=interface_ip,json=interfaceIp,proto3" json:"interface_ip,omitempty"`
+	ActiveSessions    []*SessionInfo         `protobuf:"bytes,6,rep,name=active_sessions,json=activeSessions,proto3" json:"active_sessions,omitempty"`
+	TotalMemoryMb     int64                  `protobuf:"varint,7,opt,name=total_memory_mb,json=totalMemoryMb,proto3" json:"total_memory_mb,omitempty"`
+	TotalVcpu         int32                  `protobuf:"varint,8,opt,name=total_vcpu,json=totalVcpu,proto3" json:"total_vcpu,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *Heartbeat) Reset() {
+	*x = Heartbeat{}
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Heartbeat) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Heartbeat) ProtoMessage() {}
+
+func (x *Heartbeat) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Heartbeat.ProtoReflect.Descriptor instead.
+func (*Heartbeat) Descriptor() ([]byte, []int) {
+	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Heartbeat) GetAvailableMemoryMb() int64 {
 	if x != nil {
 		return x.AvailableMemoryMb
 	}
 	return 0
 }
 
-func (x *NodeStream) GetActiveVmCount() int32 {
+func (x *Heartbeat) GetActiveVmCount() int32 {
 	if x != nil {
 		return x.ActiveVmCount
 	}
 	return 0
 }
 
-func (x *NodeStream) GetCpuUsagePercent() float64 {
+func (x *Heartbeat) GetCpuUsagePercent() float64 {
 	if x != nil {
 		return x.CpuUsagePercent
 	}
 	return 0
 }
 
-func (x *NodeStream) GetUptimeSeconds() int64 {
+func (x *Heartbeat) GetUptimeSeconds() int64 {
 	if x != nil {
 		return x.UptimeSeconds
 	}
 	return 0
 }
 
-func (x *NodeStream) GetInterfaceIp() string {
+func (x *Heartbeat) GetInterfaceIp() string {
 	if x != nil {
 		return x.InterfaceIp
 	}
 	return ""
 }
 
-func (x *NodeStream) GetActiveSessions() []*SessionInfo {
+func (x *Heartbeat) GetActiveSessions() []*SessionInfo {
 	if x != nil {
 		return x.ActiveSessions
 	}
 	return nil
 }
 
+func (x *Heartbeat) GetTotalMemoryMb() int64 {
+	if x != nil {
+		return x.TotalMemoryMb
+	}
+	return 0
+}
+
+func (x *Heartbeat) GetTotalVcpu() int32 {
+	if x != nil {
+		return x.TotalVcpu
+	}
+	return 0
+}
+
+type CommandResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CommandId     string                 `protobuf:"bytes,1,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
+	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CommandResponse) Reset() {
+	*x = CommandResponse{}
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommandResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommandResponse) ProtoMessage() {}
+
+func (x *CommandResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommandResponse.ProtoReflect.Descriptor instead.
+func (*CommandResponse) Descriptor() ([]byte, []int) {
+	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CommandResponse) GetCommandId() string {
+	if x != nil {
+		return x.CommandId
+	}
+	return ""
+}
+
+func (x *CommandResponse) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *CommandResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 type SessionInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Port          int32                  `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
+	Mappings      []*PortMapping         `protobuf:"bytes,2,rep,name=mappings,proto3" json:"mappings,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SessionInfo) Reset() {
 	*x = SessionInfo{}
-	mi := &file_internal_proto_v1_herd_proto_msgTypes[1]
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -135,7 +285,7 @@ func (x *SessionInfo) String() string {
 func (*SessionInfo) ProtoMessage() {}
 
 func (x *SessionInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_v1_herd_proto_msgTypes[1]
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -148,7 +298,7 @@ func (x *SessionInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionInfo.ProtoReflect.Descriptor instead.
 func (*SessionInfo) Descriptor() ([]byte, []int) {
-	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{1}
+	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SessionInfo) GetSessionId() string {
@@ -158,25 +308,79 @@ func (x *SessionInfo) GetSessionId() string {
 	return ""
 }
 
-func (x *SessionInfo) GetPort() int32 {
+func (x *SessionInfo) GetMappings() []*PortMapping {
 	if x != nil {
-		return x.Port
+		return x.Mappings
+	}
+	return nil
+}
+
+type PortMapping struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InternalPort  int32                  `protobuf:"varint,1,opt,name=internal_port,json=internalPort,proto3" json:"internal_port,omitempty"`
+	HostPort      int32                  `protobuf:"varint,2,opt,name=host_port,json=hostPort,proto3" json:"host_port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PortMapping) Reset() {
+	*x = PortMapping{}
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PortMapping) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PortMapping) ProtoMessage() {}
+
+func (x *PortMapping) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PortMapping.ProtoReflect.Descriptor instead.
+func (*PortMapping) Descriptor() ([]byte, []int) {
+	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *PortMapping) GetInternalPort() int32 {
+	if x != nil {
+		return x.InternalPort
+	}
+	return 0
+}
+
+func (x *PortMapping) GetHostPort() int32 {
+	if x != nil {
+		return x.HostPort
 	}
 	return 0
 }
 
 type CloudCommand struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CommandId     string                 `protobuf:"bytes,1,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
-	Action        string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"` // "boot_vm", "destroy_vm", etc.
-	Params        map[string]string      `protobuf:"bytes,3,rep,name=params,proto3" json:"params,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	CommandId          string                 `protobuf:"bytes,1,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
+	Action             string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"` // "boot_vm", "destroy_vm", etc.
+	Params             map[string]string      `protobuf:"bytes,3,rep,name=params,proto3" json:"params,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	RequestedSessionId string                 `protobuf:"bytes,4,opt,name=requested_session_id,json=requestedSessionId,proto3" json:"requested_session_id,omitempty"` // Top-Down ID from Control Plane
+	RequestedMappings  []*PortMapping         `protobuf:"bytes,5,rep,name=requested_mappings,json=requestedMappings,proto3" json:"requested_mappings,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *CloudCommand) Reset() {
 	*x = CloudCommand{}
-	mi := &file_internal_proto_v1_herd_proto_msgTypes[2]
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -188,7 +392,7 @@ func (x *CloudCommand) String() string {
 func (*CloudCommand) ProtoMessage() {}
 
 func (x *CloudCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_v1_herd_proto_msgTypes[2]
+	mi := &file_internal_proto_v1_herd_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -201,7 +405,7 @@ func (x *CloudCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudCommand.ProtoReflect.Descriptor instead.
 func (*CloudCommand) Descriptor() ([]byte, []int) {
-	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{2}
+	return file_internal_proto_v1_herd_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CloudCommand) GetCommandId() string {
@@ -225,29 +429,60 @@ func (x *CloudCommand) GetParams() map[string]string {
 	return nil
 }
 
+func (x *CloudCommand) GetRequestedSessionId() string {
+	if x != nil {
+		return x.RequestedSessionId
+	}
+	return ""
+}
+
+func (x *CloudCommand) GetRequestedMappings() []*PortMapping {
+	if x != nil {
+		return x.RequestedMappings
+	}
+	return nil
+}
+
 var File_internal_proto_v1_herd_proto protoreflect.FileDescriptor
 
 const file_internal_proto_v1_herd_proto_rawDesc = "" +
 	"\n" +
-	"\x1cinternal/proto/v1/herd.proto\x12\aherd.v1\"\xb2\x02\n" +
+	"\x1cinternal/proto/v1/herd.proto\x12\aherd.v1\"\x92\x01\n" +
 	"\n" +
-	"NodeStream\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12.\n" +
-	"\x13available_memory_mb\x18\x02 \x01(\x03R\x11availableMemoryMb\x12&\n" +
-	"\x0factive_vm_count\x18\x03 \x01(\x05R\ractiveVmCount\x12*\n" +
-	"\x11cpu_usage_percent\x18\x04 \x01(\x01R\x0fcpuUsagePercent\x12%\n" +
-	"\x0euptime_seconds\x18\x05 \x01(\x03R\ruptimeSeconds\x12!\n" +
-	"\finterface_ip\x18\x06 \x01(\tR\vinterfaceIp\x12=\n" +
-	"\x0factive_sessions\x18\a \x03(\v2\x14.herd.v1.SessionInfoR\x0eactiveSessions\"@\n" +
+	"NodeStream\x122\n" +
+	"\theartbeat\x18\x01 \x01(\v2\x12.herd.v1.HeartbeatH\x00R\theartbeat\x12E\n" +
+	"\x10command_response\x18\x02 \x01(\v2\x18.herd.v1.CommandResponseH\x00R\x0fcommandResponseB\t\n" +
+	"\apayload\"\xdf\x02\n" +
+	"\tHeartbeat\x12.\n" +
+	"\x13available_memory_mb\x18\x01 \x01(\x03R\x11availableMemoryMb\x12&\n" +
+	"\x0factive_vm_count\x18\x02 \x01(\x05R\ractiveVmCount\x12*\n" +
+	"\x11cpu_usage_percent\x18\x03 \x01(\x01R\x0fcpuUsagePercent\x12%\n" +
+	"\x0euptime_seconds\x18\x04 \x01(\x03R\ruptimeSeconds\x12!\n" +
+	"\finterface_ip\x18\x05 \x01(\tR\vinterfaceIp\x12=\n" +
+	"\x0factive_sessions\x18\x06 \x03(\v2\x14.herd.v1.SessionInfoR\x0eactiveSessions\x12&\n" +
+	"\x0ftotal_memory_mb\x18\a \x01(\x03R\rtotalMemoryMb\x12\x1d\n" +
+	"\n" +
+	"total_vcpu\x18\b \x01(\x05R\ttotalVcpu\"e\n" +
+	"\x0fCommandResponse\x12\x1d\n" +
+	"\n" +
+	"command_id\x18\x01 \x01(\tR\tcommandId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"^\n" +
 	"\vSessionInfo\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x12\n" +
-	"\x04port\x18\x02 \x01(\x05R\x04port\"\xbb\x01\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x120\n" +
+	"\bmappings\x18\x02 \x03(\v2\x14.herd.v1.PortMappingR\bmappings\"O\n" +
+	"\vPortMapping\x12#\n" +
+	"\rinternal_port\x18\x01 \x01(\x05R\finternalPort\x12\x1b\n" +
+	"\thost_port\x18\x02 \x01(\x05R\bhostPort\"\xb2\x02\n" +
 	"\fCloudCommand\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\x129\n" +
-	"\x06params\x18\x03 \x03(\v2!.herd.v1.CloudCommand.ParamsEntryR\x06params\x1a9\n" +
+	"\x06params\x18\x03 \x03(\v2!.herd.v1.CloudCommand.ParamsEntryR\x06params\x120\n" +
+	"\x14requested_session_id\x18\x04 \x01(\tR\x12requestedSessionId\x12C\n" +
+	"\x12requested_mappings\x18\x05 \x03(\v2\x14.herd.v1.PortMappingR\x11requestedMappings\x1a9\n" +
 	"\vParamsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012M\n" +
@@ -266,23 +501,30 @@ func file_internal_proto_v1_herd_proto_rawDescGZIP() []byte {
 	return file_internal_proto_v1_herd_proto_rawDescData
 }
 
-var file_internal_proto_v1_herd_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_internal_proto_v1_herd_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_internal_proto_v1_herd_proto_goTypes = []any{
-	(*NodeStream)(nil),   // 0: herd.v1.NodeStream
-	(*SessionInfo)(nil),  // 1: herd.v1.SessionInfo
-	(*CloudCommand)(nil), // 2: herd.v1.CloudCommand
-	nil,                  // 3: herd.v1.CloudCommand.ParamsEntry
+	(*NodeStream)(nil),      // 0: herd.v1.NodeStream
+	(*Heartbeat)(nil),       // 1: herd.v1.Heartbeat
+	(*CommandResponse)(nil), // 2: herd.v1.CommandResponse
+	(*SessionInfo)(nil),     // 3: herd.v1.SessionInfo
+	(*PortMapping)(nil),     // 4: herd.v1.PortMapping
+	(*CloudCommand)(nil),    // 5: herd.v1.CloudCommand
+	nil,                     // 6: herd.v1.CloudCommand.ParamsEntry
 }
 var file_internal_proto_v1_herd_proto_depIdxs = []int32{
-	1, // 0: herd.v1.NodeStream.active_sessions:type_name -> herd.v1.SessionInfo
-	3, // 1: herd.v1.CloudCommand.params:type_name -> herd.v1.CloudCommand.ParamsEntry
-	0, // 2: herd.v1.HerdControlPlane.Connect:input_type -> herd.v1.NodeStream
-	2, // 3: herd.v1.HerdControlPlane.Connect:output_type -> herd.v1.CloudCommand
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1, // 0: herd.v1.NodeStream.heartbeat:type_name -> herd.v1.Heartbeat
+	2, // 1: herd.v1.NodeStream.command_response:type_name -> herd.v1.CommandResponse
+	3, // 2: herd.v1.Heartbeat.active_sessions:type_name -> herd.v1.SessionInfo
+	4, // 3: herd.v1.SessionInfo.mappings:type_name -> herd.v1.PortMapping
+	6, // 4: herd.v1.CloudCommand.params:type_name -> herd.v1.CloudCommand.ParamsEntry
+	4, // 5: herd.v1.CloudCommand.requested_mappings:type_name -> herd.v1.PortMapping
+	0, // 6: herd.v1.HerdControlPlane.Connect:input_type -> herd.v1.NodeStream
+	5, // 7: herd.v1.HerdControlPlane.Connect:output_type -> herd.v1.CloudCommand
+	7, // [7:8] is the sub-list for method output_type
+	6, // [6:7] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_internal_proto_v1_herd_proto_init() }
@@ -290,13 +532,17 @@ func file_internal_proto_v1_herd_proto_init() {
 	if File_internal_proto_v1_herd_proto != nil {
 		return
 	}
+	file_internal_proto_v1_herd_proto_msgTypes[0].OneofWrappers = []any{
+		(*NodeStream_Heartbeat)(nil),
+		(*NodeStream_CommandResponse)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_proto_v1_herd_proto_rawDesc), len(file_internal_proto_v1_herd_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

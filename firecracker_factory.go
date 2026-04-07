@@ -351,6 +351,15 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	// -------------------------------------------------------------------------
 	// Write Firecracker config JSON into the chroot.
 	// -------------------------------------------------------------------------
+	vcpu := config.VCPUs
+	if vcpu <= 0 {
+		vcpu = 1
+	}
+	mem := config.MemoryMB
+	if mem <= 0 {
+		mem = 512
+	}
+
 	configPath := filepath.Join(chrootRunDir, fmt.Sprintf("%s.json", workerID))
 	initPath := storage.DefaultGuestAgentPath
 	configData := fmt.Sprintf(`{
@@ -374,15 +383,15 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 			}
 		],
 		"machine-config": {
-			"vcpu_count": 1,
-			"mem_size_mib": 512
+			"vcpu_count": %d,
+			"mem_size_mib": %d
 		},
 		"vsock": {
 			"guest_cid": 3,
-			"uds_path": "/run/%s.sock"
+			"uds_path": "/run/v.sock"
 		},
 		"entropy": {}
-	}`, initPath, guestIP, hostIP, macByte, tapName, workerID)
+	}`, initPath, guestIP, hostIP, macByte, tapName, vcpu, mem)
 
 	err = os.WriteFile(configPath, []byte(configData), 0644)
 	if err != nil {
@@ -434,7 +443,7 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	deadline := time.Now().Add(30 * time.Second)
 	var execConn net.Conn
 	var lastErr error
-	socketPath := filepath.Join(chrootRunDir, fmt.Sprintf("%s.sock", workerID))
+	socketPath := filepath.Join(chrootRunDir, "v.sock")
 	for time.Now().Before(deadline) {
 		conn, err := vsock.DialFirecracker(ctx, socketPath, 5000)
 		if err == nil {

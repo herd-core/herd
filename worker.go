@@ -71,6 +71,8 @@ type TenantConfig struct {
 	IdleTimeoutSeconds int
 	TTLSeconds         int
 	HealthInterval     string
+	VCPUs              int
+	MemoryMB           int
 	PortMappings       []PortMapping
 }
 

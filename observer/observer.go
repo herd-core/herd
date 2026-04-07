@@ -36,6 +36,9 @@ type NodeStats struct {
 	// measurement window (0.0 = fully busy, 1.0 = fully idle).
 	// Averaged across all logical cores.
 	CPUIdle float64
+
+	// CPUCount is the number of logical CPU cores on the host.
+	CPUCount int
 }
 
 // PollNodeStats returns a current snapshot of host resources.
