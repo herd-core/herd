@@ -13,25 +13,25 @@ import (
 )
 
 type ControlPlaneAPI struct {
-	cntrl		*Controller
+	cntrl *Controller
 }
 
 func NewControlPlaneHandler(controller *Controller) http.Handler {
 	api := ControlPlaneAPI{
 		cntrl: controller,
 	}
-	
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", api.handleHealthCheck)
 	mux.HandleFunc("POST /v1/sessions", api.handleCreateSession)
 	mux.HandleFunc("GET /v1/sessions", api.handleListSessions)
-	mux.HandleFunc("DELETE /v1/sessions/{id}", api.handleDeleteSession) // /v1/sessions/{id}
-	mux.HandleFunc("GET /v1/sessions/{id}/logs", api.handleLogsSession)      // /v1/sessions/{id}/logs
-	mux.HandleFunc("POST /v1/sessions/{id}/exec", api.handleExecSession)     // /v1/sessions/{id}/exec
-	mux.HandleFunc("PUT /v1/sessions/{id}/heartbeat", api.handleHeartbeat)        // /v1/sessions/{id}/heartbeat
+	mux.HandleFunc("DELETE /v1/sessions/{id}", api.handleDeleteSession)    // /v1/sessions/{id}
+	mux.HandleFunc("GET /v1/sessions/{id}/logs", api.handleLogsSession)    // /v1/sessions/{id}/logs
+	mux.HandleFunc("POST /v1/sessions/{id}/exec", api.handleExecSession)   // /v1/sessions/{id}/exec
+	mux.HandleFunc("PUT /v1/sessions/{id}/heartbeat", api.handleHeartbeat) // /v1/sessions/{id}/heartbeat
 
 	mux.HandleFunc("POST /v1/images/warm", api.handleWarmImage)
-	
+
 	return mux
 }
 
