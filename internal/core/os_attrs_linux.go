@@ -17,3 +17,8 @@ func ApplyOSAttributes(cmd *exec.Cmd) {
 	// the kernel will immediately send SIGKILL to the child process.
 	cmd.SysProcAttr.Pdeathsig = syscall.SIGKILL
 }
+
+// future consideration for ephermal vs non ephermal workloads whether or not to kill 
+// the child process if the parent dies, but the quesiton would remain to boot back up 
+// and rebuild the state again.
+

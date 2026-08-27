@@ -108,7 +108,7 @@ func (f *metricsFactory) WarmImage(_ context.Context, _ string) error {
 
 func newMetricsPool(t *testing.T) *herd.Pool[*http.Client] {
 	t.Helper()
-	p, err := herd.New[*http.Client](&metricsFactory{}, herd.WithMaxWorkers(1))
+	p, err := herd.New(&metricsFactory{}, herd.WithMaxWorkers(1))
 	if err != nil {
 		t.Fatalf("failed creating metrics pool: %v", err)
 	}
