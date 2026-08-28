@@ -35,8 +35,8 @@ type FirecrackerFactory struct {
 	// GuestAgentPath is the host path to the static herd-guest-agent binary.
 	GuestAgentPath string
 
-	Storage *storage.Manager
-	IPAM    *network.IPAM
+	Storage     *storage.Manager
+	IPAM        *network.IPAM
 	PortManager *network.PortManager
 
 	// UIDPool is the per-VM UID/GID allocator. Each Spawn leases a unique UID
@@ -59,21 +59,21 @@ func (f *FirecrackerFactory) chrootRoot(vmID string) string {
 
 // FirecrackerWorker represents a single running Firecracker VM.
 type FirecrackerWorker struct {
-	storage    *storage.Manager
-	id         string
-	socketPath string
-	tapName    string
-	guestIP    string
-	cmd        *exec.Cmd
-	client     *http.Client
-	ipam       *network.IPAM
-	chrootDir  string             // full chroot root path; removed on Close()
-	done       chan struct{}       // closed when cmd.Wait() returns
-	ctx        context.Context    // lifecycle context for the worker
-	cancel     context.CancelFunc // cancelled on Close()
-	leasedUID    int                // UID leased from UIDPool for this VM
-	uidPool      *uid.Pool          // pool to return the UID to on Close()
-	portMappings []PortMapping      // active port forwards on the host
+	storage      *storage.Manager
+	id           string
+	socketPath   string
+	tapName      string
+	guestIP      string
+	cmd          *exec.Cmd
+	client       *http.Client
+	ipam         *network.IPAM
+	chrootDir    string               // full chroot root path; removed on Close()
+	done         chan struct{}        // closed when cmd.Wait() returns
+	ctx          context.Context      // lifecycle context for the worker
+	cancel       context.CancelFunc   // cancelled on Close()
+	leasedUID    int                  // UID leased from UIDPool for this VM
+	uidPool      *uid.Pool            // pool to return the UID to on Close()
+	portMappings []PortMapping        // active port forwards on the host
 	portManager  *network.PortManager // manager to release ports to on Close()
 }
 
@@ -437,7 +437,6 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	})
 	log.Printf("[spawn:%s] cmd.Start        %v", workerID, time.Since(t3))
 
-
 	// Wait for the VM to boot and accept vsock connections.
 	t4 := time.Now()
 	deadline := time.Now().Add(30 * time.Second)
@@ -536,22 +535,22 @@ func (f *FirecrackerFactory) Spawn(ctx context.Context, sessionID string, config
 	}
 
 	return &FirecrackerWorker{
-		id:            workerID,
-		socketPath:    socketPath,
-		tapName:       tapName,
-		guestIP:       guestIP,
-		cmd:           cmd,
-		client:        agentClient,
-		storage:       f.Storage,
-		ipam:          f.IPAM,
-		chrootDir:     chrootRoot,
-		done:          done,
-		ctx:           workerCtx,
-		cancel:        workerCancel,
-		leasedUID:     leasedUID,
-		uidPool:       f.UIDPool,
-		portMappings:  activeMappings,
-		portManager:   f.PortManager,
+		id:           workerID,
+		socketPath:   socketPath,
+		tapName:      tapName,
+		guestIP:      guestIP,
+		cmd:          cmd,
+		client:       agentClient,
+		storage:      f.Storage,
+		ipam:         f.IPAM,
+		chrootDir:    chrootRoot,
+		done:         done,
+		ctx:          workerCtx,
+		cancel:       workerCancel,
+		leasedUID:    leasedUID,
+		uidPool:      f.UIDPool,
+		portMappings: activeMappings,
+		portManager:  f.PortManager,
 	}, nil
 }
 
