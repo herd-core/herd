@@ -26,7 +26,6 @@
 //  6. Lock → sessions[sessionID]=w, delete inflight[sid], close(ch) → unlock.
 //     Closing ch broadcasts to all goroutines waiting in step 2.
 //  7. Return &Session[C]{…}
-//
 package herd
 
 import (
@@ -43,7 +42,7 @@ import (
 // ---------------------------------------------------------------------------
 
 type Session[C any] struct {
-	ID string
+	ID     string
 	Worker Worker[C]
 
 	pool *Pool[C]
@@ -61,10 +60,10 @@ func (s *Session[C]) Release() {
 // ---------------------------------------------------------------------------
 
 type PoolStats struct {
-	TotalWorkers int
-	ActiveSessions int
+	TotalWorkers     int
+	ActiveSessions   int
 	InflightAcquires int
-	Node observer.NodeStats
+	Node             observer.NodeStats
 }
 
 // ---------------------------------------------------------------------------
@@ -75,14 +74,14 @@ type Pool[C any] struct {
 	factory WorkerFactory[C]
 	cfg     config
 
-	mu          sync.Mutex
-	registry    SessionRegistry[C]
-	inflight    map[string]chan struct{}
+	mu       sync.Mutex
+	registry SessionRegistry[C]
+	inflight map[string]chan struct{}
 
 	workers []Worker[C]
 	tickets chan struct{}
 
-	done chan struct{}
+	done   chan struct{}
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -96,15 +95,15 @@ func New[C any](factory WorkerFactory[C], opts ...Option) (*Pool[C], error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	p := &Pool[C]{
-		factory:   factory,
-		cfg:       cfg,
-		registry:  NewLocalRegistry[C](),
-		inflight:  make(map[string]chan struct{}),
-		workers:   make([]Worker[C], 0, cfg.max),
-		tickets:   make(chan struct{}, cfg.max),
-		done:      make(chan struct{}),
-		ctx:       ctx,
-		cancel:    cancel,
+		factory:  factory,
+		cfg:      cfg,
+		registry: NewLocalRegistry[C](),
+		inflight: make(map[string]chan struct{}),
+		workers:  make([]Worker[C], 0, cfg.max),
+		tickets:  make(chan struct{}, cfg.max),
+		done:     make(chan struct{}),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 
 	for i := 0; i < cfg.max; i++ {
