@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -14,6 +15,59 @@ import (
 	"github.com/herd-core/herd/internal/config"
 	"github.com/spf13/cobra"
 )
+
+func splitNetworkBindings(bindings string) (string, int8, int8) {
+	// we assume perfect bindings of the format interface:host_port:guest_port
+	parts := strings.Split(bindings, ":")
+	intface := parts[0]
+	hostPort, err := strconv.ParseInt(parts[1], 10, 8) 
+	if err != nil {
+		fmt.Println("Unable to parse host network bindings")
+	}
+	guestPort, err := strconv.ParseInt(parts[2], 10, 8)
+	if err != nil {
+		fmt.Println("Unable to parse guest network bindings")
+	}
+	return intface, int8(hostPort), int8(guestPort) 
+}
+
+func sanitizeNetworkBindings(bindings string) (string, string, error) {
+	
+	// could be of the format 
+	// int:host:guest{/protocol|}
+	// host:guest{/protocol|}
+	// :guest{/protocol|}
+	
+	// resolve and split protocol first
+	addrPart := bindings
+	protocol := "tcp" // defaults to tcp protocol
+
+	if protoParts := strings.Split(bindings, "/"); len(protoParts) == 2 {
+		addrPart = protoParts[0]
+		protocol = strings.ToLower(protoParts[1])
+	}
+
+	splitCount := strings.Count(addrPart, ":")
+	formattedBinding := addrPart
+	switch splitCount {
+		case 1:
+			if addrPart[0] == ':' {
+				formattedBinding = "0.0.0.0:0" + formattedBinding
+			}
+			formattedBinding = "0.0.0.0:" + addrPart
+	
+		default:
+			return "", "", errors.New("Invalid network binding format")
+	}
+	splitParts := strings.Split(formattedBinding, ":")
+	for _, part := range splitParts {
+		if len(part) < 1 {
+			return "", "", errors.New("Invalid network binding format")
+		}
+	}
+
+	return formattedBinding, protocol, nil
+}
 
 var (
 	deployImage   string
@@ -36,8 +90,8 @@ var deployCmd = &cobra.Command{
 		
 		req := map[string]any{
 			"image":                deployImage,
-			"idle_timeout_seconds": deployTimeout,
-			"ttl_seconds": absoluteDeployTimeout,
+			"idle_timeout_seconds": deployTimeout, // TODO: fix why do we have these names so different, they are just gonna create confusion down the reoad
+			"ttl_seconds": absoluteDeployTimeout,  // I currently have no idea what ttl seconds mean and what idle timeout seconds mean
 		}
 		if len(deployCommand) > 0 {
 			req["command"] = deployCommand
@@ -57,54 +111,20 @@ var deployCmd = &cobra.Command{
 		if len(deployPublish) > 0 {
 			mappings := make([]map[string]any, 0, len(deployPublish))
 			for _, p := range deployPublish {
-				protocol := "tcp"
-				addrPart := p
-				if protoParts := strings.Split(p, "/"); len(protoParts) == 2 {
-					addrPart = protoParts[0]
-					protocol = strings.ToLower(protoParts[1])
+				sanitizedBindings, protocol, err := sanitizeNetworkBindings(p)
+				if err != nil {
+					log.Fatalf("invalid port mappings, %e", err)
 				}
-
-				m := map[string]any{
+				
+				intface, hport, gport := splitNetworkBindings(sanitizedBindings)
+				
+				m := map[string]any {
+					"host_interface": intface,
 					"protocol": protocol,
+					"host_port": hport,
+					"guest_port": gport,
 				}
-				parts := strings.Split(addrPart, ":")
-
-				if len(parts) == 2 {
-					// host_port:guest_port OR :guest_port
-					if parts[0] == "" {
-						// :80
-						m["host_port"] = 0
-						m["host_interface"] = "0.0.0.0"
-					} else {
-						// 8080:80
-						hPort, err := strconv.Atoi(parts[0])
-						if err != nil {
-							log.Fatalf("invalid host port %q in publish flag %q: %v", parts[0], p, err)
-						}
-						m["host_port"] = hPort
-						m["host_interface"] = "0.0.0.0"
-					}
-					gPort, err := strconv.Atoi(parts[1])
-					if err != nil {
-						log.Fatalf("invalid guest port %q in publish flag %q: %v", parts[1], p, err)
-					}
-					m["guest_port"] = gPort
-				} else if len(parts) == 3 {
-					// interface:host_port:guest_port
-					m["host_interface"] = parts[0]
-					hPort, err := strconv.Atoi(parts[1])
-					if err != nil {
-						log.Fatalf("invalid host port %q in publish flag %q: %v", parts[1], p, err)
-					}
-					gPort, err := strconv.Atoi(parts[2])
-					if err != nil {
-						log.Fatalf("invalid guest port %q in publish flag %q: %v", parts[2], p, err)
-					}
-					m["host_port"] = hPort
-					m["guest_port"] = gPort
-				} else {
-					log.Fatalf("invalid publish format %q: expected [[interface:]host_port]:guest_port[/protocol]", p)
-				}
+				
 				mappings = append(mappings, m)
 			}
 			req["port_mappings"] = mappings

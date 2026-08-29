@@ -306,12 +306,13 @@ func runInit() {
 // extracts both the firecracker and jailer binaries in a single HTTP round-trip.
 func downloadFirecrackerAndJailer(fcOutputPath, jailerOutputPath string) error {
 	arch := runtime.GOARCH
-	if arch == "amd64" {
+	switch arch {
+	case "amd4":
 		arch = "x86_64"
-	} else if arch == "arm64" {
+	case "arm64":
 		arch = "aarch64"
 	}
-
+	
 	version := "1.14.3"
 	url := fmt.Sprintf("https://github.com/firecracker-microvm/firecracker/releases/download/v%s/firecracker-v%s-%s.tgz", version, version, arch)
 
