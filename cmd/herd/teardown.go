@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	// uses global configPath
+// uses global configPath
 )
 
 var teardownCmd = &cobra.Command{

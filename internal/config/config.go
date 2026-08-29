@@ -65,7 +65,7 @@ type BinaryConfig struct {
 type JailerConfig struct {
 	// UIDPoolStart is the first UID (and GID) in the pool. Must be >= 65536 to
 	// stay well above system-reserved UIDs. Recommended: 300000.
-	UIDPoolStart  int    `yaml:"uid_pool_start"`
+	UIDPoolStart int `yaml:"uid_pool_start"`
 	// UIDPoolSize is how many concurrent MicroVMs the pool can support.
 	// Set this to at least your max_global_vms value.
 	UIDPoolSize   int    `yaml:"uid_pool_size"`
@@ -86,9 +86,9 @@ type NetworkConfig struct {
 }
 
 type ResourceConfig struct {
-	MaxGlobalVMs       int     `yaml:"max_global_vms"`
-	MaxGlobalMemoryMB  int64   `yaml:"max_global_memory_mb"`
-	CPULimitCores      float64 `yaml:"cpu_limit_cores"`
+	MaxGlobalVMs      int     `yaml:"max_global_vms"`
+	MaxGlobalMemoryMB int64   `yaml:"max_global_memory_mb"`
+	CPULimitCores     float64 `yaml:"cpu_limit_cores"`
 }
 
 type TelemetryConfig struct {

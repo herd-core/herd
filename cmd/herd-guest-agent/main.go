@@ -285,7 +285,7 @@ func mountContainerFilesystems() error {
 func configureNetworking() error {
 	// Wait a moment for TAP interface to visibly attach to the VM
 	// in some hypervisor configurations.
-	
+
 	// 1. Loopback
 	lo, err := netlink.LinkByName("lo")
 	if err != nil {

@@ -62,7 +62,7 @@ func Bootstrap(stateDir string) (err error) {
 
 	// 1. Create sparse files
 	createdDataFile, err := createSparseFile(dataFilePath, 20*1024*1024*1024)
-	if err != nil { 
+	if err != nil {
 		return err
 	}
 	if createdDataFile {

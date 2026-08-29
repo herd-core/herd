@@ -20,7 +20,7 @@ func splitNetworkBindings(bindings string) (string, int8, int8) {
 	// we assume perfect bindings of the format interface:host_port:guest_port
 	parts := strings.Split(bindings, ":")
 	intface := parts[0]
-	hostPort, err := strconv.ParseInt(parts[1], 10, 8) 
+	hostPort, err := strconv.ParseInt(parts[1], 10, 8)
 	if err != nil {
 		fmt.Println("Unable to parse host network bindings")
 	}
@@ -28,16 +28,16 @@ func splitNetworkBindings(bindings string) (string, int8, int8) {
 	if err != nil {
 		fmt.Println("Unable to parse guest network bindings")
 	}
-	return intface, int8(hostPort), int8(guestPort) 
+	return intface, int8(hostPort), int8(guestPort)
 }
 
 func sanitizeNetworkBindings(bindings string) (string, string, error) {
-	
-	// could be of the format 
+
+	// could be of the format
 	// int:host:guest{/protocol|}
 	// host:guest{/protocol|}
 	// :guest{/protocol|}
-	
+
 	// resolve and split protocol first
 	addrPart := bindings
 	protocol := "tcp" // defaults to tcp protocol
@@ -50,14 +50,14 @@ func sanitizeNetworkBindings(bindings string) (string, string, error) {
 	splitCount := strings.Count(addrPart, ":")
 	formattedBinding := addrPart
 	switch splitCount {
-		case 1:
-			if addrPart[0] == ':' {
-				formattedBinding = "0.0.0.0:0" + formattedBinding
-			}
-			formattedBinding = "0.0.0.0:" + addrPart
-	
-		default:
-			return "", "", errors.New("Invalid network binding format")
+	case 1:
+		if addrPart[0] == ':' {
+			formattedBinding = "0.0.0.0:0" + formattedBinding
+		}
+		formattedBinding = "0.0.0.0:" + addrPart
+
+	default:
+		return "", "", errors.New("Invalid network binding format")
 	}
 	splitParts := strings.Split(formattedBinding, ":")
 	for _, part := range splitParts {
@@ -70,12 +70,12 @@ func sanitizeNetworkBindings(bindings string) (string, string, error) {
 }
 
 var (
-	deployImage   string
-	deployTimeout int
+	deployImage           string
+	deployTimeout         int
 	absoluteDeployTimeout int
-	deployCommand []string
-	deployEnv     []string
-	deployPublish []string
+	deployCommand         []string
+	deployEnv             []string
+	deployPublish         []string
 )
 
 var deployCmd = &cobra.Command{
@@ -87,11 +87,11 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("failed to load config %q: %v", configPath, err)
 		}
-		
+
 		req := map[string]any{
 			"image":                deployImage,
-			"idle_timeout_seconds": deployTimeout, // TODO: fix why do we have these names so different, they are just gonna create confusion down the reoad
-			"ttl_seconds": absoluteDeployTimeout,  // I currently have no idea what ttl seconds mean and what idle timeout seconds mean
+			"idle_timeout_seconds": deployTimeout,         // TODO: fix why do we have these names so different, they are just gonna create confusion down the reoad
+			"ttl_seconds":          absoluteDeployTimeout, // I currently have no idea what ttl seconds mean and what idle timeout seconds mean
 		}
 		if len(deployCommand) > 0 {
 			req["command"] = deployCommand
@@ -115,16 +115,16 @@ var deployCmd = &cobra.Command{
 				if err != nil {
 					log.Fatalf("invalid port mappings, %e", err)
 				}
-				
+
 				intface, hport, gport := splitNetworkBindings(sanitizedBindings)
-				
-				m := map[string]any {
+
+				m := map[string]any{
 					"host_interface": intface,
-					"protocol": protocol,
-					"host_port": hport,
-					"guest_port": gport,
+					"protocol":       protocol,
+					"host_port":      hport,
+					"guest_port":     gport,
 				}
-				
+
 				mappings = append(mappings, m)
 			}
 			req["port_mappings"] = mappings
@@ -138,10 +138,10 @@ var deployCmd = &cobra.Command{
 			log.Fatalf("failed to deploy: %v", err)
 		}
 		defer func() {
-		if cerr := resp.Body.Close(); cerr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
-		}
-	}()
+			if cerr := resp.Body.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
+			}
+		}()
 
 		if resp.StatusCode != 200 {
 			body, _ := io.ReadAll(resp.Body)

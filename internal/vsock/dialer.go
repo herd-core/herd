@@ -42,14 +42,14 @@ func DialFirecracker(ctx context.Context, udsPath string, port uint32) (net.Conn
 	// 1. Send the handshake command to Firecracker
 	// Format: "CONNECT <PORT>\n"
 	handshake := fmt.Sprintf("CONNECT %d\n", port)
-	
+
 	// Consider writing with a deadline
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = conn.SetWriteDeadline(deadline)
 	} else {
 		_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	}
-	
+
 	if _, err := conn.Write([]byte(handshake)); err != nil {
 		return nil, fmt.Errorf("failed to send CONNECT handshake: %w", err)
 	}
