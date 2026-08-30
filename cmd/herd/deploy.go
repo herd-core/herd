@@ -3,71 +3,17 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/herd-core/herd/internal/config"
+	"github.com/herd-core/herd/internal/network"
 	"github.com/spf13/cobra"
 )
-
-func splitNetworkBindings(bindings string) (string, int8, int8) {
-	// we assume perfect bindings of the format interface:host_port:guest_port
-	parts := strings.Split(bindings, ":")
-	intface := parts[0]
-	hostPort, err := strconv.ParseInt(parts[1], 10, 8) 
-	if err != nil {
-		fmt.Println("Unable to parse host network bindings")
-	}
-	guestPort, err := strconv.ParseInt(parts[2], 10, 8)
-	if err != nil {
-		fmt.Println("Unable to parse guest network bindings")
-	}
-	return intface, int8(hostPort), int8(guestPort) 
-}
-
-func sanitizeNetworkBindings(bindings string) (string, string, error) {
-	
-	// could be of the format 
-	// int:host:guest{/protocol|}
-	// host:guest{/protocol|}
-	// :guest{/protocol|}
-	
-	// resolve and split protocol first
-	addrPart := bindings
-	protocol := "tcp" // defaults to tcp protocol
-
-	if protoParts := strings.Split(bindings, "/"); len(protoParts) == 2 {
-		addrPart = protoParts[0]
-		protocol = strings.ToLower(protoParts[1])
-	}
-
-	splitCount := strings.Count(addrPart, ":")
-	formattedBinding := addrPart
-	switch splitCount {
-		case 1:
-			if addrPart[0] == ':' {
-				formattedBinding = "0.0.0.0:0" + formattedBinding
-			}
-			formattedBinding = "0.0.0.0:" + addrPart
-	
-		default:
-			return "", "", errors.New("Invalid network binding format")
-	}
-	splitParts := strings.Split(formattedBinding, ":")
-	for _, part := range splitParts {
-		if len(part) < 1 {
-			return "", "", errors.New("Invalid network binding format")
-		}
-	}
-
-	return formattedBinding, protocol, nil
-}
 
 var (
 	deployImage   string
@@ -111,13 +57,13 @@ var deployCmd = &cobra.Command{
 		if len(deployPublish) > 0 {
 			mappings := make([]map[string]any, 0, len(deployPublish))
 			for _, p := range deployPublish {
-				sanitizedBindings, protocol, err := sanitizeNetworkBindings(p)
+				sanitizedBindings, protocol, err := network.SanitizeNetworkBindings(p)
 				if err != nil {
 					log.Fatalf("invalid port mappings, %e", err)
 				}
-				
-				intface, hport, gport := splitNetworkBindings(sanitizedBindings)
-				
+
+				intface, hport, gport := network.SplitNetworkBindings(sanitizedBindings)
+
 				m := map[string]any {
 					"host_interface": intface,
 					"protocol": protocol,
