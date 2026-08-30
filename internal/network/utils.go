@@ -1,10 +1,10 @@
 package network
 
 import (
-	"fmt"
-	"strings"
-	"strconv"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 )
 
 func SplitNetworkBindings(bindings string) (string, int8, int8) {
@@ -44,7 +44,7 @@ func SanitizeNetworkBindings(bindings string) (string, string, error) {
 	case 1:
 		if addrPart[0] == ':' {
 			formattedBinding = "0" + formattedBinding
-		} 
+		}
 		formattedBinding = "0.0.0.0:" + formattedBinding
 	default:
 		return "", "", errors.New("Invalid network binding format")

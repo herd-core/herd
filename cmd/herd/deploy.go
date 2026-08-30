@@ -16,12 +16,12 @@ import (
 )
 
 var (
-	deployImage   string
-	deployTimeout int
+	deployImage           string
+	deployTimeout         int
 	absoluteDeployTimeout int
-	deployCommand []string
-	deployEnv     []string
-	deployPublish []string
+	deployCommand         []string
+	deployEnv             []string
+	deployPublish         []string
 )
 
 var deployCmd = &cobra.Command{
@@ -33,11 +33,11 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("failed to load config %q: %v", configPath, err)
 		}
-		
+
 		req := map[string]any{
 			"image":                deployImage,
-			"idle_timeout_seconds": deployTimeout, // TODO: fix why do we have these names so different, they are just gonna create confusion down the reoad
-			"ttl_seconds": absoluteDeployTimeout,  // I currently have no idea what ttl seconds mean and what idle timeout seconds mean
+			"idle_timeout_seconds": deployTimeout,         // TODO: fix why do we have these names so different, they are just gonna create confusion down the reoad
+			"ttl_seconds":          absoluteDeployTimeout, // I currently have no idea what ttl seconds mean and what idle timeout seconds mean
 		}
 		if len(deployCommand) > 0 {
 			req["command"] = deployCommand
@@ -64,13 +64,13 @@ var deployCmd = &cobra.Command{
 
 				intface, hport, gport := network.SplitNetworkBindings(sanitizedBindings)
 
-				m := map[string]any {
+				m := map[string]any{
 					"host_interface": intface,
-					"protocol": protocol,
-					"host_port": hport,
-					"guest_port": gport,
+					"protocol":       protocol,
+					"host_port":      hport,
+					"guest_port":     gport,
 				}
-				
+
 				mappings = append(mappings, m)
 			}
 			req["port_mappings"] = mappings
@@ -84,10 +84,10 @@ var deployCmd = &cobra.Command{
 			log.Fatalf("failed to deploy: %v", err)
 		}
 		defer func() {
-		if cerr := resp.Body.Close(); cerr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
-		}
-	}()
+			if cerr := resp.Body.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
+			}
+		}()
 
 		if resp.StatusCode != 200 {
 			body, _ := io.ReadAll(resp.Body)

@@ -193,7 +193,7 @@ func (c *Client) commandLoop(ctx context.Context) {
 				}
 
 				resp, err := c.controller.CreateSession(ctx, req)
-				
+
 				// Send CommandResponse feedback
 				respPayload := &herdv1.CommandResponse{
 					CommandId: cmd.CommandId,

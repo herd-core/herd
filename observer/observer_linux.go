@@ -120,14 +120,14 @@ func readMemInfo() (memInfo, error) {
 
 // cpuStat holds the raw CPU tick counters from /proc/stat's "cpu" line.
 type cpuStat struct {
-	user      int64
-	nice      int64
-	system    int64
-	idle      int64
-	iowait    int64
-	irq       int64
-	softirq   int64
-	steal     int64
+	user    int64
+	nice    int64
+	system  int64
+	idle    int64
+	iowait  int64
+	irq     int64
+	softirq int64
+	steal   int64
 }
 
 func (s cpuStat) total() int64 {
