@@ -20,8 +20,8 @@ type SessionState struct {
 	LastDataActivity     time.Time  `json:"last_data_activity"`
 	ActiveConns          int        `json:"active_conns"`
 
-	IdleTTL     time.Duration      `json:"idle_ttl"`
-	AbsoluteTTL time.Duration      `json:"absolute_ttl"`
+	IdleTTL      time.Duration      `json:"idle_ttl"`
+	AbsoluteTTL  time.Duration      `json:"absolute_ttl"`
 	PortMappings []herd.PortMapping `json:"port_mappings"`
 }
 

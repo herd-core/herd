@@ -90,7 +90,7 @@ func runDaemon() {
 			eventLogger.Error("control_listener_close_failed", map[string]any{"error": err})
 		}
 	}()
-	
+
 	// Determine Public IP if interface is specified
 	var interfaceIP string
 	if interfaceName == "" {

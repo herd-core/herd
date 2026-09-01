@@ -42,7 +42,7 @@ func Bootstrap() error {
 		return err
 	}
 
-	// Hairpin NAT Masquerade: Ensure host-to-VM traffic (e.g. from 127.0.0.1) 
+	// Hairpin NAT Masquerade: Ensure host-to-VM traffic (e.g. from 127.0.0.1)
 	// is masqueraded so the VM sees the host's bridge IP as source.
 	if err := runCmd("iptables", "-t", "nat", "-A", "POSTROUTING", "-d", Subnet, "-m", "addrtype", "--src-type", "LOCAL", "-j", "MASQUERADE"); err != nil {
 		return err
@@ -253,7 +253,6 @@ func RemovePortMapping(hostInterface string, hostPort int, guestIP string, guest
 	slog.Info("port mapping removed", "host", hostInterface, "hPort", hostPort, "gIP", guestIP, "gPort", guestPort)
 	return nil
 }
-
 
 // DeleteTap removes a TAP interface.
 func DeleteTap(name string) error {

@@ -21,8 +21,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-
-
 var (
 	autoYes        bool
 	fcBinaryPath   string
@@ -32,8 +30,8 @@ var (
 	maxGlobalVMs   int
 	maxGlobalMemMB int64
 	cpuLimitCores  float64
-	cloudEndpoint string
-	machineToken  string
+	cloudEndpoint  string
+	machineToken   string
 )
 
 var initCmd = &cobra.Command{
@@ -238,14 +236,13 @@ func runInit() {
 		fmt.Println()
 	}
 
-
 	// 5. Config Generation
 	cfg := config.Config{
 		Network: config.NetworkConfig{
-			ControlBind: "127.0.0.1:8081",
-			DataBind:    "127.0.0.1:8080",
+			ControlBind:        "127.0.0.1:8081",
+			DataBind:           "127.0.0.1:8080",
 			EphemeralPortStart: 10000,
-			EphemeralPortEnd: 39999,
+			EphemeralPortEnd:   39999,
 		},
 		Storage: config.StorageConfig{
 			StateDir:        stateDir,
@@ -306,9 +303,10 @@ func runInit() {
 // extracts both the firecracker and jailer binaries in a single HTTP round-trip.
 func downloadFirecrackerAndJailer(fcOutputPath, jailerOutputPath string) error {
 	arch := runtime.GOARCH
-	if arch == "amd64" {
+	switch arch {
+	case "amd4":
 		arch = "x86_64"
-	} else if arch == "arm64" {
+	case "arm64":
 		arch = "aarch64"
 	}
 
@@ -496,7 +494,7 @@ func promptConfirm(reader *bufio.Reader, label string, defaultValue bool) bool {
 func downloadKernel(path string) error {
 	// Pull from a specific release instead of main for stability
 	url := fmt.Sprintf("https://github.com/herd-core/herd/releases/download/%s/vmlinux-v6.1.bin", config.Version)
-	
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return err

@@ -10,7 +10,7 @@ import (
 
 // Info holds host system resource information.
 type Info struct {
-	CPUCores     int
+	CPUCores      int
 	TotalMemoryMB int64
 }
 

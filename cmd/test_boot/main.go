@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/containerd/containerd"
 	"github.com/herd-core/herd"
 	"github.com/herd-core/herd/internal/config"
 	"github.com/herd-core/herd/internal/network"
 	"github.com/herd-core/herd/internal/storage"
 	"github.com/herd-core/herd/internal/uid"
-	"github.com/containerd/containerd"
 )
 
 func main() {

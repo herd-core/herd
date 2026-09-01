@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	// uses global configPath
+// uses global configPath
 )
 
 var logsCmd = &cobra.Command{
@@ -21,22 +21,22 @@ var logsCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		sessionID := args[0]
-		
+
 		cfg, err := config.Load(configPath)
 		if err != nil {
 			log.Fatalf("failed to load config %q: %v", configPath, err)
 		}
-		
+
 		url := fmt.Sprintf("http://%s/v1/sessions/%s/logs", cfg.Network.ControlBind, sessionID)
 		resp, err := http.Get(url)
 		if err != nil {
 			log.Fatalf("failed to fetch logs: %v", err)
 		}
 		defer func() {
-		if cerr := resp.Body.Close(); cerr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close log stream body: %v\n", cerr)
-		}
-	}()
+			if cerr := resp.Body.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close log stream body: %v\n", cerr)
+			}
+		}()
 
 		if resp.StatusCode != 200 {
 			body, _ := io.ReadAll(resp.Body)

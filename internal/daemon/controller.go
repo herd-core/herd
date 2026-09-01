@@ -169,7 +169,9 @@ func (c *Controller) GetLogs(ctx context.Context, sessionID string) (io.ReadClos
 }
 
 func (c *Controller) WarmImage(ctx context.Context, image string) error {
-	if warmer, ok := c.pool.Factory().(interface{ WarmImage(context.Context, string) error }); ok {
+	if warmer, ok := c.pool.Factory().(interface {
+		WarmImage(context.Context, string) error
+	}); ok {
 		return warmer.WarmImage(ctx, image)
 	}
 	return fmt.Errorf("warming not supported by factory")

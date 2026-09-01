@@ -8,20 +8,20 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/herd-core/herd/internal/config"
+	"github.com/herd-core/herd/internal/network"
 	"github.com/spf13/cobra"
 )
 
 var (
-	deployImage   string
-	deployTimeout int
+	deployImage           string
+	deployTimeout         int
 	absoluteDeployTimeout int
-	deployCommand []string
-	deployEnv     []string
-	deployPublish []string
+	deployCommand         []string
+	deployEnv             []string
+	deployPublish         []string
 )
 
 var deployCmd = &cobra.Command{
@@ -33,11 +33,11 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("failed to load config %q: %v", configPath, err)
 		}
-		
+
 		req := map[string]any{
 			"image":                deployImage,
-			"idle_timeout_seconds": deployTimeout,
-			"ttl_seconds": absoluteDeployTimeout,
+			"idle_timeout_seconds": deployTimeout,         // TODO: fix why do we have these names so different, they are just gonna create confusion down the reoad
+			"ttl_seconds":          absoluteDeployTimeout, // I currently have no idea what ttl seconds mean and what idle timeout seconds mean
 		}
 		if len(deployCommand) > 0 {
 			req["command"] = deployCommand
@@ -57,54 +57,18 @@ var deployCmd = &cobra.Command{
 		if len(deployPublish) > 0 {
 			mappings := make([]map[string]any, 0, len(deployPublish))
 			for _, p := range deployPublish {
-				protocol := "tcp"
-				addrPart := p
-				if protoParts := strings.Split(p, "/"); len(protoParts) == 2 {
-					addrPart = protoParts[0]
-					protocol = strings.ToLower(protoParts[1])
+				bindings, err := network.SanitizeNetworkBindings(p)
+				if err != nil {
+					log.Fatalf("Invalid Port Bindings %e", err)
 				}
 
 				m := map[string]any{
-					"protocol": protocol,
+					"host_interface": bindings.IP,
+					"protocol":       bindings.Protocol,
+					"host_port":      bindings.HostPort,
+					"guest_port":     bindings.GuestPort,
 				}
-				parts := strings.Split(addrPart, ":")
 
-				if len(parts) == 2 {
-					// host_port:guest_port OR :guest_port
-					if parts[0] == "" {
-						// :80
-						m["host_port"] = 0
-						m["host_interface"] = "0.0.0.0"
-					} else {
-						// 8080:80
-						hPort, err := strconv.Atoi(parts[0])
-						if err != nil {
-							log.Fatalf("invalid host port %q in publish flag %q: %v", parts[0], p, err)
-						}
-						m["host_port"] = hPort
-						m["host_interface"] = "0.0.0.0"
-					}
-					gPort, err := strconv.Atoi(parts[1])
-					if err != nil {
-						log.Fatalf("invalid guest port %q in publish flag %q: %v", parts[1], p, err)
-					}
-					m["guest_port"] = gPort
-				} else if len(parts) == 3 {
-					// interface:host_port:guest_port
-					m["host_interface"] = parts[0]
-					hPort, err := strconv.Atoi(parts[1])
-					if err != nil {
-						log.Fatalf("invalid host port %q in publish flag %q: %v", parts[1], p, err)
-					}
-					gPort, err := strconv.Atoi(parts[2])
-					if err != nil {
-						log.Fatalf("invalid guest port %q in publish flag %q: %v", parts[2], p, err)
-					}
-					m["host_port"] = hPort
-					m["guest_port"] = gPort
-				} else {
-					log.Fatalf("invalid publish format %q: expected [[interface:]host_port]:guest_port[/protocol]", p)
-				}
 				mappings = append(mappings, m)
 			}
 			req["port_mappings"] = mappings
@@ -118,10 +82,10 @@ var deployCmd = &cobra.Command{
 			log.Fatalf("failed to deploy: %v", err)
 		}
 		defer func() {
-		if cerr := resp.Body.Close(); cerr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
-		}
-	}()
+			if cerr := resp.Body.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close response body: %v\n", cerr)
+			}
+		}()
 
 		if resp.StatusCode != 200 {
 			body, _ := io.ReadAll(resp.Body)
