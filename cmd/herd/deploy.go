@@ -57,18 +57,16 @@ var deployCmd = &cobra.Command{
 		if len(deployPublish) > 0 {
 			mappings := make([]map[string]any, 0, len(deployPublish))
 			for _, p := range deployPublish {
-				sanitizedBindings, protocol, err := network.SanitizeNetworkBindings(p)
+				bindings, err := network.SanitizeNetworkBindings(p)
 				if err != nil {
-					log.Fatalf("invalid port mappings, %e", err)
+					log.Fatalf("Invalid Port Bindings %e", err)
 				}
 
-				intface, hport, gport := network.SplitNetworkBindings(sanitizedBindings)
-
 				m := map[string]any{
-					"host_interface": intface,
-					"protocol":       protocol,
-					"host_port":      hport,
-					"guest_port":     gport,
+					"host_interface": bindings.IP,
+					"protocol":       bindings.Protocol,
+					"host_port":      bindings.HostPort,
+					"guest_port":     bindings.GuestPort,
 				}
 
 				mappings = append(mappings, m)
