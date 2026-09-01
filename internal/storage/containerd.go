@@ -125,7 +125,7 @@ func (m *Manager) WarmImage(ctx context.Context, imageRef string) error {
 	if err != nil {
 		return fmt.Errorf("read rootfs for %s: %w", imageRef, err)
 	}
-	
+
 	chainID := identity.ChainID(rootFS).String()
 	m.mu.Lock()
 	m.parents[imageRef] = chainID
@@ -146,7 +146,7 @@ func (m *Manager) WarmImage(ctx context.Context, imageRef string) error {
 // This is a pure local operation — no registry or network calls.
 func (m *Manager) Snapshot(ctx context.Context, vmID, imageRef string) (string, error) {
 	imageRef = normalizeImageRef(imageRef)
-	
+
 	m.mu.RLock()
 	parentChainID, exists := m.parents[imageRef]
 	m.mu.RUnlock()

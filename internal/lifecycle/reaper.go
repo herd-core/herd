@@ -32,8 +32,8 @@ func (m *Manager) sweep() {
 
 	now := time.Now()
 
-	// We don't need to do UnregisterAndKill directly inside the sweep loop because 
-	// m.UnregisterAndKill explicitly acquires the global registry lock again (m.mu.Lock()), 
+	// We don't need to do UnregisterAndKill directly inside the sweep loop because
+	// m.UnregisterAndKill explicitly acquires the global registry lock again (m.mu.Lock()),
 	// which is perfectly safe since we explicitly dropped the lock (RUnlock) before the loop!
 	for id, state := range sessions {
 		state.mu.Lock()
