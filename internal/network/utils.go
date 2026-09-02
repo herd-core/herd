@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+	"net"
 	"net/netip"
 	"slices"
 	"strconv"
@@ -56,25 +57,25 @@ func SanitizeNetworkBindings(input string) (PortBinding, error) {
 	for i, part := range colon_parts {
 		switch i {
 		case 0:
-			
+
 			// this is the guest port, try to parse this.
 			guestPort, err := strconv.ParseUint(part, 10, 16)
-			if err != nil || guestPort > 65535{
+			if err != nil || guestPort > 65535 {
 				return output, errors.New("Invalid Guest Port")
 			}
 			output.GuestPort = uint16(guestPort)
-		
+
 		case 1:
 			if part == "" {
 				continue // skip parsing, leaves output.HostPort as the default 0
 			}
 			// this is the host port, try to parse this.
 			hostPort, err := strconv.ParseUint(part, 10, 16)
-			if err != nil || hostPort > 65535{
+			if err != nil || hostPort > 65535 {
 				return output, errors.New("Invalid Host Port")
 			}
 			output.HostPort = uint16(hostPort)
-		
+
 		case 2:
 			if part == "" {
 				continue // skip parsing, leaves output.HostPort as the default 0
@@ -89,4 +90,33 @@ func SanitizeNetworkBindings(input string) (PortBinding, error) {
 	}
 
 	return output, nil
+}
+
+func GetInterfaceIP(name string) (string, error) {
+	iface, err := net.InterfaceByName(name)
+	if err != nil {
+		return "", err
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return "", err
+	}
+	for _, addr := range addrs {
+		var ip net.IP
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+		if ip == nil || ip.IsLoopback() {
+			continue
+		}
+		ip = ip.To4()
+		if ip == nil {
+			continue // skip ipv6 for now
+		}
+		return ip.String(), nil
+	}
+	return "", errors.New("no suitable IPv4 address found for interface")
 }

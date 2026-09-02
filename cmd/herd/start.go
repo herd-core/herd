@@ -97,7 +97,7 @@ func runDaemon() {
 		interfaceName = cfg.Cloud.Interface
 	}
 	if interfaceName != "" {
-		ip, err := getInterfaceIP(interfaceName)
+		ip, err := network.GetInterfaceIP(interfaceName)
 		if err != nil {
 			log.Printf("Warning: failed to get IP for interface %q: %v", interfaceName, err)
 		} else {
@@ -228,33 +228,4 @@ func buildPool(cfg *config.Config) (*herd.Pool[*http.Client], error) {
 	return herd.New(factory,
 		herd.WithMaxWorkers(cfg.Resources.MaxGlobalVMs),
 	)
-}
-
-func getInterfaceIP(name string) (string, error) {
-	iface, err := net.InterfaceByName(name)
-	if err != nil {
-		return "", err
-	}
-	addrs, err := iface.Addrs()
-	if err != nil {
-		return "", err
-	}
-	for _, addr := range addrs {
-		var ip net.IP
-		switch v := addr.(type) {
-		case *net.IPNet:
-			ip = v.IP
-		case *net.IPAddr:
-			ip = v.IP
-		}
-		if ip == nil || ip.IsLoopback() {
-			continue
-		}
-		ip = ip.To4()
-		if ip == nil {
-			continue // skip ipv6 for now
-		}
-		return ip.String(), nil
-	}
-	return "", fmt.Errorf("no suitable IPv4 address found for interface %s", name)
 }
