@@ -1,4 +1,4 @@
-package network
+package main
 
 import (
 	"net/netip"
@@ -11,14 +11,14 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected PortBinding
+		expected portBinding
 		err      bool
 	}{
 		// valid inputs
 		{
 			name:  "Empty host port",
 			input: ":80",
-			expected: PortBinding{
+			expected: portBinding{
 				IP:        netip.MustParseAddr("0.0.0.0"),
 				HostPort:  0,
 				GuestPort: 80,
@@ -29,7 +29,7 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 		{
 			name:  "Host port and guest port",
 			input: "8080:80",
-			expected: PortBinding{
+			expected: portBinding{
 				IP:        netip.MustParseAddr("0.0.0.0"),
 				HostPort:  8080,
 				GuestPort: 80,
@@ -40,7 +40,7 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 		{
 			name:  "Host port 0 and guest port",
 			input: "0:80",
-			expected: PortBinding{
+			expected: portBinding{
 				IP:        netip.MustParseAddr("0.0.0.0"),
 				HostPort:  0,
 				GuestPort: 80,
@@ -51,7 +51,7 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 		{
 			name:  "IP, host port 0, and guest port",
 			input: "192.168.0.3:0:80",
-			expected: PortBinding{
+			expected: portBinding{
 				IP:        netip.MustParseAddr("192.168.0.3"),
 				HostPort:  0,
 				GuestPort: 80,
@@ -62,7 +62,7 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 		{
 			name:  "Default IP, host port 0, and guest port",
 			input: "0.0.0.0:0:80",
-			expected: PortBinding{
+			expected: portBinding{
 				IP:        netip.MustParseAddr("0.0.0.0"),
 				HostPort:  0,
 				GuestPort: 80,
@@ -73,7 +73,7 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 		{
 			name:  "Guest port only",
 			input: "80", // V2 handles this correctly now!
-			expected: PortBinding{
+			expected: portBinding{
 				IP:        netip.MustParseAddr("0.0.0.0"),
 				HostPort:  0,
 				GuestPort: 80,
@@ -84,7 +84,7 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 		{
 			name:  "With udp protocol",
 			input: "8080:80/udp",
-			expected: PortBinding{
+			expected: portBinding{
 				IP:        netip.MustParseAddr("0.0.0.0"),
 				HostPort:  8080,
 				GuestPort: 80,
@@ -95,7 +95,7 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 		{
 			name:  "Empty IP and host port",
 			input: "::80", // V2 successfully parses this as empty defaults
-			expected: PortBinding{
+			expected: portBinding{
 				IP:        netip.MustParseAddr("0.0.0.0"),
 				HostPort:  0,
 				GuestPort: 80,
@@ -106,7 +106,7 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 		{
 			name:  "Empty IP and host port with tcp",
 			input: "::80/tcp",
-			expected: PortBinding{
+			expected: portBinding{
 				IP:        netip.MustParseAddr("0.0.0.0"),
 				HostPort:  0,
 				GuestPort: 80,
@@ -118,31 +118,31 @@ func TestSanitizeNetworkBindingsV2(t *testing.T) {
 		{
 			name:     "Invalid guest port",
 			input:    "0.0.0.0:0:99999",
-			expected: PortBinding{},
+			expected: portBinding{},
 			err:      true,
 		},
 		{
 			name:     "Too many colons",
 			input:    "127.0.0.1:0:0:80",
-			expected: PortBinding{},
+			expected: portBinding{},
 			err:      true,
 		},
 		{
 			name:     "Invalid IP",
 			input:    "192.168.0.256:0:80/tcp",
-			expected: PortBinding{},
+			expected: portBinding{},
 			err:      true,
 		},
 		{
 			name:     "Invalid Protocol",
 			input:    "8080:80/invalid",
-			expected: PortBinding{},
+			expected: portBinding{},
 			err:      true,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			binding, err := SanitizeNetworkBindings(test.input)
+			binding, err := sanitizeNetworkBindings(test.input)
 			if test.err {
 				assert.Error(t, err)
 			} else {
