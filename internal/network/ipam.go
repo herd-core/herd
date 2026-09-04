@@ -11,7 +11,9 @@ import (
 type IPAM struct {
 	mu      sync.Mutex
 	subnet  *net.IPNet
-	usedIPs map[string]bool
+	// we need this incase, an IP got returned and we are
+	// iterating the range again, this will allow us to reuse the IP
+	usedIPs map[string]bool 
 	nextIP  net.IP
 }
 
@@ -51,9 +53,9 @@ func (i *IPAM) Acquire() (string, error) {
 			inc(i.nextIP)
 			if !i.subnet.Contains(i.nextIP) || isBroadcast(i.nextIP, i.subnet) {
 				// wrap around to the beginning (.2)
-				copy(i.nextIP, i.subnet.IP)
-				inc(i.nextIP)
-				inc(i.nextIP)
+				copy(i.nextIP, i.subnet.IP) // reset back to start of subnet
+				inc(i.nextIP) // .0 is not allowed
+				inc(i.nextIP) // .1 is reserved for host
 			}
 			return res, nil
 		}
@@ -79,6 +81,7 @@ func (i *IPAM) Release(ip string) {
 	delete(i.usedIPs, ip)
 }
 
+// will work for both v4 and v6, we only work with v4
 func inc(ip net.IP) {
 	for j := len(ip) - 1; j >= 0; j-- {
 		ip[j]++
@@ -88,6 +91,9 @@ func inc(ip net.IP) {
 	}
 }
 
+// assume ip is already in the subnet, 
+// essentially any ip in the subnet, will have the mask as 0, 
+// and if all the host bit with mask 0 are 1, we will get 255 for every byte
 func isBroadcast(ip net.IP, n *net.IPNet) bool {
 	if len(ip) != len(n.Mask) {
 		return false
