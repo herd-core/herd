@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-
-
 type portBinding struct {
 	IP        netip.Addr
 	HostPort  uint16

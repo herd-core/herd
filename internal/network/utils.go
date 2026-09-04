@@ -4,9 +4,6 @@ import (
 	"errors"
 	"net"
 	"net/netip"
-	"slices"
-	"strconv"
-	"strings"
 )
 
 type PortBinding struct {
@@ -15,8 +12,6 @@ type PortBinding struct {
 	GuestPort uint16
 	Protocol  string
 }
-
-
 
 func GetInterfaceIP(name string) (string, error) {
 	iface, err := net.InterfaceByName(name)

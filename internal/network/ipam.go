@@ -9,11 +9,11 @@ import (
 // IPAM manages the allocation of /32 point-to-point IP addresses
 // for Firecracker MicroVMs out of a given CIDR block.
 type IPAM struct {
-	mu      sync.Mutex
-	subnet  *net.IPNet
+	mu     sync.Mutex
+	subnet *net.IPNet
 	// we need this incase, an IP got returned and we are
 	// iterating the range again, this will allow us to reuse the IP
-	usedIPs map[string]bool 
+	usedIPs map[string]bool
 	nextIP  net.IP
 }
 
@@ -54,8 +54,8 @@ func (i *IPAM) Acquire() (string, error) {
 			if !i.subnet.Contains(i.nextIP) || isBroadcast(i.nextIP, i.subnet) {
 				// wrap around to the beginning (.2)
 				copy(i.nextIP, i.subnet.IP) // reset back to start of subnet
-				inc(i.nextIP) // .0 is not allowed
-				inc(i.nextIP) // .1 is reserved for host
+				inc(i.nextIP)               // .0 is not allowed
+				inc(i.nextIP)               // .1 is reserved for host
 			}
 			return res, nil
 		}
@@ -91,8 +91,8 @@ func inc(ip net.IP) {
 	}
 }
 
-// assume ip is already in the subnet, 
-// essentially any ip in the subnet, will have the mask as 0, 
+// assume ip is already in the subnet,
+// essentially any ip in the subnet, will have the mask as 0,
 // and if all the host bit with mask 0 are 1, we will get 255 for every byte
 func isBroadcast(ip net.IP, n *net.IPNet) bool {
 	if len(ip) != len(n.Mask) {
