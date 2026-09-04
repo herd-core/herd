@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/herd-core/herd/internal/config"
-	"github.com/herd-core/herd/internal/network"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +56,7 @@ var deployCmd = &cobra.Command{
 		if len(deployPublish) > 0 {
 			mappings := make([]map[string]any, 0, len(deployPublish))
 			for _, p := range deployPublish {
-				bindings, err := network.SanitizeNetworkBindings(p)
+				bindings, err := sanitizeNetworkBindings(p)
 				if err != nil {
 					log.Fatalf("Invalid Port Bindings %e", err)
 				}
